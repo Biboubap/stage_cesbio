@@ -1,0 +1,25 @@
+Extension des données du parc à l'ouest et au sud. Détection des lacs et autres biotypes.
+Algo water detect Cordeiro doctorant du jet, algo non supervisé.
+
+Prolongation des données de 10m à 5m et 10cm (drone) sur le site de Twin Lake et le long de la voie de chemin de fer.
+
+Validation de l'algo d'interpolation des données à 10m pour résolution à 5m. Comparaison avec relevés drones à 10cm. 
+
+
+Bibliotèques python : 
+
+Geopanda (traitement d'image géoréférencés) - numpy en mieux pour images géo. 
+Tenserflow (deep Learning)
+rasterio (images raster)
+sklearn (apprentissage et traitement images)
+
+environnement par anaconda. 
+
+Des infos climat intéressantes : 
+https://climateknowledgeportal.worldbank.org/watershed/oth002175/climate-data-historical
+
+Outil utile sur prévisions hydro.
+https://mghydro.com/watersheds/
+
+
+sylvain.ferrant@ird.fr

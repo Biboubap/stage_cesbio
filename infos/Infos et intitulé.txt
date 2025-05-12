@@ -1,0 +1,58 @@
+Extension des données du parc à l'ouest et au sud. Détection des lacs et autres biotypes.
+Algo water detect Cordeiro doctorant du jet, algo non supervisé.
+
+Prolongation des données de 10m à 5m et 10cm (drone) sur le site de Twin Lake et le long de la voie de chemin de fer.
+
+Validation de l'algo d'interpolation des données à 10m pour résolution à 5m. Comparaison avec relevés drones à 10cm. 
+
+
+Bibliotèques python : 
+
+Geopanda (traitement d'image géoréférencés) - numpy en mieux pour images géo. 
+Tenserflow (deep Learning)
+rasterio (images raster)
+sklearn (apprentissage et traitement images)
+
+environnement par anaconda. 
+
+Des infos climat intéressantes : 
+https://climateknowledgeportal.worldbank.org/watershed/oth002175/climate-data-historical
+
+Outil utile sur prévisions hydro.
+https://mghydro.com/watersheds/
+
+
+sylvain.ferrant@ird.fr
+
+
+Sujet de stage de Master 1 : Fouille de données satellite pour le suivi des écosystèmes de tourbières gelées de la baie d'Hudson
+
+Contexte : La baie d’Hudson, située dans le nord du Canada, est une région cruciale pour l’étude du devenir des écosystèmes nordiques face à l'augmentation très forte observée des températures dans cette région dûe au changement climatique. Les tourbières gelées de cette zone contiennent une importante concentration de lacs et de mares, ainsi que des plateaux de tourbe gelée couvertes de lichen. Le dégel du pergelisol entraine des affaissements et la création de zones éffondrées recouvertes d'eau ou de sphaignes. Ces changements de végétation et la dynamique des lacs et mares sont suivies avec des acquisitions de proximité (drone) et les données Sentinel-2 multi-temporelles et super-résolues (5 m) générées sur le cluster TREX du CNES via le pipeline open-source (https://framagit.org/jmichel-otb/sentinel2_superresolution) développé au CESBIO. Les données Planetscope sont également mobilisable pour fournir un ensemble d'observations des dynamiques de ces ecosystèmes.
+
+ 
+
+Objectifs : Le stage vise à l’analyse de l'ensemble ou d'une partie de ces sources de données pour :
+
+Cartographier les lacs et mares de tourbières gelées en combinant des données Sentinel-2 et Planetscope.
+
+Analyser les évolutions multi-temporelles de la surface et des propriétés thermiques de plateaux de tourbe à l’aide d’images thermiques et optiques de drones.
+
+Réaliser une classification des écozones à partir du cube de données super-résolues Sentinel-2 et la cartographie réalisée il y a 10 ans du parc national de Wapusk
+
+Compétences attendues :
+
+Connaissances de base en traitement d’images satellite, analyse d'indice de végétation, d'humidité.
+
+Programmation en Python (librairies comme GDAL, Rasterio, NumPy, etc.).
+
+Intérêt pour l’écologie et les systèmes nordiques.
+
+Capacité à analyser et synthétiser des données multi-sources.
+
+Encadrement et structure : Le stage sera encadré par une équipe pluridisciplinaire composée de spécialistes en télédétection, écologie des zones froides et traitement d’images. Il s’effectuera au sein du CESBIO associé à un programme de recherche ANR Arctic-Peat.
+
+Durée : 2 à 3 mois.
+
+Début: Mi mai 2025
+
+ 

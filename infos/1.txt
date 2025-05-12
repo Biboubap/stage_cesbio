@@ -1,0 +1,25 @@
+élévation isostatique nord Canada = Les zones les plus proches de la mer sont très récentes. <2000ans. 
+
+Twin lake, 80cm - 150cm de tourbe avant sol.
+
+Diatomées : phytoplancton avec squelette siliceux que l'on retrouve dans la tourbe > Indique l'histoire de l'humidité de la zone. 
+
+3 écosystèmes
+Fen : étendues sur sol minéraux inondées
+Pit plateaux : Tourbière blanche
+Forêt
+
+
+Dans pit plateaux, gels et dégels annuels forment les polygones observables. Coins de glace. Révélateurs d'une évolution lente du paysage. Lors du gel, dans les rainures l'eau écarte le terrain. Blanc : lichen sec. Vert/Marron : Sphègnes de milieu humide. 
+
+
+
+
+Pour rééchantillonner, gdal warp ?
+
+
+STAGE
+Modèles de terrain et d'écosystèmes sur Twin Lakes. 
+Cluster à 70 cm pour analyse du thermique.
+Comparaison statistique avec Sentinel. 
+Etude de l'effet de la résolution / Superrésolution/
