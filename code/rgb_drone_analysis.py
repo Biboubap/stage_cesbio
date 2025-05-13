@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 
 gdal.UseExceptions()
 
-ds = gdal.Open(r'donnees/twin lake mosaïc.tif')
+
+ds = gdal.Open(r'data/twin lake mosaïc.tif')
 gt = ds.GetGeoTransform()
 proj = ds.GetProjection()
 
@@ -21,10 +22,10 @@ def plot_rgb(r, g, b, nmin = 10000, nmax = 15000):
 
     # Plot the RGB image
     plt.figure(figsize=(10, 10))
-    plt.imshow(rgb[nmin:nmax, nmin:nmax], cmap='rgb')
+    plt.imshow(rgb[nmin:nmax, nmin:nmax])
     plt.title("RGB Image")
     plt.axis("off")
-    # plt.show()
+    plt.show()
 
 
 def to_white(r, g, b):
@@ -103,7 +104,7 @@ def plot_rgb_and_bands(r, g, b, nmin=10000, nmax=15000):
 
 if __name__ == "__main__":
     # Plot the RGB image
-    # plot_rgb(r, g, b)
+    plot_rgb(r, g, b, nmin=5000, nmax=10000)
 
     # Plot the white image
     # plot_value(to_white(r, g, b))  
@@ -112,4 +113,4 @@ if __name__ == "__main__":
     # plot_combined(r, g, b)
 
     # Plot the RGB image and individual bands
-    plot_rgb_and_bands(r, g, b)
+    # plot_rgb_and_bands(r, g, b)
