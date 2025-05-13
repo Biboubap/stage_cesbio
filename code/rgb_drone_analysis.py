@@ -16,16 +16,16 @@ r = ds.GetRasterBand(1).ReadAsArray()[:15000] #SHAPE (49674, 23408)
 g = ds.GetRasterBand(2).ReadAsArray()[:15000]
 b = ds.GetRasterBand(3).ReadAsArray()[:15000]
 
-def plot_rgb(r, g, b, nmin = 10000, nmax = 15000):
+def plot_rgb(r, g, b, xmin = 10000, ymin = 10000, l = 1000):
     # Stack the bands into an RGB image
     rgb = np.dstack((r, g, b))
 
     # Plot the RGB image
     plt.figure(figsize=(10, 10))
-    plt.imshow(rgb[nmin:nmax, nmin:nmax])
+    plt.imshow(rgb[xmin:xmin+l, ymin:ymin + l])
     plt.title("RGB Image")
     plt.axis("off")
-    plt.show()
+    #plt.show()
 
 
 def to_white(r, g, b):
@@ -101,16 +101,53 @@ def plot_rgb_and_bands(r, g, b, nmin=10000, nmax=15000):
     plt.tight_layout()
     plt.show()
 
+def plot_pixels(r, g, b, xmin=10000, ymin=10000, size_pixels=10, nb_lines_plots=10, color = None):
+    """
+    Plot RGB and grayscale images side by side in a single figure
+    """
+    # Create a single figure with subplots
+    fig, axes = plt.subplots(10, 10, figsize=(15, 15))  # 1 row, 2 columns
+    # Plot RGB image
+    if color == 'r':
+        rgb = r
+    elif color == 'g':
+        rgb = g
+    elif color == 'b':
+        rgb = b
+    else:
+        rgb = np.dstack((r, g, b))
+    for i in range(nb_lines_plots):
+        for j in range(nb_lines_plots):
+            x = xmin+size_pixels*i
+            y = ymin+size_pixels*j
+            axes[i, j].imshow(rgb[x : x + size_pixels, y : y + size_pixels])
+            axes[i, j].set_title(f"x = {x}, y = {y}")
+            axes[i, j].axis("off")
+    # Adjust layout and show the figure
+    plt.tight_layout()
+    #plt.show()
+
+
 
 if __name__ == "__main__":
     # Plot the RGB image
-    plot_rgb(r, g, b, nmin=5000, nmax=10000)
+    #plot_rgb(r, g, b, nmin=5000, nmax=10000)
 
     # Plot the white image
     # plot_value(to_white(r, g, b))  
 
     # Plot RGB and grayscale images in a single figure
-    # plot_combined(r, g, b)
+    #plot_combined(r, g, b)
 
     # Plot the RGB image and individual bands
-    # plot_rgb_and_bands(r, g, b)
+    #plot_rgb_and_bands(r, g, b)
+
+    x = 12800
+    y=12000
+    pixels = 32
+    plot_rgb(r, g, b, xmin=x, ymin = y , l = 10*pixels)
+    plot_pixels(r, g, b, xmin=x, ymin = y, size_pixels=pixels, nb_lines_plots=10, color = 'r')
+    plt.show()
+    plt.close()
+
+
