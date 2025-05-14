@@ -53,7 +53,7 @@ class Sample:
                     f"b_mean={self.b_mean:.2f}, r_n_mean={self.r_n_mean:.2f}, g_n_mean={self.g_n_mean:.2f}, "
                     f"b_n_mean={self.b_n_mean:.2f}, delta_z_x={self.delta_z_x:.2f}, delta_z_y={self.delta_z_y:.2f})")
 
-def get_RGBZ(xstart, y_start, size_patch=32):
+def get_RGBZ(x_start, y_start, size_patch=32):
     global rast_r, rast_g, rast_b, rast_z
     """
     Get RGB values from the raster data
