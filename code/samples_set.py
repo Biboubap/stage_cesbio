@@ -96,23 +96,23 @@ class SamplesSet:
         n_cols = int(np.ceil(np.sqrt(n)))
         n_rows = int(np.ceil(n / n_cols))
         fig, axes = plt.subplots(n_rows, n_cols, figsize=(3*n_cols, 3*n_rows))
-        axes = np.array(axes).reshape(n_rows, n_cols)  # Assure la bonne forme même si n_rows==1 ou n_cols==1
+        axes = np.array(axes).reshape(n_rows, n_cols)
 
         for idx, sample in enumerate(self.samples):
             i_row = idx // n_cols
             i_col = idx % n_cols
-            ax = axes[i_col, i_row]
+            ax = axes[i_row, i_col]
             r, g, b, _ = sample.get_RGBZ()
             rgb = np.dstack((r, g, b))
             ax.imshow(rgb)
-            ax.set_title(f"x={sample.x}, y={sample.y}")
+            ax.set_title(f"i_x={sample.i_x}, i_y={sample.i_y}")
             ax.axis("off")
 
         # Masquer les axes vides s'il y en a
         for idx in range(n, n_rows * n_cols):
             i_row = idx // n_cols
             i_col = idx % n_cols
-            axes[i_col, i_row].axis("off")
+            axes[i_row, i_col].axis("off")
 
         plt.tight_layout()
         plt.show()
@@ -184,6 +184,38 @@ class SamplesSet:
             samples_set.add_sample(sample)
         return samples_set
 
+    @staticmethod
+    def concatenate_set(set1, set2):
+        """
+        Concatène deux SamplesSet en une seule liste de samples, tous placés sur la même "ligne" (i_y=0).
+        Les indices i_x sont réindexés pour que tous les samples soient à la suite sur la première ligne.
+        Le nouveau set n'a pas de n_samples_x/n_samples_y défini.
+        """
+        if set1.category != set2.category:
+            category = "mixte"
+        else:
+            category = set1.category
+
+        new_set = SamplesSet(n_samples_x=None, n_samples_y=None, category=category)
+        samples = []
+        # On place tous les samples de set1 puis set2 sur la même ligne (i_y=0), i_x croissant
+        all_samples = set1.samples + set2.samples
+        for new_i_x, s in enumerate(all_samples):
+            s_copy = Sample(
+                i_x=new_i_x,
+                i_y=0,
+                x=s.x,
+                y=s.y,
+                size_patch=s.size_patch,
+                classification=getattr(s, "classification", None)
+            )
+            # Copier les autres attributs éventuels
+            for attr in ["r_mean", "g_mean", "b_mean", "r_n_mean", "g_n_mean", "b_n_mean", "delta_z_x", "delta_z_y"]:
+                setattr(s_copy, attr, getattr(s, attr, None))
+            samples.append(s_copy)
+        new_set.samples = samples
+        return new_set
+
 
 if __name__ == "__main__":
     # Créer un ensemble de samples
@@ -199,10 +231,20 @@ if __name__ == "__main__":
     size_patch= 256
     samples_set = SamplesSet(n_samples_x=n_samples_x, n_samples_y=n_samples_y, category="tourbière")
     samples_set.create_samples_grid(x_start=row_start, y_start=column_start, size_patch=size_patch)
-    samples_set.plot_samples_as_list()
+    #samples_set.plot_samples_as_list()
     samples_set.remove_sample(2, 2)
     samples_set.plot_samples_as_list()
 
+    n_samples_x = 2
+    n_samples_y = 2
+    row_start = int(np.round(x_2/32))*32 #row X
+    column_start = int(np.round(y_2/32))*32 #column Y
+    samples_set2 = SamplesSet(n_samples_x=n_samples_x, n_samples_y=n_samples_y, category="tourbière")
+    samples_set2.create_samples_grid(x_start=row_start, y_start=column_start, size_patch=size_patch)
+    samples_set2.plot_samples_as_list()
+
+    merged_set = SamplesSet.concatenate_set(samples_set, samples_set2)
+    merged_set.plot_samples_as_list()
 
     # # # Sauvegarder les samples dans un fichier json
     # path = "data/samples/"
