@@ -25,8 +25,8 @@ class Sample:
         self.y_start = y_start 
 
         # Position réelle (optionnel)
-        self.x_start = self.x_start + i_x * size_patch
-        self.y_start = self.y_start + i_y * size_patch
+        self.x = self.x_start + i_x * size_patch
+        self.y = self.y_start + i_y * size_patch
 
         # Caractéristiques du patch
         r,g,b,z = Sample.get_RGBZ(self)
@@ -49,7 +49,7 @@ class Sample:
         self.delta_z_x, self.delta_z_y = 0,0 #get_slope_neighbors(samples, i_x, i_y)
 
     def __repr__(self):
-            return (f"Sample(x={self.x_start}, y={self.y_start}, r_mean={self.r_mean:.2f}, g_mean={self.g_mean:.2f}, "
+            return (f"Sample(x={self.x}, y={self.y}, r_mean={self.r_mean:.2f}, g_mean={self.g_mean:.2f}, "
                     f"b_mean={self.b_mean:.2f}, r_n_mean={self.r_n_mean:.2f}, g_n_mean={self.g_n_mean:.2f}, "
                     f"b_n_mean={self.b_n_mean:.2f}, delta_z_x={self.delta_z_x:.2f}, delta_z_y={self.delta_z_y:.2f})")
 
@@ -58,13 +58,13 @@ class Sample:
         """
         Get RGB values from the raster data
         """
-        x_start = self.x_start
-        y_start = self.y_start
+        x = self.x
+        y = self.y
         size_patch = self.size_patch
-        r = rast_r[x_start:x_start + size_patch, y_start:y_start + size_patch]
-        g = rast_g[x_start:x_start + size_patch, y_start:y_start + size_patch]
-        b = rast_b[x_start:x_start + size_patch, y_start:y_start + size_patch]
-        z = rast_z[x_start:x_start + size_patch, y_start:y_start + size_patch]*1000 #en mm
+        r = rast_r[x:x + size_patch, y:y + size_patch]
+        g = rast_g[x:x + size_patch, y:y + size_patch]
+        b = rast_b[x:x + size_patch, y:y + size_patch]
+        z = rast_z[x:x + size_patch, y:y + size_patch]*1000 #en mm
         return r, g, b, z
 
     def plot_sample(self):
@@ -75,7 +75,7 @@ class Sample:
 
         rgb = np.dstack((r, g, b))
         axes[0].imshow(rgb)
-        axes[0].set_title(f"x = {self.x_start}, y = {self.y_start}")
+        axes[0].set_title(f"x = {self.x}, y = {self.y}")
         axes[0].axis("off")
 
         # Statistiques de la cellule
