@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import json
 
 from sample import Sample
 import pandas as pd
@@ -62,89 +63,77 @@ class SamplesSet:
         plt.tight_layout()
         plt.show()
 
-    def save_samples_to_csv(self, filename):
+    
+
+    def save_samples_to_json(self, filename):
         """
-        Sauvegarde les caractéristiques du set et les statistiques des samples dans un fichier CSV.
+        Sauvegarde le set et les samples dans un fichier JSON.
         (Ne sauvegarde pas les patchs d'image, seulement les attributs scalaires)
         """
-        import pandas as pd
-        # Prépare la première ligne pour les infos du set
-        set_info = {
-            "i_x": "SET_INFO",
-            "i_y": "",
-            "x_start": "",
-            "y_start": "",
-            "size_patch": "",
-            "r_mean": "",
-            "g_mean": "",
-            "b_mean": "",
-            "r_n_mean": "",
-            "g_n_mean": "",
-            "b_n_mean": "",
-            "delta_z_x": "",
-            "delta_z_y": "",
+        data = {
             "n_samples_x": self.n_samples_x,
             "n_samples_y": self.n_samples_y,
-            "category": self.category
+            "category": self.category,
+            "samples": []
         }
-        data = [set_info]
-        # Puis les samples
         for s in self.samples:
-            data.append({
+            sample_dict = {
                 "i_x": s.i_x,
                 "i_y": s.i_y,
                 "x_start": s.x_start,
                 "y_start": s.y_start,
                 "size_patch": s.size_patch,
-                "r_mean": s.r_mean,
-                "g_mean": s.g_mean,
-                "b_mean": s.b_mean,
-                "r_n_mean": s.r_n_mean,
-                "g_n_mean": s.g_n_mean,
-                "b_n_mean": s.b_n_mean,
-                "delta_z_x": s.delta_z_x,
-                "delta_z_y": s.delta_z_y,
-                "n_samples_x": "",
-                "n_samples_y": "",
-                "category": ""
-            })
-        df = pd.DataFrame(data)
-        df.to_csv(filename, index=False)
+                "x": getattr(s, "x", None),
+                "y": getattr(s, "y", None),
+                "r_mean": getattr(s, "r_mean", None),
+                "g_mean": getattr(s, "g_mean", None),
+                "b_mean": getattr(s, "b_mean", None),
+                "r_n_mean": getattr(s, "r_n_mean", None),
+                "g_n_mean": getattr(s, "g_n_mean", None),
+                "b_n_mean": getattr(s, "b_n_mean", None),
+                "delta_z_x": getattr(s, "delta_z_x", None),
+                "delta_z_y": getattr(s, "delta_z_y", None)
+            }
+            data["samples"].append(sample_dict)
+        with open(filename, "w") as f:
+            json.dump(data, f, indent=2)
 
     @staticmethod
-    def load_samples_from_csv(filename):
+    def load_samples_from_json(filename):
         """
-        Charge un set de samples depuis un fichier CSV (statistiques uniquement, pas les patchs d'image).
+        Charge un set de samples depuis un fichier JSON (statistiques uniquement, pas les patchs d'image).
         Retourne une instance de SamplesSet.
         """
-        import pandas as pd
-        df = pd.read_csv(filename)
-        # Récupère les infos du set dans la première ligne
-        set_info = df.iloc[0]
-        n_samples_x = int(set_info.get("n_samples_x", 1))
-        n_samples_y = int(set_info.get("n_samples_y", 1))
-        category = set_info.get("category", None)
-        samples_set = SamplesSet(n_samples_x=n_samples_x, n_samples_y=n_samples_y, category=category)
-        # Parcours les samples (à partir de la 2e ligne)
-        for _, row in df.iloc[1:].iterrows():
-            s = Sample(
-                i_x=int(row["i_x"]),
-                i_y=int(row["i_y"]),
-                x_start=int(row["x_start"]),
-                y_start=int(row["y_start"]),
-                size_patch=int(row["size_patch"])
+        from sample import Sample
+        with open(filename, "r") as f:
+            data = json.load(f)
+        samples_set = SamplesSet(
+            n_samples_x=data["n_samples_x"],
+            n_samples_y=data["n_samples_y"],
+            category=data.get("category", None)
+        )
+        for s in data["samples"]:
+            sample = Sample(
+                i_x=s["i_x"],
+                i_y=s["i_y"],
+                x_start=s["x_start"],
+                y_start=s["y_start"],
+                size_patch=s["size_patch"]
             )
-            s.r_mean = row["r_mean"]
-            s.g_mean = row["g_mean"]
-            s.b_mean = row["b_mean"]
-            s.r_n_mean = row["r_n_mean"]
-            s.g_n_mean = row["g_n_mean"]
-            s.b_n_mean = row["b_n_mean"]
-            s.delta_z_x = row["delta_z_x"]
-            s.delta_z_y = row["delta_z_y"]
-            samples_set.add_sample(s)
+            sample.x = s.get("x", None)
+            sample.y = s.get("y", None)
+            sample.r_mean = s.get("r_mean", None)
+            sample.g_mean = s.get("g_mean", None)
+            sample.b_mean = s.get("b_mean", None)
+            sample.r_n_mean = s.get("r_n_mean", None)
+            sample.g_n_mean = s.get("g_n_mean", None)
+            sample.b_n_mean = s.get("b_n_mean", None)
+            sample.delta_z_x = s.get("delta_z_x", None)
+            sample.delta_z_y = s.get("delta_z_y", None)
+            samples_set.add_sample(sample)
         return samples_set
-    
+
+
 if __name__ == "__main__":
     # Créer un ensemble de samples
     x_1 = 12800
@@ -161,9 +150,9 @@ if __name__ == "__main__":
     samples_set.create_samples_grid(x_start=row_start, y_start=column_start, size_patch=size_patch)
     samples_set.plot_samples()
 
-    # # Sauvegarder les samples dans un fichier CSV
-    # samples_set.save_samples_to_csv("data/samples/samples_set.csv")
-    # # Charger les samples depuis le fichier CSV
-    # loaded_samples_set = SamplesSet.load_samples_from_csv("data/samples/samples_set.csv")
-    # loaded_samples_set.plot_samples()
-    
+    # # Sauvegarder les samples dans un fichier json
+    path = "data/samples/"
+    samples_set.save_samples_to_json(path+"test.json")
+    # # Charger les samples depuis le fichier json
+    loaded_set = SamplesSet.load_samples_from_json(path+"test.json")
+    loaded_set.plot_samples()
