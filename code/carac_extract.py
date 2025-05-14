@@ -49,24 +49,48 @@ def get_mean_colors_neighbors(samples, i_x, i_y, neighborhood_size=1):
     b_mean /= nb_neighbors
     return r_mean, g_mean, b_mean
         
+def get_slope_neighbors(samples, i_x, i_y):
+    """
+    Calcule le gradient d'altitude (delta_x, delta_y) autour du patch (i_x, i_y)
+    """
+    # Vérification des bords
+    n_x = len(samples[0])
+    n_y = len(samples)
     
-# def get_neighbors(x,y, neighborhood_size = 1):
-#     global rast_r , size_patch
-#     """
-#     Get the neighbors of a sample in a 2D array
-#     """
-#     # Get the shape of the array
-#     rows, cols = rast_r.shape
-#     pixel_size = neighborhood_size * size_patch
-#     # Get the coordinates of the neighbors
-#     neighbors = []
-#     for i in range(-pixel_size, pixel_size + 1):
-#         for j in range(-pixel_size, pixel_size + 1):
-#             if i == 0 and j == 0:
-#                 continue
-#             if 0 <= x + i < rows and 0 <= y + j < cols:
-#                 neighbors.append((x + i, y + j))
-#     return neighbors
+    # Gradient en x
+    if i_x == 0 and n_x > 1:
+        z_xplus = np.mean(samples[i_y][i_x + 1][3])
+        z_center = np.mean(samples[i_y][i_x][3])
+        delta_x = z_xplus - z_center
+    elif i_x == n_x - 1 and n_x > 1:
+        z_xminus = np.mean(samples[i_y][i_x - 1][3])
+        z_center = np.mean(samples[i_y][i_x][3])
+        delta_x = z_center - z_xminus
+    elif 0 < i_x < n_x - 1:
+        z_xplus = np.mean(samples[i_y][i_x + 1][3])
+        z_xminus = np.mean(samples[i_y][i_x - 1][3])
+        delta_x = (z_xplus - z_xminus) / 2
+    else:
+        delta_x = 0
+
+    # Gradient en y
+    if i_y == 0 and n_y > 1:
+        z_yplus = np.mean(samples[i_y + 1][i_x][3])
+        z_center = np.mean(samples[i_y][i_x][3])
+        delta_y = z_yplus - z_center
+    elif i_y == n_y - 1 and n_y > 1:
+        z_yminus = np.mean(samples[i_y - 1][i_x][3])
+        z_center = np.mean(samples[i_y][i_x][3])
+        delta_y = z_center - z_yminus
+    elif 0 < i_y < n_y - 1:
+        z_yplus = np.mean(samples[i_y + 1][i_x][3])
+        z_yminus = np.mean(samples[i_y - 1][i_x][3])
+        delta_y = (z_yplus - z_yminus) / 2
+    else:
+        delta_y = 0
+
+    return delta_x, delta_y 
+
 
 # def get_slope(x, y, delta_l=1):
 #     global rast_z, size_patch
@@ -110,14 +134,14 @@ def plot_samples(samples):
         # Statistiques des voisins et gradients
         
         r_n_mean, g_n_mean, b_n_mean = get_mean_colors_neighbors(samples, i, 1)
-        
+        delta_z_x, delta_z_y = get_slope_neighbors(samples, i, 1)
         
         neighbor_text = (
             f"R (neighbors): mean={r_n_mean:.2f}\n"
             f"G (neighbors): mean={g_n_mean:.2f}\n"
             f"B (neighbors): mean={b_n_mean:.2f}\n"
-            # f"delta_z_x: {delta_z_x:.5f}\n"
-            # f"delta_z_y: {delta_z_y:.5f}"
+            f"delta_z_x: {delta_z_x:.5f}\n"
+            f"delta_z_y: {delta_z_y:.5f}"
         )
         axes[i, 2].text(0, 0.5, neighbor_text, fontsize=10, ha="left", va="center", wrap=True)
         axes[i, 2].axis("off")
