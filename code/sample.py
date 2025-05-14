@@ -8,15 +8,15 @@ from carac_extract import get_mean_colors_neighbors, get_slope_neighbors
 ds = gdal.Open(r'data/twin_lake_mosaïc.tif')
 dz = gdal.Open(r'data/twin_lake_dsm.tif')
 
-rast_r = ds.GetRasterBand(1).ReadAsArray()[:15000] #SHAPE (49674, 23408) 
-rast_g = ds.GetRasterBand(2).ReadAsArray()[:15000]
-rast_b = ds.GetRasterBand(3).ReadAsArray()[:15000]
-rast_z = dz.GetRasterBand(1).ReadAsArray()[:15000]
+rast_r = ds.GetRasterBand(1).ReadAsArray() #SHAPE (49674, 23408) 
+rast_g = ds.GetRasterBand(2).ReadAsArray()
+rast_b = ds.GetRasterBand(3).ReadAsArray()
+rast_z = dz.GetRasterBand(1).ReadAsArray()
 
 class Sample:
     global rast_r, rast_g, rast_b, rast_z
 
-    def __init__(self, samples, i_x, i_y, x_start, y_start, size_patch=32):
+    def __init__(self, i_x, i_y, x_start, y_start, size_patch=32, samples=None):
  
         self.size_patch = size_patch
         self.i_x = i_x
@@ -117,14 +117,6 @@ if __name__ == "__main__":
     n_samples_y = 3
     x_start = 12800
     y_start = 12000
-
-    # Create samples
-    #samples = create_samples(x_start, y_start, n_samples_x, n_samples_y, size_patch)
-
-    # # Print samples
-    # for row in samples:
-    #     for sample in row:
-    #         print(sample)
 
     sample = Sample([], 0, 0, x_start, y_start, size_patch)
     print(sample)
