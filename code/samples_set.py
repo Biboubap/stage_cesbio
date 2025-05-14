@@ -24,7 +24,9 @@ class SamplesSet:
         self.samples = []
         for i_x in range(self.n_samples_x):     
             for i_y in range(self.n_samples_y):  
-                sample = Sample(i_x, i_y, x_start, y_start, size_patch)
+                x = x_start + i_x * size_patch
+                y = y_start + i_y * size_patch
+                sample = Sample(i_x, i_y, x, y, size_patch, self.category)
                 self.samples.append(sample)
         # Trie pour garantir l'ordre (y, x)
         self.samples.sort(key=lambda s: (s.y, s.x))
@@ -48,7 +50,7 @@ class SamplesSet:
         - y (cols) croissants de gauche à droite
         """
         matrix = self.get_samples_matrix()
-        fig, axes = plt.subplots(self.n_samples_y, self.n_samples_x, figsize=(3*self.n_samples_x, 3*self.n_samples_y))
+        fig, axes = plt.subplots(self.n_samples_x, self.n_samples_y, figsize=(3*self.n_samples_y, 3*self.n_samples_x))
         
         for i_x in range(self.n_samples_x):
             for i_y in range(self.n_samples_y):
@@ -58,12 +60,11 @@ class SamplesSet:
                 rgb = np.dstack((r, g, b))
                 ax = axes[i_x, i_y] if self.n_samples_y > 1 and self.n_samples_x > 1 else axes[max(i_y, i_x)]
                 ax.imshow(rgb)
-                ax.set_title(f"x = {sample.x}, y = {sample.y}")
+                #ax.set_title(f"x = {sample.x}, y = {sample.y}")
                 ax.axis("off")
         plt.tight_layout()
         plt.show()
 
-    
 
     def save_samples_to_json(self, filename):
         """
@@ -80,8 +81,6 @@ class SamplesSet:
             sample_dict = {
                 "i_x": s.i_x,
                 "i_y": s.i_y,
-                "x_start": s.x_start,
-                "y_start": s.y_start,
                 "size_patch": s.size_patch,
                 "x": getattr(s, "x", None),
                 "y": getattr(s, "y", None),
@@ -116,8 +115,8 @@ class SamplesSet:
             sample = Sample(
                 i_x=s["i_x"],
                 i_y=s["i_y"],
-                x_start=s["x_start"],
-                y_start=s["y_start"],
+                x=s["x"],
+                y=s["y"],
                 size_patch=s["size_patch"]
             )
             sample.x = s.get("x", None)
@@ -130,6 +129,7 @@ class SamplesSet:
             sample.b_n_mean = s.get("b_n_mean", None)
             sample.delta_z_x = s.get("delta_z_x", None)
             sample.delta_z_y = s.get("delta_z_y", None)
+            sample.classification=s.get("classification", None)
             samples_set.add_sample(sample)
         return samples_set
 
@@ -150,9 +150,10 @@ if __name__ == "__main__":
     samples_set.create_samples_grid(x_start=row_start, y_start=column_start, size_patch=size_patch)
     samples_set.plot_samples()
 
-    # # Sauvegarder les samples dans un fichier json
-    path = "data/samples/"
-    samples_set.save_samples_to_json(path+"test.json")
-    # # Charger les samples depuis le fichier json
-    loaded_set = SamplesSet.load_samples_from_json(path+"test.json")
-    loaded_set.plot_samples()
+
+    # # # Sauvegarder les samples dans un fichier json
+    # path = "data/samples/"
+    # samples_set.save_samples_to_json(path+"test.json")
+    # # # Charger les samples depuis le fichier json
+    # loaded_set = SamplesSet.load_samples_from_json(path+"test.json")
+    # loaded_set.plot_samples()

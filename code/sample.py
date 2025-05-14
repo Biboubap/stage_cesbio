@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from carac_extract import get_mean_colors_neighbors, get_slope_neighbors
 
 ds = gdal.Open(r'data/twin_lake_mosaïc.tif')
 dz = gdal.Open(r'data/twin_lake_dsm.tif')
@@ -16,17 +15,17 @@ rast_z = dz.GetRasterBand(1).ReadAsArray()
 class Sample:
     global rast_r, rast_g, rast_b, rast_z
 
-    def __init__(self, i_x, i_y, x_start, y_start, size_patch=32):
+    def __init__(self, i_x, i_y, x, y, size_patch=32, classification=None):
  
         self.size_patch = size_patch
         self.i_x = i_x
         self.i_y = i_y
-        self.x_start = x_start 
-        self.y_start = y_start 
+        self.x = x
+        self.y = y
+        self.classification = classification
 
         # Position réelle (optionnel)
-        self.x = self.x_start + i_x * size_patch
-        self.y = self.y_start + i_y * size_patch
+       
 
         # Caractéristiques du patch
         r,g,b,z = Sample.get_RGBZ(self)
