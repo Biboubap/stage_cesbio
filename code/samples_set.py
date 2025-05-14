@@ -6,7 +6,7 @@ from sample import Sample
 import pandas as pd
 
 class SamplesSet:
-    def __init__(self, n_samples_x, n_samples_y, category=None):
+    def __init__(self, n_samples_x=None, n_samples_y=None, category=None):
         self.n_samples_x = n_samples_x
         self.n_samples_y = n_samples_y
         self.category = category
@@ -16,10 +16,14 @@ class SamplesSet:
     def add_sample(self, sample):
         """Ajoute un sample à l'ensemble, puis trie selon x et y croissants."""
         self.samples.append(sample)
+        self.n_samples_x = None
+        self.n_samples_y = None
         # Trie d'abord par y puis par x
         self.samples.sort(key=lambda s: (s.y, s.x))
 
     def create_samples_grid(self, x_start, y_start, size_patch=32):
+        if self.n_samples_x is None or self.n_samples_y is None:
+            raise ValueError("n_samples_x and n_samples_y must be defined before creating a grid.")
         """Crée une grille régulière de samples ordonnés selon x et y croissants."""
         self.samples = []
         for i_x in range(self.n_samples_x):     
@@ -32,6 +36,8 @@ class SamplesSet:
         self.samples.sort(key=lambda s: (s.y, s.x))
 
     def get_samples_matrix(self):
+        if self.n_samples_x is None or self.n_samples_y is None:
+            raise ValueError("n_samples_x and n_samples_y must be defined before getting the samples matrix.")
         """Retourne les samples sous forme de matrice [n_samples_y][n_samples_x]."""
         matrix = [[None for _ in range(self.n_samples_x)] for _ in range(self.n_samples_y)]
         for sample in self.samples:
@@ -40,10 +46,23 @@ class SamplesSet:
             matrix[i_y][i_x] = sample
         return matrix
 
+    def remove_sample(self, i_x, i_y):
+        """
+        Supprime le sample dont les indices sont i_x et i_y.
+        Si un sample est supprimé, n_samples_x et n_samples_y sont mis à None.
+        """
+        initial_len = len(self.samples)
+        self.samples = [s for s in self.samples if not (s.i_x == i_x and s.i_y == i_y)]
+        if len(self.samples) < initial_len:
+            self.n_samples_x = None
+            self.n_samples_y = None
+
     def __repr__(self):
         return f"SamplesSet(n_samples_x={self.n_samples_x}, n_samples_y={self.n_samples_y}, category={self.category}, n_total={len(self.samples)})"
     
     def plot_samples(self):
+        if self.n_samples_x is None or self.n_samples_y is None:
+            raise ValueError("n_samples_x and n_samples_y must be defined before plotting samples.")
         """
         Affiche tous les samples du set en RGB, ordonnés comme une image :
         - x (rows) croissants de haut en bas
@@ -65,6 +84,38 @@ class SamplesSet:
         plt.tight_layout()
         plt.show()
 
+    def plot_samples_as_list(self):
+        """
+        Affiche tous les samples du set en RGB, sans grille imposée.
+        Les samples sont affichés dans une grille carrée aussi compacte que possible.
+        """
+        n = len(self.samples)
+        if n == 0:
+            print("Aucun sample à afficher.")
+            return
+        n_cols = int(np.ceil(np.sqrt(n)))
+        n_rows = int(np.ceil(n / n_cols))
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(3*n_cols, 3*n_rows))
+        axes = np.array(axes).reshape(n_rows, n_cols)  # Assure la bonne forme même si n_rows==1 ou n_cols==1
+
+        for idx, sample in enumerate(self.samples):
+            i_row = idx // n_cols
+            i_col = idx % n_cols
+            ax = axes[i_col, i_row]
+            r, g, b, _ = sample.get_RGBZ()
+            rgb = np.dstack((r, g, b))
+            ax.imshow(rgb)
+            ax.set_title(f"x={sample.x}, y={sample.y}")
+            ax.axis("off")
+
+        # Masquer les axes vides s'il y en a
+        for idx in range(n, n_rows * n_cols):
+            i_row = idx // n_cols
+            i_col = idx % n_cols
+            axes[i_col, i_row].axis("off")
+
+        plt.tight_layout()
+        plt.show()
 
     def save_samples_to_json(self, filename):
         """
@@ -142,13 +193,15 @@ if __name__ == "__main__":
     y_2 = 11430
     row_start = int(np.round(x_1/32))*32 #row X
     column_start = int(np.round(y_1/32))*32 #column Y
-    n_samples_x = 10
-    n_samples_y = 10
+    n_samples_x = 3
+    n_samples_y = 3
     
     size_patch= 256
     samples_set = SamplesSet(n_samples_x=n_samples_x, n_samples_y=n_samples_y, category="tourbière")
     samples_set.create_samples_grid(x_start=row_start, y_start=column_start, size_patch=size_patch)
-    samples_set.plot_samples()
+    samples_set.plot_samples_as_list()
+    samples_set.remove_sample(2, 2)
+    samples_set.plot_samples_as_list()
 
 
     # # # Sauvegarder les samples dans un fichier json
