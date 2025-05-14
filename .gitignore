@@ -1,1 +1,6 @@
-/data/
+/data/*
+!/data/samples/
+!/data/samples/**/*.json
+/data/samples/**/*.png
+
+/code/__pycache__/
