@@ -55,6 +55,21 @@ class SamplesSet:
             self.n_samples_x = None
             self.n_samples_y = None
 
+    def fill_neighbors_colors(self, depth_neighbors=1):
+        """
+        Calcule et remplit les moyennes des couleurs des voisins pour tous les samples du set.
+        """
+        for sample in self.samples.values():
+            sample.compute_neighbors_color(sample_set=self, depth_neighbors=depth_neighbors)
+
+    def fill_slope(self, depth_neighbors=1):
+        """
+        Calcule et remplit les gradients verticaux et horizontaux selon z pour tous les samples du set.
+        """
+        for sample in self.samples.values():
+            sample.compute_slope(sample_set=self, depth_neighbors=depth_neighbors)
+
+
     def __repr__(self):
         return f"SamplesSet(n_samples_x={self.n_samples_x}, n_samples_y={self.n_samples_y}, category={self.category}, n_total={len(self.samples)})"
 
@@ -132,7 +147,8 @@ class SamplesSet:
                 "g_n_mean": getattr(s, "g_n_mean", None),
                 "b_n_mean": getattr(s, "b_n_mean", None),
                 "delta_z_x": getattr(s, "delta_z_x", None),
-                "delta_z_y": getattr(s, "delta_z_y", None)
+                "delta_z_y": getattr(s, "delta_z_y", None),
+                "classification": getattr(s, "classification", None)
             }
             data["samples"].append(sample_dict)
         with open(filename, "w") as f:
@@ -214,12 +230,16 @@ if __name__ == "__main__":
     n_samples_x = 3
     n_samples_y = 3
     
-    size_patch= 256
-    samples_set = SamplesSet(n_samples_x=n_samples_x, n_samples_y=n_samples_y, category="tourbière")
+    size_patch= 32
+    samples_set = SamplesSet(n_samples_x=n_samples_x, n_samples_y=n_samples_y, category="tourbiere")
     samples_set.create_samples_grid(x_start=row_start, y_start=column_start, size_patch=size_patch)
+    samples_set.fill_neighbors_colors(depth_neighbors=1)
+    samples_set.fill_slope(depth_neighbors=1)
+    #print(samples_set.samples)
+    samples_set.plot_samples()
     #samples_set.plot_samples_as_list()
-    samples_set.remove_sample(2, 2)
-    samples_set.plot_samples_as_list()
+    # samples_set.remove_sample(2, 2)
+    # samples_set.plot_samples_as_list()
 
     # n_samples_x = 2
     # n_samples_y = 2
@@ -233,8 +253,8 @@ if __name__ == "__main__":
     # merged_set.plot_samples_as_list()
 
     # # # Sauvegarder les samples dans un fichier json
-    # path = "data/samples/"
-    # samples_set.save_samples_to_json(path+"test.json")
+    path = "data/samples/"
+    samples_set.save_samples_to_json(path+"test.json")
     # # # Charger les samples depuis le fichier json
     # loaded_set = SamplesSet.load_samples_from_json(path+"test.json")
     # loaded_set.plot_samples()

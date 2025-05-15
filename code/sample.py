@@ -15,7 +15,7 @@ rast_z = dz.GetRasterBand(1).ReadAsArray()
 class Sample:
     global rast_r, rast_g, rast_b, rast_z
 
-    def __init__(self, i_x, i_y, x, y, size_patch=32, classification=None):
+    def __init__(self, i_x, i_y, x, y, size_patch=32, classification=None, sample_set = None):
  
         self.size_patch = size_patch
         self.i_x = i_x
@@ -42,15 +42,17 @@ class Sample:
         self.z_var = float(np.var(z))
 
         # Moyennes RGB des voisins
-        self.r_n_mean, self.g_n_mean, self.b_n_mean = 0,0,0 #get_mean_colors_neighbors(samples, i_x, i_y)
-
+        self.r_n_mean, self.g_n_mean, self.b_n_mean = None, None, None
         # Gradients d'altitude
-        self.delta_z_x, self.delta_z_y = 0,0 #get_slope_neighbors(samples, i_x, i_y)
+        self.delta_z_x, self.delta_z_y = None, None
 
     def __repr__(self):
-            return (f"Sample(x={self.x}, y={self.y}, r_mean={self.r_mean:.2f}, g_mean={self.g_mean:.2f}, "
-                    f"b_mean={self.b_mean:.2f}, r_n_mean={self.r_n_mean:.2f}, g_n_mean={self.g_n_mean:.2f}, "
-                    f"b_n_mean={self.b_n_mean:.2f}, delta_z_x={self.delta_z_x:.2f}, delta_z_y={self.delta_z_y:.2f})")
+        def fmt(val):
+            return f"{val:.2f}" if val is not None else "None"
+        return (f"Sample(x={self.x}, y={self.y}, r_mean={fmt(self.r_mean)}, g_mean={fmt(self.g_mean)}, "
+                f"b_mean={fmt(self.b_mean)}, r_n_mean={fmt(self.r_n_mean)}, g_n_mean={fmt(self.g_n_mean)}, "
+                f"b_n_mean={fmt(self.b_n_mean)}, delta_z_x={fmt(self.delta_z_x)}, delta_z_y={fmt(self.delta_z_y)})")
+
 
     def get_RGBZ(self):
         global rast_r, rast_g, rast_b, rast_z
@@ -67,6 +69,10 @@ class Sample:
         return r, g, b, z
 
     def plot_sample(self):
+        def fmt2(val):
+            return f"{val:.2f}" if val is not None else "None"
+        def fmt5(val):
+            return f"{val:.5f}" if val is not None else "None"
         
         fig, axes = plt.subplots(1, 3, figsize=(8, 2.5))  # 1 row, 3 columns
 
@@ -90,11 +96,11 @@ class Sample:
         # Statistiques des voisins et gradients
             
         neighbor_text = (
-            f"R (neighbors): mean={self.r_n_mean:.2f}\n"
-            f"G (neighbors): mean={self.g_n_mean:.2f}\n"
-            f"B (neighbors): mean={self.b_n_mean:.2f}\n"
-            f"delta_z_x: {self.delta_z_x:.5f}\n"
-            f"delta_z_y: {self.delta_z_y:.5f}"
+            f"R (neighbors): mean={fmt2(self.r_n_mean)}\n"
+            f"G (neighbors): mean={fmt2(self.g_n_mean)}\n"
+            f"B (neighbors): mean={fmt2(self.b_n_mean)}\n"
+            f"delta_z_x: {fmt5(self.delta_z_x)}\n"
+            f"delta_z_y: {fmt5(self.delta_z_y)}"
         )
         axes[2].text(0, 0.5, neighbor_text, fontsize=10, ha="left", va="center", wrap=True)
         axes[2].axis("off")
@@ -102,6 +108,100 @@ class Sample:
         plt.tight_layout()
         plt.show()
 
+    def compute_neighbors_color(self, sample_set=None, size_patch=None, depth_neighbors=1):
+        """
+        Calcule la moyenne des couleurs des voisins.
+        Si un voisin existe dans sample_set, utilise sa moyenne déjà calculée.
+        Sinon, calcule à partir du raster.
+        """
+        global rast_r, rast_g, rast_b
+        if size_patch is None:
+            size_patch = self.size_patch
+        r_sum = 0
+        g_sum = 0
+        b_sum = 0
+        nb_neighbors = 0
+        for i in range(-depth_neighbors, depth_neighbors + 1):
+            for j in range(-depth_neighbors, depth_neighbors + 1):
+                if i == 0 and j == 0:
+                    continue
+                x_n = self.x + i * size_patch
+                y_n = self.y + j * size_patch
+                if sample_set is not None and (x_n, y_n) in sample_set.samples:
+                    neighbor = sample_set.samples[(x_n, y_n)]
+                    r_sum += neighbor.r_mean
+                    g_sum += neighbor.g_mean
+                    b_sum += neighbor.b_mean
+                    nb_neighbors += 1
+                elif 0 <= x_n < rast_r.shape[0] - size_patch and 0 <= y_n < rast_r.shape[1] - size_patch:
+                    r_patch = rast_r[x_n:x_n + size_patch, y_n:y_n + size_patch]
+                    g_patch = rast_g[x_n:x_n + size_patch, y_n:y_n + size_patch]
+                    b_patch = rast_b[x_n:x_n + size_patch, y_n:y_n + size_patch]
+                    r_sum += np.mean(r_patch)
+                    g_sum += np.mean(g_patch)
+                    b_sum += np.mean(b_patch)
+                    nb_neighbors += 1
+        if nb_neighbors > 0:
+            self.r_n_mean = r_sum / nb_neighbors
+            self.g_n_mean = g_sum / nb_neighbors
+            self.b_n_mean = b_sum / nb_neighbors
+        else:
+            self.r_n_mean = self.g_n_mean = self.b_n_mean = 0
+
+    def compute_slope(self, sample_set=None, size_patch=None, depth_neighbors=1):
+        """
+        Calcule le gradient d'altitude (delta_z_x, delta_z_y) pour ce sample.
+        - delta_z_x : (z voisin avant x - z voisin après x) / 2 (ou /1 si en bord)
+        - delta_z_y : (z voisin avant y - z voisin après y) / 2*(ou /1 si en bord)
+        Si un voisin existe dans sample_set, utilise sa moyenne déjà calculée, sinon le calcule à partir du raster.
+        """
+        global rast_z
+        if size_patch is None:
+            size_patch = self.size_patch
+
+        distance = size_patch * depth_neighbors
+        # Coordonnées des voisins
+        neighbors = {
+            "x_prev": (self.x - distance, self.y),
+            "x_next": (self.x + distance, self.y),
+            "y_prev": (self.x, self.y - distance),
+            "y_next": (self.x, self.y + distance),
+        }
+
+        # Fonction pour récupérer la moyenne z d'un voisin
+        def get_z_mean(x, y):
+            if sample_set is not None and (x, y) in sample_set.samples:
+                return sample_set.samples[(x, y)].z_mean
+            elif 0 <= x < rast_z.shape[0] - size_patch and 0 <= y < rast_z.shape[1] - size_patch:
+                z_patch = rast_z[x:x + size_patch, y:y + size_patch]*1000 #en mm
+                return float(np.mean(z_patch))
+            else:
+                return None
+
+        # Calcul pour x
+        z_prev_x = get_z_mean(*neighbors["x_prev"])
+        z_next_x = get_z_mean(*neighbors["x_next"])
+        if z_prev_x is not None and z_next_x is not None:
+            self.delta_z_x = (z_next_x - z_prev_x) / (2 * depth_neighbors) 
+        elif z_prev_x is not None:
+            self.delta_z_x = (self.z_mean - z_prev_x) / (1 * depth_neighbors)
+        elif z_next_x is not None:
+            self.delta_z_x = (z_next_x - self.z_mean) / (1 * depth_neighbors)
+        else:
+            self.delta_z_x = None
+
+        # Calcul pour y
+        z_prev_y = get_z_mean(*neighbors["y_prev"])
+        z_next_y = get_z_mean(*neighbors["y_next"])
+        if z_prev_y is not None and z_next_y is not None:
+            self.delta_z_y = (z_next_y - z_prev_y) / (2 * depth_neighbors) 
+        elif z_prev_y is not None:
+            self.delta_z_y = (self.z_mean - z_prev_y) / (1 * depth_neighbors)
+        elif z_next_y is not None:
+            self.delta_z_y = (z_next_y - self.z_mean) / (1 * depth_neighbors)
+        else:
+            self.delta_z_y = None
+        
 
 if __name__ == "__main__":
     # Parameters
