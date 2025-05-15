@@ -11,7 +11,7 @@ if __name__ == "__main__":
     size_patch = 32
 
     category= "sphegnes"
-    nb_pop = 6
+    nb_pop = 50
     x_s1 += n_samples_x * 1 * size_patch
     y_s1 += n_samples_y * 1 * size_patch
     row_start = int(np.round(x_s1 / 32)) * 32  # row X
