@@ -15,14 +15,14 @@ rast_z = dz.GetRasterBand(1).ReadAsArray()
 class Sample:
     global rast_r, rast_g, rast_b, rast_z
 
-    def __init__(self, i_x, i_y, x, y, size_patch=32, classification=None, sample_set = None):
+    def __init__(self, i_x, i_y, x, y, size_patch=32, category=None, sample_set = None):
  
         self.size_patch = size_patch
         self.i_x = i_x
         self.i_y = i_y
         self.x = x
         self.y = y
-        self.classification = classification
+        self.category = category
 
         # Position réelle (optionnel)
        

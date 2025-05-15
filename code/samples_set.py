@@ -6,11 +6,9 @@ from sample import Sample
 import pandas as pd
 
 class SamplesSet:
-    def __init__(self, n_samples_x=None, n_samples_y=None, category=None):
+    def __init__(self, n_samples_x=None, n_samples_y=None):
         self.n_samples_x = n_samples_x
         self.n_samples_y = n_samples_y
-        self.category = category
-        # Dictionnaire indexé par (x, y)
         self.samples = {}  # {(x, y): sample}
 
     def add_sample(self, sample):
@@ -19,7 +17,7 @@ class SamplesSet:
         self.n_samples_x = None
         self.n_samples_y = None
 
-    def create_samples_grid(self, x_start, y_start, size_patch=32):
+    def create_samples_grid(self, x_start, y_start, size_patch=32, category=None):
         if self.n_samples_x is None or self.n_samples_y is None:
             raise ValueError("n_samples_x and n_samples_y must be defined before creating a grid.")
         self.samples = {}
@@ -27,7 +25,7 @@ class SamplesSet:
             for i_y in range(self.n_samples_y):
                 x = x_start + i_x * size_patch
                 y = y_start + i_y * size_patch
-                sample = Sample(i_x, i_y, x, y, size_patch, self.category)
+                sample = Sample(i_x, i_y, x, y, size_patch, category=category)
                 self.samples[(x, y)] = sample
 
     def get_samples_matrix(self):
@@ -71,7 +69,7 @@ class SamplesSet:
 
 
     def __repr__(self):
-        return f"SamplesSet(n_samples_x={self.n_samples_x}, n_samples_y={self.n_samples_y}, category={self.category}, n_total={len(self.samples)})"
+        return f"SamplesSet(n_samples_x={self.n_samples_x}, n_samples_y={self.n_samples_y}, n_total={len(self.samples)})"
 
     def plot_samples(self):
         if self.n_samples_x is None or self.n_samples_y is None:
@@ -130,7 +128,6 @@ class SamplesSet:
         data = {
             "n_samples_x": self.n_samples_x,
             "n_samples_y": self.n_samples_y,
-            "category": self.category,
             "samples": []
         }
         for s in self.samples.values():
@@ -140,6 +137,7 @@ class SamplesSet:
                 "size_patch": s.size_patch,
                 "x": getattr(s, "x", None),
                 "y": getattr(s, "y", None),
+                "category": getattr(s, "category", None),
                 "r_mean": getattr(s, "r_mean", None),
                 "g_mean": getattr(s, "g_mean", None),
                 "b_mean": getattr(s, "b_mean", None),
@@ -148,7 +146,6 @@ class SamplesSet:
                 "b_n_mean": getattr(s, "b_n_mean", None),
                 "delta_z_x": getattr(s, "delta_z_x", None),
                 "delta_z_y": getattr(s, "delta_z_y", None),
-                "classification": getattr(s, "classification", None)
             }
             data["samples"].append(sample_dict)
         with open(filename, "w") as f:
@@ -165,8 +162,7 @@ class SamplesSet:
             data = json.load(f)
         samples_set = SamplesSet(
             n_samples_x=data["n_samples_x"],
-            n_samples_y=data["n_samples_y"],
-            category=data.get("category", None)
+            n_samples_y=data["n_samples_y"]
         )
         for s in data["samples"]:
             sample = Sample(
@@ -174,7 +170,8 @@ class SamplesSet:
                 i_y=s["i_y"],
                 x=s["x"],
                 y=s["y"],
-                size_patch=s["size_patch"]
+                size_patch=s["size_patch"],
+                category=s.get("category", None)
             )
             sample.x = s.get("x", None)
             sample.y = s.get("y", None)
@@ -186,7 +183,6 @@ class SamplesSet:
             sample.b_n_mean = s.get("b_n_mean", None)
             sample.delta_z_x = s.get("delta_z_x", None)
             sample.delta_z_y = s.get("delta_z_y", None)
-            sample.classification = s.get("classification", None)
             samples_set.add_sample(sample)
         return samples_set
 
@@ -197,12 +193,7 @@ class SamplesSet:
         Les indices i_x sont réindexés pour que tous les samples soient à la suite sur la première ligne.
         Le nouveau set n'a pas de n_samples_x/n_samples_y défini.
         """
-        if set1.category != set2.category:
-            category = "mixte"
-        else:
-            category = set1.category
-
-        new_set = SamplesSet(n_samples_x=None, n_samples_y=None, category=category)
+        new_set = SamplesSet(n_samples_x=None, n_samples_y=None)
         samples_list = list(set1.samples.values()) + list(set2.samples.values())
         for new_i_x, s in enumerate(samples_list):
             s_copy = Sample(
@@ -211,13 +202,13 @@ class SamplesSet:
                 x=s.x,
                 y=s.y,
                 size_patch=s.size_patch,
-                classification=getattr(s, "classification", None)
+                category=getattr(s, "category", None)
             )
             for attr in ["r_mean", "g_mean", "b_mean", "r_n_mean", "g_n_mean", "b_n_mean", "delta_z_x", "delta_z_y"]:
                 setattr(s_copy, attr, getattr(s, attr, None))
             new_set.samples[(s_copy.x, s_copy.y)] = s_copy
         return new_set
-    
+   
 
 if __name__ == "__main__":
     # Créer un ensemble de samples
@@ -231,30 +222,30 @@ if __name__ == "__main__":
     n_samples_y = 3
     
     size_patch= 32
-    samples_set = SamplesSet(n_samples_x=n_samples_x, n_samples_y=n_samples_y, category="tourbiere")
-    samples_set.create_samples_grid(x_start=row_start, y_start=column_start, size_patch=size_patch)
+    samples_set = SamplesSet(n_samples_x=n_samples_x, n_samples_y=n_samples_y)
+    samples_set.create_samples_grid(x_start=row_start, y_start=column_start, size_patch=size_patch, category="tourbiere")
     samples_set.fill_neighbors_colors(depth_neighbors=1)
     samples_set.fill_slope(depth_neighbors=1)
     #print(samples_set.samples)
     samples_set.plot_samples()
     #samples_set.plot_samples_as_list()
-    # samples_set.remove_sample(2, 2)
+    samples_set.remove_sample(2, 2)
     # samples_set.plot_samples_as_list()
 
-    # n_samples_x = 2
-    # n_samples_y = 2
-    # row_start = int(np.round(x_2/32))*32 #row X
-    # column_start = int(np.round(y_2/32))*32 #column Y
-    # samples_set2 = SamplesSet(n_samples_x=n_samples_x, n_samples_y=n_samples_y, category="tourbière")
-    # samples_set2.create_samples_grid(x_start=row_start, y_start=column_start, size_patch=size_patch)
-    # samples_set2.plot_samples_as_list()
+    n_samples_x = 2
+    n_samples_y = 2
+    row_start = int(np.round(x_2/32))*32 #row X
+    column_start = int(np.round(y_2/32))*32 #column Y
+    samples_set2 = SamplesSet(n_samples_x=n_samples_x, n_samples_y=n_samples_y)
+    samples_set2.create_samples_grid(x_start=row_start, y_start=column_start, size_patch=size_patch, category="tourbière")
+    samples_set2.plot_samples_as_list()
 
-    # merged_set = SamplesSet.concatenate_set(samples_set, samples_set2)
-    # merged_set.plot_samples_as_list()
+    merged_set = SamplesSet.concatenate_set(samples_set, samples_set2)
+    merged_set.plot_samples_as_list()
 
     # # # Sauvegarder les samples dans un fichier json
     path = "data/samples/"
-    samples_set.save_samples_to_json(path+"test.json")
+    merged_set.save_samples_to_json(path+"test2.json")
     # # # Charger les samples depuis le fichier json
-    # loaded_set = SamplesSet.load_samples_from_json(path+"test.json")
-    # loaded_set.plot_samples()
+    loaded_set = SamplesSet.load_samples_from_json(path+"test2.json")
+    loaded_set.plot_samples_as_list()
