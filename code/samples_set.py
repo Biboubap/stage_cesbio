@@ -141,6 +141,10 @@ class SamplesSet:
                 "r_mean": getattr(s, "r_mean", None),
                 "g_mean": getattr(s, "g_mean", None),
                 "b_mean": getattr(s, "b_mean", None),
+                "r_var": getattr(s, "r_var", None),
+                "g_var": getattr(s, "g_var", None),
+                "b_var": getattr(s, "b_var", None),
+                "z_var": getattr(s, "z_var", None),
                 "r_n_mean": getattr(s, "r_n_mean", None),
                 "g_n_mean": getattr(s, "g_n_mean", None),
                 "b_n_mean": getattr(s, "b_n_mean", None),
@@ -175,6 +179,10 @@ class SamplesSet:
             )
             sample.x = s.get("x", None)
             sample.y = s.get("y", None)
+            sample.r_var = s.get("r_var", None)
+            sample.g_var = s.get("g_var", None)
+            sample.b_var = s.get("b_var", None)
+            sample.z_var = s.get("z_var", None)
             sample.r_mean = s.get("r_mean", None)
             sample.g_mean = s.get("g_mean", None)
             sample.b_mean = s.get("b_mean", None)

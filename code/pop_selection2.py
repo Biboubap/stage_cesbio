@@ -141,5 +141,5 @@ if __name__ == "__main__":
 
     n_samples_x = 30
     n_samples_y = 30
-    file_path = "data/samples/lichen_sphegnes_selection/"
+    file_path = "data/samples/lichen_sphegnes_selection2/"
     pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_path)
