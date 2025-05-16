@@ -8,7 +8,7 @@ ds = gdal.Open(r'data/twin_lake_mosaïc.tif')
 dz = gdal.Open(r'data/twin_lake_dsm.tif')
 dt = gdal.Open(r'data/twinLake_Thermal_Resampled.tif')
 
-rast_r = ds.GetRasterBand(1).ReadAsArray() #SHAPE (49674, 23408) 
+rast_r = ds.GetRasterBand(1).ReadAsArray()
 rast_g = ds.GetRasterBand(2).ReadAsArray()
 rast_b = ds.GetRasterBand(3).ReadAsArray()
 rast_z = dz.GetRasterBand(1).ReadAsArray()

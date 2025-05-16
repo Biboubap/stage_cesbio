@@ -155,11 +155,11 @@ def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_p
 
 if __name__ == "__main__":
     # Paramètres de la grille globale
-    x_start = 9369
-    y_start = 8551
+    x_start = 15000
+    y_start = 8500
     size_patch = 32
 
-    n_samples_x = 60
+    n_samples_x = 20
     n_samples_y = 20
     file_path = "data/samples/selection3/"
     
