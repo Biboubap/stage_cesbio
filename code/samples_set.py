@@ -92,7 +92,7 @@ class SamplesSet:
                 ax.imshow(rgb)
                 ax.axis("off")
         plt.tight_layout()
-        plt.show()
+        #plt.show()
 
     def plot_samples_as_list(self):
         """
@@ -125,7 +125,7 @@ class SamplesSet:
             axes[i_row, i_col].axis("off")
 
         plt.tight_layout()
-        plt.show()
+        #plt.show()
 
     def save_samples_to_json(self, filename):
         """
