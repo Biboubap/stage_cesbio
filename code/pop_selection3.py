@@ -46,9 +46,9 @@ def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_p
     selection_state = {(i_x, i_y): default for i_x in range(n_samples_x) for i_y in range(n_samples_y)}
 
     # Demande la classe à sélectionner
-    class_dict = {"l": "lichen", "s": "sphegnes", "c": "crevasse", "w": "lac", "f": "foret"}
+    class_dict = {"l": "lichen", "s": "sphegnes", "c": "crevasse", "w": "lac", "f": "foret", "q" : "flaque"}
     while True:
-        class_key = input("Classe à sélectionner (l, s, c, w, f) : ").strip().lower()
+        class_key = input("Classe à sélectionner (l, s, c, w, f, q) : ").strip().lower()
         if class_key in class_dict:
             break
         print("Classe invalide.")
@@ -126,8 +126,8 @@ def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_p
         sample_set.plot_samples_as_list()
         plt.suptitle(f"{class_name} : {len(sample_set.samples)} samples")
         plt.savefig(png_path)
-        plt.show()
-        plt.close()
+        #plt.show()
+        #plt.close()
 
     # Sauvegarde du set global avec catégories
     all_selected_set = SamplesSet()
@@ -155,12 +155,12 @@ def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_p
 
 if __name__ == "__main__":
     # Paramètres de la grille globale
-    x_start = 12485
-    y_start = 15927
+    x_start = 9369
+    y_start = 8551
     size_patch = 32
 
-    n_samples_x = 30
-    n_samples_y = 30
+    n_samples_x = 60
+    n_samples_y = 20
     file_path = "data/samples/selection3/"
     
-    pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_path, default=1)
+    pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_path, default=0)

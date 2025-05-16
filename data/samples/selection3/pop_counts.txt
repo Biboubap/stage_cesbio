@@ -1,4 +1,6 @@
-sphegnes: 514
-foret: 899
-crevasse: 302
-lichen: 898
+sphegnes: 725
+foret: 1739
+crevasse: 401
+lichen: 1771
+flaque: 1700
+lac: 1600
