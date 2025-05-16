@@ -48,6 +48,7 @@ class Sample:
 
         # Moyennes RGB des voisins
         self.r_n_mean, self.g_n_mean, self.b_n_mean = None, None, None
+        self.t_n_mean = None
         # Gradients d'altitude
         self.z_moins_z_n = None
 
@@ -56,11 +57,24 @@ class Sample:
             return f"{val:.2f}" if val is not None else "None"
         return (f"Sample(x={self.x}, y={self.y}, "
                 f"r_mean={fmt(self.r_mean)}, g_mean={fmt(self.g_mean)}, b_mean={fmt(self.b_mean)}, "
-                f"r_var={fmt(self.r_var)}, g_var={fmt(self.g_var)}, b_var={fmt(self.b_var)}, "
+                #f"r_var={fmt(self.r_var)}, g_var={fmt(self.g_var)}, b_var={fmt(self.b_var)}, "
                 f"z_mean={fmt(self.z_mean)}, z_var={fmt(self.z_var)}, t_mean={fmt(self.t_mean)}, "
-                f"r_n_mean={fmt(self.r_n_mean)}, g_n_mean={fmt(self.g_n_mean)}, b_n_mean={fmt(self.b_n_mean)}, "
+                f"r_n_mean={fmt(self.r_n_mean)}, g_n_mean={fmt(self.g_n_mean)}, b_n_mean={fmt(self.b_n_mean)}, t_n_mean={fmt(self.t_n_mean)}, "
                 f"z_moins_z_n={fmt(self.z_moins_z_n)}")
 
+    def get_RGBZ(self):
+        global rast_r, rast_g, rast_b, rast_z
+        """
+        Get RGB values from the raster data
+        """
+        x = self.x
+        y = self.y
+        size_patch = self.size_patch
+        r = rast_r[x:x + size_patch, y:y + size_patch]
+        g = rast_g[x:x + size_patch, y:y + size_patch]
+        b = rast_b[x:x + size_patch, y:y + size_patch]
+        z = rast_z[x:x + size_patch, y:y + size_patch]*1000 #en mm
+        return r, g, b, z
 
     def get_RGBZT(self):
         global rast_r, rast_g, rast_b, rast_z
@@ -96,7 +110,7 @@ class Sample:
         cell_text = (
             f"Sample(x={self.x}, y={self.y}, "
             f"r_mean={fmt2(self.r_mean)}, g_mean={fmt2(self.g_mean)}, b_mean={fmt2(self.b_mean)}, "
-            f"r_var={fmt2(self.r_var)}, g_var={fmt2(self.g_var)}, b_var={fmt2(self.b_var)}, "
+            #f"r_var={fmt2(self.r_var)}, g_var={fmt2(self.g_var)}, b_var={fmt2(self.b_var)}, "
             f"z_mean={fmt2(self.z_mean)}, z_var={fmt5(self.z_var)}, t_mean={fmt2(self.t_mean)}, "
         )
         axes[1].text(0, 0.5, cell_text, fontsize=10, ha="left", va="center", wrap=True)
@@ -108,6 +122,7 @@ class Sample:
             f"R (neighbors): mean={fmt2(self.r_n_mean)}\n"
             f"G (neighbors): mean={fmt2(self.g_n_mean)}\n"
             f"B (neighbors): mean={fmt2(self.b_n_mean)}\n"
+            f"T (neighbors): mean={fmt2(self.t_n_mean)}\n"
             f"z_moins_z_n: {fmt5(self.z_moins_z_n)}"
         )
         axes[2].text(0, 0.5, neighbor_text, fontsize=10, ha="left", va="center", wrap=True)
@@ -156,7 +171,7 @@ class Sample:
         else:
             self.r_n_mean = self.g_n_mean = self.b_n_mean = 0
 
-    def compute_neighbors_rgbtz(self, sample_set=None, size_patch=None, depth_neighbors=1):
+    def compute_neighbors_all(self, sample_set=None, size_patch=None, depth_neighbors=1):
         """
         Calcule la moyenne des couleurs des voisins.
         Si un voisin existe dans sample_set, utilise sa moyenne déjà calculée.

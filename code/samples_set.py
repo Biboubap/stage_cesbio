@@ -60,6 +60,13 @@ class SamplesSet:
         for sample in self.samples.values():
             sample.compute_neighbors_color(sample_set=self, depth_neighbors=depth_neighbors)
 
+    def fill_neighbors_all(self, depth_neighbors=1):
+            """
+            Calcule et remplit les moyennes des couleurs des voisins pour tous les samples du set.
+            """
+            for sample in self.samples.values():
+                sample.compute_neighbors_all(sample_set=self, depth_neighbors=depth_neighbors)
+
     def fill_slope(self, depth_neighbors=1):
         """
         Calcule et remplit les gradients verticaux et horizontaux selon z pour tous les samples du set.
@@ -79,7 +86,7 @@ class SamplesSet:
         for i_x in range(self.n_samples_x):
             for i_y in range(self.n_samples_y):
                 sample = matrix[i_y][i_x]
-                r, g, b, _ = sample.get_RGBZ()
+                r, g, b, z, t = sample.get_RGBZT()
                 rgb = np.dstack((r, g, b))
                 ax = axes[i_x, i_y] if self.n_samples_y > 1 and self.n_samples_x > 1 else axes[max(i_y, i_x)]
                 ax.imshow(rgb)
@@ -106,7 +113,7 @@ class SamplesSet:
             i_row = idx // n_cols
             i_col = idx % n_cols
             ax = axes[i_row, i_col]
-            r, g, b, _ = sample.get_RGBZ()
+            r, g, b, z, t = sample.get_RGBZT()
             rgb = np.dstack((r, g, b))
             ax.imshow(rgb)
             ax.set_title(f"i_x={sample.i_x}, i_y={sample.i_y}")
@@ -141,6 +148,7 @@ class SamplesSet:
                 "r_mean": getattr(s, "r_mean", None),
                 "g_mean": getattr(s, "g_mean", None),
                 "b_mean": getattr(s, "b_mean", None),
+                "t_mean": getattr(s, "t_mean", None),
                 "r_var": getattr(s, "r_var", None),
                 "g_var": getattr(s, "g_var", None),
                 "b_var": getattr(s, "b_var", None),
@@ -148,8 +156,8 @@ class SamplesSet:
                 "r_n_mean": getattr(s, "r_n_mean", None),
                 "g_n_mean": getattr(s, "g_n_mean", None),
                 "b_n_mean": getattr(s, "b_n_mean", None),
-                "delta_z_x": getattr(s, "delta_z_x", None),
-                "delta_z_y": getattr(s, "delta_z_y", None),
+                "t_n_mean": getattr(s, "t_n_mean", None),
+                "z_moins_z_n": getattr(s, "z_moins_z_n", None),
             }
             data["samples"].append(sample_dict)
         with open(filename, "w") as f:
@@ -186,11 +194,14 @@ class SamplesSet:
             sample.r_mean = s.get("r_mean", None)
             sample.g_mean = s.get("g_mean", None)
             sample.b_mean = s.get("b_mean", None)
+            sample.t_mean = s.get("t_mean", None)
             sample.r_n_mean = s.get("r_n_mean", None)
             sample.g_n_mean = s.get("g_n_mean", None)
             sample.b_n_mean = s.get("b_n_mean", None)
+            sample.t_n_mean = s.get("t_n_mean", None)
             sample.delta_z_x = s.get("delta_z_x", None)
             sample.delta_z_y = s.get("delta_z_y", None)
+            sample.z_moins_z_n = s.get("z_moins_z_n", None)
             samples_set.add_sample(sample)
         return samples_set
 
@@ -212,7 +223,7 @@ class SamplesSet:
                 size_patch=s.size_patch,
                 category=getattr(s, "category", None)
             )
-            for attr in ["r_mean", "g_mean", "b_mean", "r_n_mean", "g_n_mean", "b_n_mean", "delta_z_x", "delta_z_y"]:
+            for attr in ["r_mean", "g_mean", "b_mean", "t_mean", "r_var", "g_var", "b_var", "r_n_mean", "g_n_mean", "b_n_mean", "t_n_mean", "z_moins_z_n"]:
                 setattr(s_copy, attr, getattr(s, attr, None))
             new_set.samples[(s_copy.x, s_copy.y)] = s_copy
         return new_set
@@ -232,13 +243,13 @@ if __name__ == "__main__":
     size_patch= 32
     samples_set = SamplesSet(n_samples_x=n_samples_x, n_samples_y=n_samples_y)
     samples_set.create_samples_grid(x_start=row_start, y_start=column_start, size_patch=size_patch, category="tourbiere")
-    samples_set.fill_neighbors_colors(depth_neighbors=1)
+    samples_set.fill_neighbors_all(depth_neighbors=1)
     samples_set.fill_slope(depth_neighbors=1)
     #print(samples_set.samples)
     samples_set.plot_samples()
     #samples_set.plot_samples_as_list()
     samples_set.remove_sample(2, 2)
-    # samples_set.plot_samples_as_list()
+    samples_set.plot_samples_as_list()
 
     n_samples_x = 2
     n_samples_y = 2
@@ -253,7 +264,7 @@ if __name__ == "__main__":
 
     # # # Sauvegarder les samples dans un fichier json
     path = "data/samples/"
-    merged_set.save_samples_to_json(path+"test2.json")
+    merged_set.save_samples_to_json(path+"testT.json")
     # # # Charger les samples depuis le fichier json
-    loaded_set = SamplesSet.load_samples_from_json(path+"test2.json")
+    loaded_set = SamplesSet.load_samples_from_json(path+"testT.json")
     loaded_set.plot_samples_as_list()
