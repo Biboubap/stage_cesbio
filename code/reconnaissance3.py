@@ -32,14 +32,14 @@ def train_random_forest(features, labels, test_size=0.3, random_state=42):
         features, labels, test_size=test_size, random_state=random_state, stratify=labels
     )
     clf = RandomForestClassifier(
-        n_estimators=200,
+        n_estimators=300,
         max_depth=15,
         class_weight="balanced",
         random_state=42,
-        n_jobs=-1,              # Utilise tous les cœurs CPU pour accélérer l'entraînement
-        min_samples_leaf=3,     # Pour éviter le surapprentissage sur des feuilles trop petites
-        min_samples_split=5,    # Pour éviter le surapprentissage sur des splits trop petits
-        max_features="sqrt"     # Nombre de features considérées à chaque split (standard pour RF)
+        n_jobs=-1,
+        min_samples_leaf=3,
+        min_samples_split=6,
+        max_features="sqrt"    # Nombre de features considérées à chaque split (standard pour RF)
     )
     clf.fit(X_train, y_train)
     y_pred = clf.predict(X_test)
@@ -53,7 +53,7 @@ if __name__ == "__main__":
     clf, X_test, y_test = train_random_forest(features, labels)
     # Sauvegarde du modèle
     import joblib
-    joblib.dump(clf, "data/samples/selection3/random_forest_model2.joblib")
+    joblib.dump(clf, "data/samples/selection3/random_forest_model3.joblib")
 
 
 # def grid_search_rf(features, labels, test_size=0.3, random_state=42):
@@ -89,3 +89,27 @@ if __name__ == "__main__":
 #     # Sauvegarde du meilleur modèle
 #     import joblib
 #     joblib.dump(clf, "data/samples/selection3/random_forest_best_model.joblib")
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import cross_val_score
+
+# Chargement des données
+features, labels = load_samples("data/samples/selection3/pop3_merged.json")
+
+# Définition du modèle (avec tes paramètres)
+clf = RandomForestClassifier(
+    n_estimators=300,
+    max_depth=15,
+    class_weight="balanced",
+    random_state=42,
+    n_jobs=-1,
+    min_samples_leaf=3,
+    min_samples_split=6,
+    max_features="sqrt"
+)
+
+# Validation croisée (ici 5 folds)
+scores = cross_val_score(clf, features, labels, cv=5, scoring='f1_weighted', n_jobs=-1)
+print("F1-score (validation croisée, 5 folds) :", scores)
+print("Moyenne F1-score :", np.mean(scores))
+print("Écart-type F1-score :", np.std(scores))
