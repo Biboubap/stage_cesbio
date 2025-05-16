@@ -4,3 +4,5 @@
 /data/samples/**/*.png
 
 /code/__pycache__/
+/infos/**/*.pdf
+/infos/**/*.pptx

@@ -23,7 +23,8 @@ def plot_rgb(xmin, ymin, xmax, ymax, path):
 
 
 
-def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_path):
+def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_path, default=0):
+    print("Sélection de la population à prendre")
     x_start = int(np.round(x_start/32))*32
     y_start = int(np.round(y_start/32))*32
     x_max = x_start + n_samples_x * size_patch
@@ -41,8 +42,8 @@ def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_p
     samples_matrix = all_samples_set.get_samples_matrix()  # [i_y][i_x]
     #n_total = n_samples_x * n_samples_y
 
-    # Dictionnaire pour stocker l'état de sélection de chaque sample (0: rien, 1: classe choisie)
-    selection_state = {}  # clé = (i_x, i_y)
+   # Initialisation de l'état de sélection selon le paramètre default
+    selection_state = {(i_x, i_y): default for i_x in range(n_samples_x) for i_y in range(n_samples_y)}
 
     # Demande la classe à sélectionner
     class_dict = {"l": "lichen", "s": "sphegnes", "c": "crevasse", "w": "lac", "f": "foret"}
@@ -62,14 +63,14 @@ def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_p
             for dx in range(10):
                 i_x = block_x * 10 + dx
                 i_y = block_y * 10 + dy
-                ax = axes[dy, dx]
+                ax = axes[dx, dy]
                 sample = samples_matrix[i_y][i_x]
                 r, g, b, _ = sample.get_RGBZ()
-                rgb = np.dstack((r, g, b))
+                rgb = np.dstack((r, g, b)).astype(np.uint8)
                 ax.imshow(rgb)
                 ax.img_idx = (i_x, i_y)
                 ax.axis("off")
-                state = selection_state.get((i_x, i_y), 0)
+                state = selection_state.get((i_x, i_y), default)
                 if state == 1:
                     ax.set_title("✔")
                 else:
@@ -83,7 +84,7 @@ def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_p
         if ax is not None:
             idx = getattr(ax, 'img_idx', None)
             if idx is not None:
-                state = selection_state.get(idx, 0)
+                state = selection_state.get(idx, default)
                 state = (state + 1) % 2
                 selection_state[idx] = state
                 if state == 1:
@@ -154,11 +155,12 @@ def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_p
 
 if __name__ == "__main__":
     # Paramètres de la grille globale
-    x_start = 12823
-    y_start = 11753
+    x_start = 12485
+    y_start = 15927
     size_patch = 32
 
-    n_samples_x = 10
-    n_samples_y = 10
+    n_samples_x = 30
+    n_samples_y = 30
     file_path = "data/samples/selection3/"
-    pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_path)
+    
+    pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_path, default=1)

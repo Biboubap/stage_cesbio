@@ -1,0 +1,4 @@
+sphegnes: 514
+foret: 899
+crevasse: 302
+lichen: 898
