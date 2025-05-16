@@ -134,6 +134,53 @@ if __name__ == "__main__":
         f.write(f"Lichen: {len(lichen_samples)}\n")
         f.write(f"Sphegnes: {len(sphegnes_samples)}\n")
 
+def merge_and_limit_populations(input_dir, output_json, max_per_cat=800):
+    # Récupère tous les fichiers json de la sélection
+    json_files = glob.glob(os.path.join(input_dir, "*.json"))
+    # Dictionnaire {catégorie: [samples]}
+    cat_samples = {}
+
+    # Parcours des fichiers et collecte par catégorie
+    for jf in json_files:
+        with open(jf, "r") as f:
+            data = json.load(f)
+        for s in data["samples"]:
+            cat = s.get("category")
+            if cat is None:
+                continue
+            cat_samples.setdefault(cat, []).append(s)
+
+    # Limite à max(max_per_cat, taille de la pop) pour chaque catégorie
+    merged_samples = []
+    for cat, samples in cat_samples.items():
+        n = min(max_per_cat, len(samples))
+        print(f"Category '{cat}': {len(samples)} samples, limiting to {n}")
+        if len(samples) > n:
+            import random
+            samples = random.sample(samples, n)
+        merged_samples.extend(samples)
+
+    # Création du dictionnaire final
+    merged_data = {
+        "n_samples_x": None,
+        "n_samples_y": None,
+        "samples": merged_samples
+    }
+
+    # Sauvegarde
+    with open(output_json, "w") as f:
+        json.dump(merged_data, f, indent=2)
+    print(f"Merged populations saved to {output_json}")
+    print(f"Total samples: {len(merged_samples)}")
+
+
+if __name__ == "__main__":
+    merge_and_limit_populations(
+        input_dir="data/samples/selection3",
+        output_json="data/samples/selection3/pop3_merged.json",
+        max_per_cat=800
+    )
+
 # # Utilisation :
 # if __name__ == "__main__":
 #     update_rgbz_variance_in_json("data/samples/lichen_sphegnes_selection/lichen_sphegnes_selection.json")
