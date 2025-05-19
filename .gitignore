@@ -1,8 +1,12 @@
 /data/*
 !/data/samples/
-!/data/samples/**/*.json
 /data/samples/**/*.png
+/data/samples/**/*.json
 
 /code/__pycache__/
 /infos/**/*.pdf
 /infos/**/*.pptx
+
+/qgis/
+
+/**/*.tif
