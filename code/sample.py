@@ -3,15 +3,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
-"""
+
 ds = gdal.Open(r'data/rgb_reshaped.tif')
 dz = gdal.Open(r'data/dsm_reshaped.tif')
 dt = gdal.Open(r'data/thermal_reshaped.tif')
-"""
 
+
+"""
 ds = gdal.Open(r'data/twin_lake_mosaïc.tif')
 dz = gdal.Open(r'data/twin_lake_dsm.tif')
 dt = gdal.Open(r'data/twinLake_Thermal_Resampled.tif')
+"""
 
 rast_r = ds.GetRasterBand(1).ReadAsArray()
 rast_g = ds.GetRasterBand(2).ReadAsArray()

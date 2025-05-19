@@ -49,11 +49,11 @@ def train_random_forest(features, labels, test_size=0.3, random_state=42):
     return clf, X_test, y_test
 
 if __name__ == "__main__":
-    features, labels = load_samples("data/samples/selection3-2/merged_full_nei3.json")
+    features, labels = load_samples("data/samples/selection4/pop3_noforestlake.json")
     clf, X_test, y_test = train_random_forest(features, labels)
     # Sauvegarde du modèle
     import joblib
-    joblib.dump(clf, "data/samples/selection3-2/model_nei3.joblib")
+    joblib.dump(clf, "data/samples/selection4/model4.joblib")
 
 
 # def grid_search_rf(features, labels, test_size=0.3, random_state=42):

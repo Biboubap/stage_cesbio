@@ -51,6 +51,7 @@ def predict_json_to_map(json_path, model_path, apply_filter=True):
     class_to_val = {
         "lichen": 1,
         "sphegnes": 2,
+        "sphaignes": 2,
         "crevasse": 3,
         "foret": 4,
         "flaque": 5,
@@ -100,7 +101,7 @@ def save_map_to_tif(pred_map, ref_tif_path, out_tif_path, size_patch=32):
 
 # Exemple d'utilisation
 if __name__ == "__main__":
-    rgb_path = "data/twin_lake_mosaïc.tif"
+    rgb_path = "data/rgb_reshaped.tif"
     dsm_path = "data/twin_lake_dsm.tif"
     thermal_path = "data/twinLake_Thermal_Resampled.tif"
     json_path = "data/samples/selection3/full_samples.json"

@@ -215,9 +215,35 @@ def rename_and_merge_samples():
     merged_set.save_samples_to_json(output_json)
     print(f"Fichier fusionné sauvegardé dans {output_json}")
 
+def remove_forest_and_lake():
+    all_samples = []
+    
+    main_json = "data/samples/selection3/pop3_merged.json"
+    output_json = "data/samples/selection4/pop3_noforestlake.json"
 
+    # Charge le set principal
+    
+    with open(main_json, "r") as f:
+        data = json.load(f)
+    for s in data.get("samples", []):
+            cat = s.get("category", "")
+            if cat not in ["foret", "lac"]:
+                all_samples.append(s)
+
+    filtered_data = {
+        "n_samples_x": None,
+        "n_samples_y": None,
+        "samples": all_samples
+    }
+
+    with open(output_json, "w") as f:
+        json.dump(filtered_data, f, indent=2)
+    print(f"{len(all_samples)} samples sauvegardés dans {output_json}")
 
 if __name__ == "__main__":
+    remove_forest_and_lake()
+
+# if __name__ == "__main__":
     # recalcule_neighbors_and_save(
     #     "data/samples/selection3/pop3_merged.json",
     #     "data/samples/selection3-2/full_samples_nei3.json",
