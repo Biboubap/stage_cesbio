@@ -6,8 +6,9 @@ from osgeo import gdal, ogr
 
 def plot_rgb(xmin, ymin, xmax, ymax, path):
     
-    ds = gdal.Open(r'data/twin_lake_mosaïc.tif')
-    
+    #ds = gdal.Open(r'data/rgb_reshaped.tif')
+
+    ds = gdal.Open(r'data/twin_lake_mosaïc.tif')    
     # Read the three bands
 
     r = ds.GetRasterBand(1).ReadAsArray()[xmin:xmax, ymin:ymax] 
@@ -23,10 +24,10 @@ def plot_rgb(xmin, ymin, xmax, ymax, path):
 
 
 
-def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_path, default=0):
+def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_path, default=0, depth_neighbors=1):
     print("Sélection de la population à prendre")
-    x_start = int(np.round(x_start/32))*32
-    y_start = int(np.round(y_start/32))*32
+    x_start = int(np.round(x_start/size_patch))*size_patch
+    y_start = int(np.round(y_start/size_patch))*size_patch
     x_max = x_start + n_samples_x * size_patch
     y_max = y_start + n_samples_y * size_patch
     print(f"Grille globale : {x_start}, {y_start} à {x_max}, {y_max}")
@@ -46,9 +47,10 @@ def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_p
     selection_state = {(i_x, i_y): default for i_x in range(n_samples_x) for i_y in range(n_samples_y)}
 
     # Demande la classe à sélectionner
-    class_dict = {"l": "lichen", "s": "sphegnes", "c": "crevasse", "w": "lac", "f": "foret", "q" : "flaque"}
+    class_dict = {"l": "lichen", "s": "sphaignes", "c": "crevasse", "w": "lac", "f": "foret", "q" : "flaque"}
+    #class_dict = {"l": "lichen", "p": "sphaignes_plat", "c": "sphaignes_crevasse", "e" : "crevasses_eau", "a": "arbre"}
     while True:
-        class_key = input("Classe à sélectionner (l, s, c, w, f, q) : ").strip().lower()
+        class_key = input("Classe à sélectionner (l; p, c, e, a) : ").strip().lower()
         if class_key in class_dict:
             break
         print("Classe invalide.")
@@ -59,8 +61,8 @@ def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_p
         plt.close('all')
         fig, axes = plt.subplots(10, 10, figsize=(20, 20))
         axes = np.array(axes).reshape(10, 10)
-        for dy in range(10):
-            for dx in range(10):
+        for dx in range(10):
+            for dy in range(10):
                 i_x = block_x * 10 + dx
                 i_y = block_y * 10 + dy
                 ax = axes[dx, dy]
@@ -110,7 +112,7 @@ def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_p
             sample_set.add_sample(sample)
 
     # Calcul des grandeurs
-    sample_set.fill_neighbors_all(depth_neighbors=1)
+    sample_set.fill_neighbors_all(depth_neighbors=depth_neighbors)
     
     # Incrémentation du nom de fichier
     import glob
@@ -152,15 +154,23 @@ def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_p
             f.write(f"{k}: {v}\n")
     print(f"{len(sample_set.samples)} samples '{class_name}' sauvegardés dans {json_path}")
 
+     # Renommage de la fenêtre de sélection
+    import shutil
+    src_img = os.path.join(file_path, "fenetre_selection.png")
+    dst_img = os.path.join(file_path, f"{class_name}_{idx}.png")
+    if os.path.exists(src_img):
+        shutil.move(src_img, dst_img)
+        print(f"fenetre_selection.png renommé en {class_name}_{idx}.png")
 
 if __name__ == "__main__":
     # Paramètres de la grille globale
-    x_start = 15000
-    y_start = 8500
+    x_start = 5450
+    y_start = 10146
     size_patch = 32
+    depth_neighbors = 3
 
-    n_samples_x = 20
-    n_samples_y = 20
-    file_path = "data/samples/selection3/"
+    n_samples_x = 80
+    n_samples_y = 10
+    file_path = "data/samples/selection3-2/"
     
     pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_path, default=0)

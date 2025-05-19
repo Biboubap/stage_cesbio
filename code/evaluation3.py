@@ -36,7 +36,7 @@ def predict_samples(clf, features, positions, n_samples_x, n_samples_y):
     pred_map = np.zeros((n_samples_y, n_samples_x), dtype=np.uint8)
     class_to_val = {
         "lichen": 1,
-        "sphegnes": 2,
+        "sphaignes": 2,
         "crevasse": 3,
         "foret": 4,
         "flaque": 5,
@@ -50,10 +50,10 @@ def create_classification_map(pred_map, size_patch):
     n_samples_y, n_samples_x = pred_map.shape
     #color_map = np.zeros((n_samples_y*size_patch, n_samples_x*size_patch, 3), dtype=np.uint8)
     color_map = np.zeros((n_samples_x*size_patch, n_samples_y*size_patch, 3), dtype=np.uint8)
-    # Couleurs : lichen (gris clair), sphegnes (marron clair), crevasse (gris foncé), foret (vert foncé), flaque (bleu foncé), lac (turquoise)
+    # Couleurs : lichen (gris clair), sphaignes (marron clair), crevasse (gris foncé), foret (vert foncé), flaque (bleu foncé), lac (turquoise)
     color_dict = {
         1: [200, 200, 200],   # lichen : gris clair
-        2: [181, 101, 29],    # sphegnes : marron clair
+        2: [181, 101, 29],    # sphaignes : marron clair
         3: [60, 60, 60],      # crevasse : gris foncé
         4: [0, 80, 0],        # foret : vert foncé
         5: [0, 0, 120],       # flaque : bleu foncé
@@ -81,7 +81,7 @@ def plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path=N
     # Légende des couleurs
     color_labels = [
         ("lichen",      [200, 200, 200]),
-        ("sphegnes",    [181, 101, 29]),
+        ("sphaignes",    [181, 101, 29]),
         ("crevasse",    [60, 60, 60]),
         ("foret",       [0, 80, 0]),
         ("flaque",      [0, 0, 120]),
@@ -132,8 +132,8 @@ def filter_isolated_samples(pred_map):
 
 def main():
     # Paramètres de la fenêtre à tester
-    x_start = 5000
-    y_start = 7000
+    x_start = 3000
+    y_start = 4000
     x_end = 12000
     y_end = 14000
     size_patch = 32
@@ -151,7 +151,7 @@ def main():
 
     print(f"Features extraites avec taille : {features.shape}")
     # 4. Charger le modèle
-    clf = joblib.load("data/samples/selection3/random_forest_model3.joblib")
+    clf = joblib.load("data/samples/selection3-2/model_nei3.joblib")
     print("Modèle chargé.")
     # 5. Prédire
     pred_map = predict_samples(clf, features, positions, n_samples_x, n_samples_y)
@@ -163,7 +163,7 @@ def main():
     color_map = create_classification_map(pred_map_filtered, size_patch)
     print("Carte de classification créée.")
     # 8. Afficher et sauvegarder les résultats
-    plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path="data/samples/selection3/classification_result4.png")
+    plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path="data/samples/selection3-2/classification_result_nei3.png")
     print("Résultats affichés et sauvegardés.")
 if __name__ == "__main__":
     main()

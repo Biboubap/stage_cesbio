@@ -17,7 +17,7 @@ class SamplesSet:
         self.n_samples_x = None
         self.n_samples_y = None
 
-    def create_samples_grid(self, x_start, y_start, size_patch=32, category=None):
+    def create_samples_grid(self, x_start, y_start, size_patch, category=None):
         if self.n_samples_x is None or self.n_samples_y is None:
             raise ValueError("n_samples_x and n_samples_y must be defined before creating a grid.")
         self.samples = {}

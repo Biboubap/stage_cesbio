@@ -3,6 +3,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
+"""
+ds = gdal.Open(r'data/rgb_reshaped.tif')
+dz = gdal.Open(r'data/dsm_reshaped.tif')
+dt = gdal.Open(r'data/thermal_reshaped.tif')
+"""
 
 ds = gdal.Open(r'data/twin_lake_mosaïc.tif')
 dz = gdal.Open(r'data/twin_lake_dsm.tif')
@@ -18,7 +23,7 @@ rast_t = dt.GetRasterBand(1).ReadAsArray()
 class Sample:
     global rast_r, rast_g, rast_b, rast_z, rast_t
 
-    def __init__(self, i_x, i_y, x, y, size_patch=32, category=None, sample_set = None):
+    def __init__(self, i_x, i_y, x, y, size_patch, category=None, sample_set = None):
  
         self.size_patch = size_patch
         self.i_x = i_x

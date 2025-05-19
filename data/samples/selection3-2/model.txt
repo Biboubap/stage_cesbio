@@ -1,0 +1,25 @@
+Accuracy: 0.9836309523809523
+Confusion matrix:
+ [[125   0   3   0   0   2]
+ [  0 240   0   0   0   0]
+ [  0   0 240   0   0   0]
+ [  0   0   0 240   0   0]
+ [  0   0   0   0 240   0]
+ [  2   0  10   0   5 237]]
+Classification report:
+               precision    recall  f1-score   support
+
+    crevasse       0.98      0.96      0.97       130
+      flaque       1.00      1.00      1.00       240
+       foret       0.95      1.00      0.97       240
+         lac       1.00      1.00      1.00       240
+      lichen       0.98      1.00      0.99       240
+   sphaignes       0.99      0.93      0.96       254
+
+    accuracy                           0.98      1344
+   macro avg       0.98      0.98      0.98      1344
+weighted avg       0.98      0.98      0.98      1344
+
+F1-score (validation croisée, 5 folds) : [0.97926015 0.94931595 0.98067436 0.96868203 0.98250987]
+Moyenne F1-score : 0.972088470057362
+Écart-type F1-score : 0.012360806284095298

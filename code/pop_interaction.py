@@ -174,12 +174,70 @@ def merge_and_limit_populations(input_dir, output_json, max_per_cat=800):
     print(f"Total samples: {len(merged_samples)}")
 
 
+
+def recalcule_neighbors_and_save(input_json, output_json, depth_neighbors=3):
+    """
+    Charge tous les samples depuis input_json, recalcule les données de voisinage
+    avec la distance demandée, et sauvegarde dans output_json.
+    """
+    print(f"Chargement des samples depuis {input_json} ...")
+    samples_set = SamplesSet.load_samples_from_json(input_json)
+    print(f"Remplissage des voisins avec depth_neighbors={depth_neighbors} ...")
+    samples_set.fill_neighbors_all(depth_neighbors=depth_neighbors)
+    print(f"Sauvegarde dans {output_json} ...")
+    samples_set.save_samples_to_json(output_json)
+    print("Terminé.")
+
+def rename_and_merge_samples():
+    # Chemins des fichiers
+    base_dir = "data/samples/selection3-2/"
+    main_json = base_dir + "full_samples_nei3.json"
+    crevasse_json = base_dir + "crevasse_1.json"
+    sphaignes_json = base_dir + "sphaignes_1.json"
+    output_json = base_dir + "merged_full_nei3.json"
+
+    # Charge le set principal
+    main_set = SamplesSet.load_samples_from_json(main_json)
+    # Renomme les catégories "sphegnes" en "sphaignes"
+    for s in main_set.samples.values():
+        if getattr(s, "category", None) == "sphegnes":
+            s.category = "sphaignes"
+
+    # Charge les autres sets
+    crevasse_set = SamplesSet.load_samples_from_json(crevasse_json)
+    sphaignes_set = SamplesSet.load_samples_from_json(sphaignes_json)
+
+    # Fusionne les sets
+    merged_set = SamplesSet.concatenate_set(main_set, crevasse_set)
+    merged_set = SamplesSet.concatenate_set(merged_set, sphaignes_set)
+    
+    # Sauvegarde
+    merged_set.save_samples_to_json(output_json)
+    print(f"Fichier fusionné sauvegardé dans {output_json}")
+
+
+
 if __name__ == "__main__":
-    merge_and_limit_populations(
-        input_dir="data/samples/selection3",
-        output_json="data/samples/selection3/pop3_merged.json",
-        max_per_cat=800
-    )
+    # recalcule_neighbors_and_save(
+    #     "data/samples/selection3/pop3_merged.json",
+    #     "data/samples/selection3-2/full_samples_nei3.json",
+    #     depth_neighbors=3
+    # )
+    # rename_and_merge_samples()
+    
+    # base_dir = "data/samples/selection3-2/"
+    # output_json = base_dir + "merged_full_nei3.json"
+    # merged_set = SamplesSet.load_samples_from_json(output_json)
+    # nb_sphaignes = len([s for s in merged_set.samples.values() if getattr(s, "category", None) == "sphaignes"])
+    # print(f"Nombre de sphaignes : {nb_sphaignes}")
+
+
+# if __name__ == "__main__":
+#     merge_and_limit_populations(
+#         input_dir="data/samples/selection3",
+#         output_json="data/samples/selection3/pop3_merged.json",
+#         max_per_cat=800
+#     )
 
 # # Utilisation :
 # if __name__ == "__main__":
