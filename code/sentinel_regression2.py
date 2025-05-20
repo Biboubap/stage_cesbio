@@ -1,0 +1,102 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import r2_score
+from sklearn.model_selection import train_test_split
+from osgeo import gdal
+import glob
+import os
+
+from interaction_sentinel_drone import load_proportion_csv, mask_interior_pixels
+
+def load_all_sentinel_features(indicateur_dir, databand1_path):
+    """
+    Charge toutes les bandes des fichiers *_reshaped.tif dans indicateur_dir,
+    ainsi que databand1_path, et retourne un tableau (n_bandes, rows, cols)
+    et la liste des noms de bandes.
+    """
+    # Liste tous les fichiers *_reshaped.tif (hors databand1)
+    tif_files = sorted(glob.glob(os.path.join(indicateur_dir, "*_reshaped.tif")))
+    # S'assure que databand1 est en premier
+    if databand1_path not in tif_files:
+        tif_files = [databand1_path] + tif_files
+    else:
+        tif_files.remove(databand1_path)
+        tif_files = [databand1_path] + tif_files
+
+    bands = []
+    band_names = []
+    for tif in tif_files:
+        ds = gdal.Open(tif)
+        arr = ds.GetRasterBand(1).ReadAsArray()
+        bands.append(arr)
+        band_names.append(os.path.splitext(os.path.basename(tif))[0])
+    features = np.stack(bands, axis=0)  # (n_bands, rows, cols)
+    return features, band_names
+
+def random_forest_regression_lichen_multi(csv_path, indicateur_dir, databand1_path, out_png, distance_bord=0, show_mask=False):
+    # Charge les données
+    df = load_proportion_csv(csv_path)
+    features, band_names = load_all_sentinel_features(indicateur_dir, databand1_path)
+
+    # Ne garde que les pixels avec une proportion définie (non None et non NaN)
+    df = df[df["proportion_lichen"].notnull()]
+
+    # Filtre les pixels "intérieurs" selon la distance au bord
+    if distance_bord > 0:
+        mask = mask_interior_pixels(df, distance=distance_bord, show=show_mask)
+        df = df[mask]
+
+    # Prépare les features et la cible
+    X = []
+    y = []
+    for _, row in df.iterrows():
+        col_s = int(row["col_s"])
+        row_s = int(row["row_s"])
+        pix_features = features[:, row_s, col_s]
+        X.append(pix_features)
+        y.append(row["proportion_lichen"])
+    X = np.array(X)
+    y = np.array(y)
+
+    # Sépare en train/test (70% train, 30% test)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.3, random_state=42
+    )
+
+    # Modèle Random Forest avec les paramètres demandés
+    rf = RandomForestRegressor(
+        n_estimators=100,
+        min_samples_leaf=1,
+        random_state=42
+    )
+    rf.fit(X_train, y_train)
+    y_pred = rf.predict(X_test)
+    r2 = r2_score(y_test, y_pred)
+
+    # Plot prédiction vs vérité terrain (sur le test uniquement)
+    plt.figure(figsize=(7, 7))
+    plt.scatter(y_test, y_pred, alpha=0.5, s=8, label="Prédictions (test)")
+    plt.plot([0, 1], [0, 1], 'k--', label="y = x")
+    plt.xlabel("Proportion de lichen réelle")
+    plt.ylabel("Proportion de lichen prédite (RF)")
+    plt.title(f"Random Forest multi-bandes : Prédiction de la proportion de lichen\nR² (test) = {r2:.3f} (distance_bord={distance_bord})")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(out_png)
+    plt.close()
+    print(f"Graphe RF multi-bandes sauvegardé dans {out_png}")
+    print("Bandes utilisées :", band_names)
+
+# Exemple d'utilisation :
+if __name__ == "__main__":
+    distance_bord = 0  # ou autre valeur
+    random_forest_regression_lichen_multi(
+        csv_path="data/sentinel2/sentinel_analysis/lichen_proportion_per_sentinel_pixel.csv",
+        indicateur_dir="data/sentinel2/indicateurs",
+        databand1_path="data/sentinel2/rgb/databand1_reshaped.tif",
+        out_png=f"data/sentinel2/sentinel_analysis/rf_vs_lichen_proportion_multiband_distance{distance_bord}.png",
+        distance_bord=distance_bord,
+        show_mask=False
+    )
