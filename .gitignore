@@ -3,6 +3,10 @@
 /data/samples/**/*.png
 /data/samples/**/*.json
 
+!/data/sentinel2/
+/data/sentinel2/**/*.tif
+
+
 /code/__pycache__/
 /infos/**/*.pdf
 /infos/**/*.pptx
