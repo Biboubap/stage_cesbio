@@ -163,14 +163,6 @@ def load_proportion_csv(csv_path):
 # df = load_proportion_csv("data/sentinel2/lichen_proportion_per_sentinel_pixel.csv")
 # print(df.head())
 
-# # # Exemple d'utilisation :
-# if __name__ == "__main__":
-#     result = compute_lichen_proportion_per_sentinel_pixel(
-#         mask_path="data/samples/selection4/lichen_mask.tif",
-#         sentinel_path="data/sentinel2/rgb/databand1_reshaped.tif"
-#     )
-#     save_proportion_dict_to_csv(result, "data/sentinel2/lichen_proportion_per_sentinel_pixel.csv")
-
 
 def load_sentinel_rgb_bands(sentinel_path):
     ds = gdal.Open(sentinel_path)
@@ -289,14 +281,147 @@ def mask_interior_pixels(df, distance=0, show=False):
         plt.show()
 
     return mask_df
+
+def plot_lichen_proportion_histogram(csv_path, out_png=None, sqrt=False, log=False):
+    """
+    Affiche et sauvegarde l'histogramme du nombre d'échantillons par tranche de 10% de proportion de lichen.
+    - sqrt=True : utilise la colonne 'sqrt_proportion_lichen'
+    - log=True : utilise la colonne 'log_proportion_lichen'
+    - sinon : utilise 'proportion_lichen'
+    """
+    df = pd.read_csv(csv_path)
+    if log:
+        values = df["log_proportion_lichen"].dropna()
+        xlabel = "log(% lichen)"
+        title = "Histogramme du log(% lichen) par pixel Sentinel"
+        bins = np.arange(values.min(), values.max() + 0.5, 0.5)
+    elif sqrt:
+        values = df["sqrt_proportion_lichen"].dropna()
+        xlabel = "sqrt(% lichen)"
+        title = "Histogramme de la racine carrée du % lichen par pixel Sentinel"
+        bins = np.arange(values.min(), values.max() + 0.5, 0.5)
+    else:
+        values = df["proportion_lichen"].dropna() * 100
+        xlabel = "Proportion de lichen (%)"
+        title = "Histogramme des proportions de lichen par pixel Sentinel\n(pas de 10%)"
+        bins = np.arange(0, 110, 10)
+
+    plt.figure(figsize=(8, 5))
+    plt.hist(values, bins=bins, edgecolor='black', alpha=0.7)
+    plt.xlabel(xlabel)
+    plt.ylabel("Nombre d'échantillons")
+    plt.title(title)
+    if not log and not sqrt:
+        plt.xticks(bins)
+    plt.grid(axis='y', alpha=0.3)
+    plt.tight_layout()
+    if out_png:
+        plt.savefig(out_png)
+        print(f"Histogramme sauvegardé dans {out_png}")
+    plt.show()
+
+def transform_proportion_to_sqrt(csv_in, csv_out):
+    df = pd.read_csv(csv_in)
+    # On suppose que proportion_lichen est entre 0 et 1, on convertit en % puis sqrt
+    df["sqrt_proportion_lichen"] = np.sqrt(df["proportion_lichen"] * 100)
+    # Optionnel : on peut supprimer l'ancienne colonne si tu veux
+    # df = df.drop(columns=["proportion_lichen"])
+    df.to_csv(csv_out, index=False)
+    print(f"CSV transformé et sauvegardé dans {csv_out}")
+
+def transform_proportion_to_log(csv_in, csv_out):
+    df = pd.read_csv(csv_in)
+    # On suppose que proportion_lichen est entre 0 et 1, on convertit en % puis log
+    # On ajoute un petit epsilon pour éviter log(0)
+    epsilon = 1e-6
+    df["log_proportion_lichen"] = np.log(df["proportion_lichen"] * 100 + epsilon)
+    # Optionnel : on peut supprimer l'ancienne colonne si tu veux
+    # df = df.drop(columns=["proportion_lichen"])
+    df.to_csv(csv_out, index=False)
+    print(f"CSV transformé et sauvegardé dans {csv_out}")
+
+
+def filter_and_balance_sqrt_lichen(csv_in, csv_out, max_high=250, sqrt_col="sqrt_proportion_lichen"):
+    df = pd.read_csv(csv_in)
+    # On ne garde que les lignes où sqrt_proportion_lichen est défini
+    df = df[df[sqrt_col].notnull()]
+
+    lichen = []
+    for lichen_proportion in np.arange(4, 10, 0.1):
+        new_lichen = df[(df[sqrt_col] > lichen_proportion) & (df[sqrt_col] <= lichen_proportion+0.1)]
+        if len(new_lichen) > max_high:  
+            new_lichen = new_lichen.sample(n=max_high, random_state=42)
+        lichen.append(new_lichen)
+        
+    balanced = pd.concat([l for l in lichen], ignore_index=True)
     
+    # # Prend au maximum max_high tuiles à très forte proportion de lichen
+    # if len(high_lichen) > max_high:
+    #     high_lichen = high_lichen.sample(n=max_high, random_state=42)
+    #     mid_lichen = mid_lichen.sample(n=max_high, random_state=42)
+
+    # # Concatène et sauvegarde
+    # balanced = pd.concat([high_lichen, mid_lichen, low_lichen], ignore_index=True)
+    balanced.to_csv(csv_out, index=False)
+    print(f"CSV filtré et équilibré sauvegardé dans {csv_out} ({len(balanced)} lignes)")
+
+
 # # Exemple d'utilisation :
 # if __name__ == "__main__":
-#     distance_bord=1
+#     transform_proportion_to_sqrt(
+#         "data/samples/selection5/lichen_proportion.csv",
+#         "data/samples/selection5/lichen_sqrt_proportion.csv"
+#     )
+#     transform_proportion_to_log(
+#         "data/samples/selection5/lichen_proportion.csv",
+#         "data/samples/selection5/lichen_log_proportion.csv"
+#     )
+#     plot_lichen_proportion_histogram(
+#         "data/samples/selection5/lichen_log_proportion.csv",
+#         "data/samples/selection5/hist_lichen_proportion_log.png",
+#     log=True
+#     )
+#     plot_lichen_proportion_histogram(
+#         "data/samples/selection5/lichen_sqrt_proportion.csv",
+#         "data/samples/selection5/hist_lichen_proportion_sqrt.png",
+#     sqrt=True
+#     )
+
+
+# Exemple d'utilisation :
+if __name__ == "__main__":
+    # transform_proportion_to_sqrt(
+    #     "data/samples/selection5/regression/lichen_proportion.csv",
+    #     "data/samples/selection5/regression/lichen_sqrt_proportion.csv"
+    # )
+    filter_and_balance_sqrt_lichen(
+        "data/samples/selection5/regression/lichen_sqrt_proportion.csv",
+        "data/samples/selection5/regression/sqrt_balanced_2.csv",
+        max_high=5
+    )
+    plot_lichen_proportion_histogram(
+        "data/samples/selection5/regression/sqrt_balanced_2.csv",
+        "data/samples/selection5/regression/hist_sqrt_balanced_2.png",
+    sqrt=True
+   )
+
+# # # Exemple d'utilisation :
+# if __name__ == "__main__":
+#     result = compute_lichen_proportion_per_sentinel_pixel(
+#         mask_path="data/samples/selection5/lichen_mask.tif",
+#         sentinel_path="data/sentinel2/rgb/databand1_reshaped.tif"
+#     )
+#     save_proportion_dict_to_csv(result, "data/samples/selection5/lichen_proportion.csv")
+
+
+
+# # Exemple d'utilisation :
+# if __name__ == "__main__":
+#     distance_bord=0
 #     plot_rgb_vs_lichen_proportion(
-#         csv_path="data/sentinel2/sentinel_analysis/lichen_proportion_per_sentinel_pixel.csv",
+#         csv_path="data/samples/selection5/lichen_proportion.csv",
 #         sentinel_path="data/sentinel2/rgb/databand1_reshaped.tif",
-#         out_png=f"data/sentinel2/sentinel_analysis/rgb_vs_lichen_proportion_distance{distance_bord}.png",
+#         out_png=f"data/samples/selection5/rgb_vs_lichen.png",
 #         distance_bord=distance_bord,
 #         show_mask=True
 #     )
