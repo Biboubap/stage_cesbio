@@ -40,6 +40,7 @@ def to_color(data_band):
     out_ds.FlushCache()
     out_ds = None  # Fermer le fichier
 
-to_color(1)
+# for i in range(1,14):
+#     to_color()
 
 
