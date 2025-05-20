@@ -5,7 +5,7 @@
 
 !/data/sentinel2/
 /data/sentinel2/**/*.tif
-
+/data/sentinel2/**/*.png
 
 /code/__pycache__/
 /infos/**/*.pdf
