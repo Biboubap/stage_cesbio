@@ -240,8 +240,8 @@ def remove_forest_and_lake():
         json.dump(filtered_data, f, indent=2)
     print(f"{len(all_samples)} samples sauvegardés dans {output_json}")
 
-if __name__ == "__main__":
-    remove_forest_and_lake()
+# if __name__ == "__main__":
+#     remove_forest_and_lake()
 
 # if __name__ == "__main__":
     # recalcule_neighbors_and_save(
@@ -268,3 +268,62 @@ if __name__ == "__main__":
 # # Utilisation :
 # if __name__ == "__main__":
 #     update_rgbz_variance_in_json("data/samples/lichen_sphegnes_selection/lichen_sphegnes_selection.json")
+def merge_and_filter_populations(selection4_json, selection5_dir, output_json):
+    import random
+    # Charge la population principale
+    with open(selection4_json, "r") as f:
+        data4 = json.load(f)
+    samples = data4.get("samples", [])
+
+    # Charge toutes les populations de selection5/*.json
+    json_files = glob.glob(os.path.join(selection5_dir, "lichen_*.json"))
+    for jf in json_files:
+        with open(jf, "r") as f:
+            data = json.load(f)
+        samples.extend(data.get("samples", []))
+
+    # Renomme toutes les "sphegnes" en "sphaignes"
+    for s in samples:
+        if s.get("category") == "sphegnes":
+            s["category"] = "sphaignes"
+
+    # Ne garde que les classes sphaignes, lichen, crevasse
+    keep_classes = {"sphaignes", "lichen", "crevasse"}
+    filtered_samples = [s for s in samples if s.get("category") in keep_classes]
+
+    # Sépare par classe
+    lichens = [s for s in filtered_samples if s.get("category") == "lichen"]
+    sphaignes = [s for s in filtered_samples if s.get("category") == "sphaignes"]
+    crevasses = [s for s in filtered_samples if s.get("category") == "crevasse"]
+
+    # Tire au hasard 1600 lichen
+    if len(lichens) > 800:
+        lichens = random.sample(lichens, 800)
+
+    # Fusionne
+    final_samples = lichens + sphaignes + crevasses
+
+    # Compte les classes
+    from collections import Counter
+    counts = Counter(s.get("category") for s in final_samples)
+    print("Nombre de chaque classe dans la population fusionnée :")
+    for cat in sorted(keep_classes):
+        print(f"{cat}: {counts.get(cat, 0)}")
+
+    # Sauvegarde
+    merged_data = {
+        "n_samples_x": None,
+        "n_samples_y": None,
+        "samples": final_samples
+    }
+    with open(output_json, "w") as f:
+        json.dump(merged_data, f, indent=2)
+    print(f"Population fusionnée sauvegardée dans {output_json}")
+
+# Exemple d'utilisation :
+if __name__ == "__main__":
+    merge_and_filter_populations(
+        selection4_json="data/samples/selection4/pop3_noforestlake.json",
+        selection5_dir="data/samples/selection5",
+        output_json="data/samples/selection5/merged2_sphaignes_lichen_crevasse.json"
+    )

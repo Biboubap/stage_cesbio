@@ -6,9 +6,9 @@ from osgeo import gdal, ogr
 
 def plot_rgb(xmin, ymin, xmax, ymax, path):
     
-    #ds = gdal.Open(r'data/rgb_reshaped.tif')
+    ds = gdal.Open(r'data/rgb_reshaped.tif')
 
-    ds = gdal.Open(r'data/twin_lake_mosaïc.tif')    
+    #ds = gdal.Open(r'data/twin_lake_mosaïc.tif')    
     # Read the three bands
 
     r = ds.GetRasterBand(1).ReadAsArray()[xmin:xmax, ymin:ymax] 
@@ -49,8 +49,9 @@ def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_p
     # Demande la classe à sélectionner
     class_dict = {"l": "lichen", "s": "sphaignes", "c": "crevasse", "w": "lac", "f": "foret", "q" : "flaque"}
     #class_dict = {"l": "lichen", "p": "sphaignes_plat", "c": "sphaignes_crevasse", "e" : "crevasses_eau", "a": "arbre"}
+
     while True:
-        class_key = input("Classe à sélectionner (l; p, c, e, a) : ").strip().lower()
+        class_key = input("Classe à sélectionner (lettre): ").strip().lower()
         if class_key in class_dict:
             break
         print("Classe invalide.")
@@ -164,13 +165,13 @@ def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_p
 
 if __name__ == "__main__":
     # Paramètres de la grille globale
-    x_start = 5450
-    y_start = 10146
+    x_start = 5458
+    y_start = 15191
     size_patch = 32
-    depth_neighbors = 3
+    depth_neighbors = 1
 
-    n_samples_x = 80
-    n_samples_y = 10
-    file_path = "data/samples/selection3-2/"
+    n_samples_x = 40
+    n_samples_y = 40
+    file_path = "data/samples/selection5/"
     
-    pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_path, default=0)
+    pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_path, default=1)

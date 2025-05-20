@@ -56,9 +56,9 @@ def process_lichen_extraction(classif_tif, rgb_tif, out_mask_tif, out_lichen_tif
 # Exemple d'utilisation
 if __name__ == "__main__":
     process_lichen_extraction(
-        classif_tif="data/samples/selection4/classification_result_3.tif",
+        classif_tif="data/samples/selection5/classification_result.tif",
         rgb_tif="data/rgb_reshaped.tif",
-        out_mask_tif="data/samples/selection4/lichen_mask.tif",
-        out_lichen_tif="data/samples/selection4/lichen_rgb.tif",
-        out_nonlichen_tif="data/samples/selection4/nonlichen_rgb.tif"
+        out_mask_tif="data/samples/selection5/lichen_mask.tif",
+        out_lichen_tif="data/samples/selection5/lichen_rgb.tif",
+        out_nonlichen_tif="data/samples/selection5/nonlichen_rgb.tif"
     )

@@ -123,7 +123,7 @@ def plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path=N
     plt.tight_layout()
     if save_path:
         plt.savefig(save_path)
-    plt.show()
+    #plt.show()
 
 def create_rgb_image_from_samples(samples_set, n_samples_x, n_samples_y, size_patch):
     samples_matrix = samples_set.get_samples_matrix()
@@ -174,7 +174,7 @@ def plot_tree_model(clf):
             filled=True, rounded=True, max_depth=3)  # max_depth=3 pour lisibilité
     plt.show()
 
-def plot_feature_importances(clf, feature_names=None):
+def plot_feature_importances(clf, save_path, feature_names=None):
     """
     Affiche un tableau et un graphique des importances des features pour un RandomForestClassifier.
     """
@@ -202,7 +202,7 @@ def plot_feature_importances(clf, feature_names=None):
     plt.title("Importance des features dans le Random Forest")
     plt.xticks(rotation=45)
     plt.tight_layout()
-    plt.show()
+    plt.savefig(save_path)
 
 def save_classification_to_tif(pred_map, ref_tif_path, out_tif_path, size_patch=32):
     """
@@ -253,7 +253,7 @@ def main():
 
     print(f"Features extraites avec taille : {features.shape}")
     # 4. Charger le modèle
-    clf = joblib.load("data/samples/selection4/model4.joblib")
+    clf = joblib.load("data/samples/selection5/model5.joblib")
     print("Modèle chargé.")
     # 5. Prédire
     pred_map = predict_samples_2(clf, features, positions, n_samples_x, n_samples_y, samples_set)
@@ -265,17 +265,18 @@ def main():
     color_map = create_classification_map(pred_map_filtered, size_patch)
     print("Carte de classification créée.")
     # 8. Afficher et sauvegarder les résultats
-    plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path="data/samples/selection4/classification_result_3.png")
+    plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path="data/samples/selection5/classification_result.png")
     print("Résultats affichés et sauvegardés.")
 
     # 9. Sauvegarder la carte de classification au format .tif
     save_classification_to_tif(
         pred_map_filtered,
         ref_tif_path="data/rgb_reshaped.tif",
-        out_tif_path="data/samples/selection4/classification_result_3.tif",
+        out_tif_path="data/samples/selection5/classification_result.tif",
         size_patch=32
     )
 
+    plot_feature_importances(clf, save_path = "data/samples/selection5/feature_importances.png")
 
 if __name__ == "__main__":
     main()
