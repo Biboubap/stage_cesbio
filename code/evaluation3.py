@@ -230,20 +230,38 @@ def save_classification_to_tif(pred_map, ref_tif_path, out_tif_path, size_patch=
     print(f"Carte de classification sauvegardée dans {out_tif_path}")
 
 
-def get_class_confidence_masks(clf, features, positions, n_samples_x, n_samples_y, class_names, confidence=0.9):
+def get_class_confidence_masks(clf, features, positions, n_samples_x, n_samples_y, class_names, proba_lichen, proba_non_lichen=None, samples_set=None):
     """
-    Renvoie un masque binaire pour chaque classe, où la proba prédite >= confidence.
+    Renvoie un masque binaire pour chaque classe selon la règle :
+    - lichen : proba(lichen) >= proba_lichen
+    - sphaignes/crevasse : proba(lichen) <= 1-proba_non_lichen et proba(classe) == max(proba autres classes)
+    - Si le pixel est noir (r=g=b=0), il n'est classé dans aucune classe (None)
     """
     proba = clf.predict_proba(features)
     class_indices = {name: idx for idx, name in enumerate(clf.classes_)}
     masks = {name: np.zeros((n_samples_x, n_samples_y), dtype=np.uint8) for name in class_names}
-    for idx, (i_x, i_y) in enumerate(positions):
-        for cname in class_names:
-            cidx = class_indices[cname]
-            if proba[idx, cidx] >= confidence:
-                masks[cname][i_x, i_y] = 1
-    return masks
 
+    # Pour vérifier la couleur, on a besoin de samples_set
+    samples_matrix = samples_set.get_samples_matrix() if samples_set is not None else None
+
+    for idx, (i_x, i_y) in enumerate(positions):
+        # Vérifie si le pixel est noir (r=g=b=0)
+        if samples_matrix is not None:
+            s = samples_matrix[i_y][i_x]
+            if s.r_mean == 0 and s.g_mean == 0 and s.b_mean == 0:
+                continue  # Ne classe pas ce pixel
+
+        p_lichen = proba[idx, class_indices["lichen"]]
+        # Lichen : proba >= 0.95
+        if p_lichen >= proba_lichen:
+            masks["lichen"][i_x, i_y] = 1
+        else:
+            # Pour sphaignes et crevasse : proba(lichen) <= 0.10 et c'est la classe la plus probable
+            for cname in ["sphaignes", "crevasse"]:
+                p_class = proba[idx, class_indices[cname]]
+                if p_lichen <= 1 - proba_non_lichen and p_class == np.max(proba[idx]):
+                    masks[cname][i_x, i_y] = 1
+    return masks
 
 def save_masked_rgb(mask, rgb_img, ref_tif_path, out_tif_path, size_patch=32):
     """
@@ -304,8 +322,6 @@ def plot_rgb_and_masks(rgb_img, masks, class_names, xmin, xmax, ymin, ymax, out_
     Affiche et sauvegarde un subplot : RGB + 3 masques de confiance pour la fenêtre demandée.
     """
     fig, axs = plt.subplots(1, 4, figsize=(18, 5))
-    print("rgb_img.shape =", rgb_img.shape)
-    print("xmin, xmax, ymin, ymax =", xmin, xmax, ymin, ymax)
     axs[0].imshow(rgb_img[xmin:xmax, ymin:ymax])
     axs[0].set_title("Image RGB")
     axs[0].axis("off")
@@ -318,6 +334,33 @@ def plot_rgb_and_masks(rgb_img, masks, class_names, xmin, xmax, ymin, ymax, out_
     plt.close()
     print(f"Subplot RGB + masques sauvegardé dans {out_png}")
 
+import pickle
+def save_precomputed_data(samples_set, n_samples_x, n_samples_y, rgb_img, features, positions, path_prefix):
+    """
+    Sauvegarde les objets nécessaires pour éviter de tout recalculer.
+    """
+    # samples_set, n_samples_x, n_samples_y, features, positions en pickle
+    with open(f"{path_prefix}_meta.pkl", "wb") as f:
+        pickle.dump({
+            "samples_set": samples_set,
+            "n_samples_x": n_samples_x,
+            "n_samples_y": n_samples_y,
+            "features": features,
+            "positions": positions
+        }, f)
+    # rgb_img en npy (plus rapide pour les gros tableaux)
+    np.save(f"{path_prefix}_rgb.npy", rgb_img)
+    print(f"Pré-calculs sauvegardés avec préfixe {path_prefix}")
+
+def load_precomputed_data(path_prefix):
+    """
+    Charge les objets nécessaires pour éviter de tout recalculer.
+    """
+    with open(f"{path_prefix}_meta.pkl", "rb") as f:
+        data = pickle.load(f)
+    rgb_img = np.load(f"{path_prefix}_rgb.npy")
+    print(f"Pré-calculs chargés depuis préfixe {path_prefix}")
+    return data["samples_set"], data["n_samples_x"], data["n_samples_y"], rgb_img, data["features"], data["positions"]
 
 def main_prediction():
     # Paramètres de la fenêtre à tester
@@ -377,28 +420,29 @@ def main_mask():
     x_end = 31715
     y_end = 17416
     size_patch = 32
-    confidence = 0.95
+    confidence_lichen = 0.95
+    confidence_non_lichen = 0.90
     class_names = ["lichen", "sphaignes", "crevasse"]
+    samples_set, n_samples_x, n_samples_y, rgb_img, features, positions = load_precomputed_data("data/samples/selection5/precalc")
+    # # 1. Créer les samples et calculer les paramètres
+    # samples_set, n_samples_x, n_samples_y = create_samples_and_compute(
+    #     x_start, y_start, x_end, y_end, size_patch
+    # )
 
-    # 1. Créer les samples et calculer les paramètres
-    samples_set, n_samples_x, n_samples_y = create_samples_and_compute(
-        x_start, y_start, x_end, y_end, size_patch
-    )
-
-    # 2. Générer l'image RGB à partir des samples
-    rgb_img = create_rgb_image_from_samples(samples_set, n_samples_x, n_samples_y, size_patch)
-    print(f"Image RGB générée de taille : {rgb_img.shape}")
+    # # 2. Générer l'image RGB à partir des samples
+    # rgb_img = create_rgb_image_from_samples(samples_set, n_samples_x, n_samples_y, size_patch)
+    # print(f"Image RGB générée de taille : {rgb_img.shape}")
     
-    # 3. Extraire les features
-    features, positions = extract_features(samples_set, n_samples_x, n_samples_y)
-    print(f"Features extraites avec taille : {features.shape}")
+    # # 3. Extraire les features
+    # features, positions = extract_features(samples_set, n_samples_x, n_samples_y)
+    # print(f"Features extraites avec taille : {features.shape}")
     
     # 4. Charger le modèle
     clf = joblib.load("data/samples/selection5/model5.joblib")
     print("Modèle chargé.")
    
      # 5. Obtenir les masques de confiance
-    masks = get_class_confidence_masks(clf, features, positions, n_samples_x, n_samples_y, class_names, confidence=confidence)
+    masks = get_class_confidence_masks(clf, features, positions, n_samples_x, n_samples_y, class_names, proba_lichen=confidence_lichen, proba_non_lichen=confidence_non_lichen)
     print("Masques de confiance obtenus.")
 
     # # 6. Sauvegarder les images RGB masquées pour chaque classe
@@ -407,7 +451,7 @@ def main_mask():
             masks[cname],
             rgb_img,
             ref_tif_path="data/rgb_reshaped.tif",
-            out_tif_path=f"data/samples/selection5/rgb_masked_{cname}_conf{int(confidence*100)}.tif",
+            out_tif_path=f"data/samples/selection5/mask_{cname}_l{int(confidence_lichen*100)}_nl{int(confidence_non_lichen*100)}.tif",
             size_patch=32
         )
 
@@ -417,7 +461,7 @@ def main_mask():
     xmin, xmax, ymin, ymax = 0, x_end-x_start, 0, y_end-y_start   
     plot_rgb_and_masks(
         rgb_img, masks, class_names, xmin, xmax, ymin, ymax,
-        out_png=f"data/samples/selection5/rgb_and_masks_conf{int(confidence*100)}.png"
+        out_png=f"data/samples/selection5/masks_{cname}_l{int(confidence_lichen*100)}_nl{int(confidence_non_lichen*100)}.png"
     )
 
 
