@@ -24,7 +24,7 @@ def plot_rgb(xmin, ymin, xmax, ymax, path):
 
 
 
-def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_path, default=0, depth_neighbors=1):
+def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_path, default=0, depth_neighbors=1, class_dict = None):
     print("Sélection de la population à prendre")
     x_start = int(np.round(x_start/size_patch))*size_patch
     y_start = int(np.round(y_start/size_patch))*size_patch
@@ -47,11 +47,12 @@ def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_p
     selection_state = {(i_x, i_y): default for i_x in range(n_samples_x) for i_y in range(n_samples_y)}
 
     # Demande la classe à sélectionner
-    class_dict = {"l": "lichen", "s": "sphaignes", "c": "crevasse", "w": "lac", "f": "foret", "q" : "flaque"}
+    if class_dict is None : 
+        class_dict = {"l": "lichen", "s": "sphaignes", "c": "crevasse", "w": "lac", "f": "foret", "q" : "flaque"}
     #class_dict = {"l": "lichen", "p": "sphaignes_plat", "c": "sphaignes_crevasse", "e" : "crevasses_eau", "a": "arbre"}
 
     while True:
-        class_key = input("Classe à sélectionner (lettre): ").strip().lower()
+        class_key = input(f"Classe à sélectionner : {class_dict.keys}").strip().lower()
         if class_key in class_dict:
             break
         print("Classe invalide.")
@@ -173,5 +174,16 @@ if __name__ == "__main__":
     n_samples_x = 40
     n_samples_y = 40
     file_path = "data/samples/selection5/"
+
+    class_dict = {
+        "l": "lichen", #white and green lichen with small bushs
+        "s": "sphaignes", #orange sphaignes in dry troughs and land
+        "ch": "crevasses_humides", #troughs with water
+        "cv": "crevasses_vertes", #troughs with chlorophilian vegetation
+        "w": "lac", #lake
+        "f": "foret",
+        "qe" : "flaque_eau", #large depression with water
+        "qs" : "flaque_seche", #dry large depression 
+    }
     
-    pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_path, default=1)
+    pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_path, default=1, class_dict=class_dict)

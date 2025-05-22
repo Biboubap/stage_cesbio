@@ -85,54 +85,54 @@ def balance_lichen_sphegnes(json_path, output_path):
 
 # Utilisation :
 
-if __name__ == "__main__":
-    balance_lichen_sphegnes(
-        "data/samples/lichen_sphegnes_selection/lichen_sphegnes_selection.json",
-        "data/samples/lichen_sphegnes_balanced/lichen_sphegnes_balanced.json"
-    )
+# if __name__ == "__main__":
+#     balance_lichen_sphegnes(
+#         "data/samples/lichen_sphegnes_selection/lichen_sphegnes_selection.json",
+#         "data/samples/lichen_sphegnes_balanced/lichen_sphegnes_balanced.json"
+#     )
 
-    # Affichage et sauvegarde des populations équilibrées
-    import matplotlib.pyplot as plt
+#     # Affichage et sauvegarde des populations équilibrées
+#     import matplotlib.pyplot as plt
 
-    with open("data/samples/lichen_sphegnes_balanced/lichen_sphegnes_balanced.json") as f:
-        data = json.load(f)
-    lichen_samples = [s for s in data["samples"] if s.get("category") == "lichen"]
-    sphegnes_samples = [s for s in data["samples"] if s.get("category") == "sphegnes"]
+#     with open("data/samples/lichen_sphegnes_balanced/lichen_sphegnes_balanced.json") as f:
+#         data = json.load(f)
+#     lichen_samples = [s for s in data["samples"] if s.get("category") == "lichen"]
+#     sphegnes_samples = [s for s in data["samples"] if s.get("category") == "sphegnes"]
 
-    # Création des sets pour affichage
-    from samples_set import SamplesSet
-    from sample import Sample
+#     # Création des sets pour affichage
+#     from samples_set import SamplesSet
+#     from sample import Sample
 
-    lichen_set = SamplesSet()
-    for s in lichen_samples:
-        lichen_set.add_sample(Sample(
-            i_x=s["i_x"], i_y=s["i_y"], x=s["x"], y=s["y"],
-            size_patch=s.get("size_patch", 32), category="lichen"
-        ))
-    sphegnes_set = SamplesSet()
-    for s in sphegnes_samples:
-        sphegnes_set.add_sample(Sample(
-            i_x=s["i_x"], i_y=s["i_y"], x=s["x"], y=s["y"],
-            size_patch=s.get("size_patch", 32), category="sphegnes"
-        ))
+#     lichen_set = SamplesSet()
+#     for s in lichen_samples:
+#         lichen_set.add_sample(Sample(
+#             i_x=s["i_x"], i_y=s["i_y"], x=s["x"], y=s["y"],
+#             size_patch=s.get("size_patch", 32), category="lichen"
+#         ))
+#     sphegnes_set = SamplesSet()
+#     for s in sphegnes_samples:
+#         sphegnes_set.add_sample(Sample(
+#             i_x=s["i_x"], i_y=s["i_y"], x=s["x"], y=s["y"],
+#             size_patch=s.get("size_patch", 32), category="sphegnes"
+#         ))
 
-    # Plot et sauvegarde
-    plt.figure()
-    lichen_set.plot_samples_as_list()
-    plt.suptitle(f"Lichen : {len(lichen_samples)}")
-    plt.savefig("data/samples/lichen_sphegnes_balanced/lichen_balanced.png")
-    plt.close()
+#     # Plot et sauvegarde
+#     plt.figure()
+#     lichen_set.plot_samples_as_list()
+#     plt.suptitle(f"Lichen : {len(lichen_samples)}")
+#     plt.savefig("data/samples/lichen_sphegnes_balanced/lichen_balanced.png")
+#     plt.close()
 
-    plt.figure()
-    sphegnes_set.plot_samples_as_list()
-    plt.suptitle(f"Sphegnes : {len(sphegnes_samples)}")
-    plt.savefig("data/samples/lichen_sphegnes_balanced/sphegnes_balanced.png")
-    plt.close()
+#     plt.figure()
+#     sphegnes_set.plot_samples_as_list()
+#     plt.suptitle(f"Sphegnes : {len(sphegnes_samples)}")
+#     plt.savefig("data/samples/lichen_sphegnes_balanced/sphegnes_balanced.png")
+#     plt.close()
 
-    # Sauvegarde du nombre de chaque catégorie
-    with open("data/samples/lichen_sphegnes_balanced/pop_counts.txt", "w") as f:
-        f.write(f"Lichen: {len(lichen_samples)}\n")
-        f.write(f"Sphegnes: {len(sphegnes_samples)}\n")
+#     # Sauvegarde du nombre de chaque catégorie
+#     with open("data/samples/lichen_sphegnes_balanced/pop_counts.txt", "w") as f:
+#         f.write(f"Lichen: {len(lichen_samples)}\n")
+#         f.write(f"Sphegnes: {len(sphegnes_samples)}\n")
 
 def merge_and_limit_populations(input_dir, output_json, max_per_cat=800):
     # Récupère tous les fichiers json de la sélection
