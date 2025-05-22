@@ -52,10 +52,14 @@ class Sample:
         self.z_var = float(np.var(z))
 
         self.t_mean = float(np.mean(t))
+        self.t_var = float(np.var(t))
 
         # Moyennes RGB des voisins
         self.r_n_mean, self.g_n_mean, self.b_n_mean = None, None, None
         self.t_n_mean = None
+
+        self.r_n_var, self.g_n_var, self.b_n_var = None, None, None
+        self.t_n_var, self.z_n_var = None, None
         # Gradients d'altitude
         self.z_moins_z_n = None
 
@@ -67,8 +71,10 @@ class Sample:
                 #f"r_var={fmt(self.r_var)}, g_var={fmt(self.g_var)}, b_var={fmt(self.b_var)}, "
                 f"z_mean={fmt(self.z_mean)}, z_var={fmt(self.z_var)}, t_mean={fmt(self.t_mean)}, "
                 f"r_n_mean={fmt(self.r_n_mean)}, g_n_mean={fmt(self.g_n_mean)}, b_n_mean={fmt(self.b_n_mean)}, t_n_mean={fmt(self.t_n_mean)}, "
-                f"z_moins_z_n={fmt(self.z_moins_z_n)}")
-
+                f"z_moins_z_n={fmt(self.z_moins_z_n)}"
+                f"r_n_var={fmt(self.r_n_var)}, g_n_var={fmt(self.g_n_var)}, b_n_var={fmt(self.b_n_var)}, t_n_var={fmt(self.t_n_var),}, "
+                f"z_n_var={fmt(self.z_n_var)}, ")
+    
     def get_RGBZ(self):
         global rast_r, rast_g, rast_b, rast_z
         """
@@ -131,6 +137,9 @@ class Sample:
             f"B (neighbors): mean={fmt2(self.b_n_mean)}\n"
             f"T (neighbors): mean={fmt2(self.t_n_mean)}\n"
             f"z_moins_z_n: {fmt5(self.z_moins_z_n)}"
+            f"r_n_var={fmt2(self.r_n_var)}, g_n_var={fmt2(self.g_n_var)}, b_n_var={fmt2(self.b_n_var)}, t_n_var={fmt2(self.t_n_var)}\n"
+            f"z_n_var={fmt2(self.z_n_var)}\n"
+
         )
         axes[2].text(0, 0.5, neighbor_text, fontsize=10, ha="left", va="center", wrap=True)
         axes[2].axis("off")
@@ -178,7 +187,7 @@ class Sample:
         else:
             self.r_n_mean = self.g_n_mean = self.b_n_mean = 0
 
-    def compute_neighbors_all(self, sample_set=None, size_patch=None, depth_neighbors=1):
+    def compute_neighbors_all(self, sample_set=None, size_patch=None, depth_neighbors=1, depth_neighbors_z=1):
         """
         Calcule la moyenne des couleurs des voisins.
         Si un voisin existe dans sample_set, utilise sa moyenne déjà calculée.
@@ -192,7 +201,14 @@ class Sample:
         b_sum = 0
         z_sum = 0
         t_sum = 0
+        r_var_sum = 0
+        g_var_sum = 0
+        b_var_sum = 0
+        t_var_sum = 0
+        z_var_sum = 0
+
         nb_neighbors = 0
+        nb_neighbors_z = 0
         for i in range(-depth_neighbors, depth_neighbors + 1):
             for j in range(-depth_neighbors, depth_neighbors + 1):
                 if i == 0 and j == 0:
@@ -204,29 +220,62 @@ class Sample:
                     r_sum += neighbor.r_mean
                     g_sum += neighbor.g_mean
                     b_sum += neighbor.b_mean
-                    z_sum += neighbor.z_mean
                     t_sum += neighbor.t_mean
+
+                    r_var_sum += neighbor.r_var
+                    g_var_sum += neighbor.g_var
+                    b_var_sum += neighbor.b_var
+                    t_var_sum += neighbor.t_var
+
                     nb_neighbors += 1
                 elif 0 <= x_n < rast_r.shape[0] - size_patch and 0 <= y_n < rast_r.shape[1] - size_patch:
                     r_patch = rast_r[x_n:x_n + size_patch, y_n:y_n + size_patch]
                     g_patch = rast_g[x_n:x_n + size_patch, y_n:y_n + size_patch]
                     b_patch = rast_b[x_n:x_n + size_patch, y_n:y_n + size_patch]
-                    z_patch = rast_z[x_n:x_n + size_patch, y_n:y_n + size_patch]*1000
+        
                     t_patch = rast_t[x_n:x_n + size_patch, y_n:y_n + size_patch]
                     r_sum += np.mean(r_patch)
                     g_sum += np.mean(g_patch)
                     b_sum += np.mean(b_patch)
-                    z_sum += np.mean(z_patch)
+                    
                     t_sum += np.mean(t_patch)
+                    r_var_sum += np.var(r_patch)
+                    g_var_sum += np.var(g_patch)
+                    b_var_sum += np.var(b_patch)
+                    t_var_sum += np.var(t_patch)
+                   
                     nb_neighbors += 1
         if nb_neighbors > 0:
             self.r_n_mean = r_sum / nb_neighbors
             self.g_n_mean = g_sum / nb_neighbors
             self.b_n_mean = b_sum / nb_neighbors
-            self.z_moins_z_n= self.z_mean - z_sum / nb_neighbors
             self.t_n_mean = t_sum / nb_neighbors
-        else:
-            self.r_n_mean = self.g_n_mean = self.b_n_mean = 0
+
+            self.r_n_var = r_var_sum / nb_neighbors
+            self.g_n_var = g_var_sum / nb_neighbors
+            self.b_n_var = b_var_sum / nb_neighbors
+            self.t_n_var = t_var_sum / nb_neighbors
+
+        for i in range(-depth_neighbors_z, depth_neighbors_z + 1):
+            for j in range(-depth_neighbors_z, depth_neighbors_z + 1):
+                if i == 0 and j == 0:
+                    continue
+                x_n = self.x + i * size_patch
+                y_n = self.y + j * size_patch
+                if sample_set is not None and (x_n, y_n) in sample_set.samples:
+                    neighbor = sample_set.samples[(x_n, y_n)]
+                    z_sum += neighbor.z_mean
+                    z_var_sum += neighbor.z_var
+                    nb_neighbors_z += 1
+                elif 0 <= x_n < rast_r.shape[0] - size_patch and 0 <= y_n < rast_r.shape[1] - size_patch:
+                    z_patch = rast_z[x_n:x_n + size_patch, y_n:y_n + size_patch]*1000
+                    z_sum += np.mean(z_patch)
+                    z_var_sum += np.var(z_patch)
+                    nb_neighbors_z += 1
+
+        if nb_neighbors_z > 0:
+            self.z_moins_z_n= self.z_mean - z_sum / nb_neighbors
+            self.z_n_var = z_var_sum / nb_neighbors
 
     def get_z_mean(self, x, y, sample_set=None, size_patch=None):
         global rast_z
@@ -296,5 +345,5 @@ if __name__ == "__main__":
 
     sample = Sample(0, 0, x_start, y_start, size_patch)
     print(sample)
-    sample.plot_sample()
+    #sample.plot_sample()
     

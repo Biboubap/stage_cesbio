@@ -152,12 +152,18 @@ class SamplesSet:
                 "r_var": getattr(s, "r_var", None),
                 "g_var": getattr(s, "g_var", None),
                 "b_var": getattr(s, "b_var", None),
+                "t_var": getattr(s, "t_var", None),
                 "z_var": getattr(s, "z_var", None),
                 "r_n_mean": getattr(s, "r_n_mean", None),
                 "g_n_mean": getattr(s, "g_n_mean", None),
                 "b_n_mean": getattr(s, "b_n_mean", None),
                 "t_n_mean": getattr(s, "t_n_mean", None),
                 "z_moins_z_n": getattr(s, "z_moins_z_n", None),
+                "r_n_var": getattr(s, "r_n_var", None),
+                "g_n_var": getattr(s, "g_n_var", None),
+                "b_n_var": getattr(s, "b_n_var", None),
+                "t_n_var": getattr(s, "t_n_var", None),
+                "z_n_var": getattr(s, "z_n_var", None),
             }
             data["samples"].append(sample_dict)
         with open(filename, "w") as f:
@@ -190,6 +196,7 @@ class SamplesSet:
             sample.r_var = s.get("r_var", None)
             sample.g_var = s.get("g_var", None)
             sample.b_var = s.get("b_var", None)
+            sample.t_var = s.get("t_var", None)
             sample.z_var = s.get("z_var", None)
             sample.r_mean = s.get("r_mean", None)
             sample.g_mean = s.get("g_mean", None)
@@ -199,8 +206,11 @@ class SamplesSet:
             sample.g_n_mean = s.get("g_n_mean", None)
             sample.b_n_mean = s.get("b_n_mean", None)
             sample.t_n_mean = s.get("t_n_mean", None)
-            sample.delta_z_x = s.get("delta_z_x", None)
-            sample.delta_z_y = s.get("delta_z_y", None)
+            sample.r_n_var = s.get("r_n_var", None)
+            sample.g_n_var = s.get("g_n_var", None)
+            sample.b_n_var = s.get("b_n_var", None)
+            sample.t_n_var = s.get("t_n_var", None)
+            sample.z_n_var = s.get("z_n_var", None)
             sample.z_moins_z_n = s.get("z_moins_z_n", None)
             samples_set.add_sample(sample)
         return samples_set
@@ -223,13 +233,18 @@ class SamplesSet:
                 size_patch=s.size_patch,
                 category=getattr(s, "category", None)
             )
-            for attr in ["r_mean", "g_mean", "b_mean", "t_mean", "r_var", "g_var", "b_var", "r_n_mean", "g_n_mean", "b_n_mean", "t_n_mean", "z_moins_z_n"]:
+            for attr in ["r_mean", "g_mean", "b_mean", "t_mean", 
+                         "r_var", "g_var", "b_var", "z_var", "t_var",
+                         "r_n_mean", "g_n_mean", "b_n_mean", "t_n_mean", 
+                         "r_n_var", "g_n_var", "b_n_var", "t_n_var",
+                         "z_n_var", "z_moins_z_n"]:
                 setattr(s_copy, attr, getattr(s, attr, None))
             new_set.samples[(s_copy.x, s_copy.y)] = s_copy
         return new_set
    
 
 if __name__ == "__main__":
+    print("Test de la classe SamplesSet")
     # Créer un ensemble de samples
     x_1 = 12800
     y_1 = 12000
@@ -247,16 +262,18 @@ if __name__ == "__main__":
     samples_set.fill_slope(depth_neighbors=1)
     #print(samples_set.samples)
     samples_set.plot_samples()
+    
     #samples_set.plot_samples_as_list()
     samples_set.remove_sample(2, 2)
     samples_set.plot_samples_as_list()
-
+   
     n_samples_x = 2
     n_samples_y = 2
     row_start = int(np.round(x_2/32))*32 #row X
     column_start = int(np.round(y_2/32))*32 #column Y
     samples_set2 = SamplesSet(n_samples_x=n_samples_x, n_samples_y=n_samples_y)
     samples_set2.create_samples_grid(x_start=row_start, y_start=column_start, size_patch=size_patch, category="tourbière")
+    samples_set2.fill_neighbors_all(depth_neighbors=1)
     samples_set2.plot_samples_as_list()
 
     merged_set = SamplesSet.concatenate_set(samples_set, samples_set2)
