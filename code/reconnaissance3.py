@@ -18,7 +18,8 @@ def load_samples(json_path):
             s["r_mean"], s["g_mean"], s["b_mean"],
             s["r_var"], s["g_var"], s["b_var"],
             s["r_n_mean"], s["g_n_mean"], s["b_n_mean"],
-            s["t_mean"], s["t_n_mean"],
+            s["r_n_var"], s["g_n_var"], s["b_n_var"],
+            s["t_mean"], s["t_n_mean"], s["t_var"], s["t_n_var"],
             s["z_var"], s["z_moins_z_n"]
         ]
         if None in feat or s["category"] is None:
@@ -32,13 +33,13 @@ def train_random_forest(features, labels, test_size=0.3, random_state=42):
         features, labels, test_size=test_size, random_state=random_state, stratify=labels
     )
     clf = RandomForestClassifier(
-        n_estimators=300,
+        n_estimators=200,
         max_depth=15,
         class_weight="balanced",
         random_state=42,
         n_jobs=-1,
         min_samples_leaf=3,
-        min_samples_split=6,
+        min_samples_split=3,
         max_features="sqrt"    # Nombre de features considérées à chaque split (standard pour RF)
     )
     clf.fit(X_train, y_train)
@@ -49,11 +50,11 @@ def train_random_forest(features, labels, test_size=0.3, random_state=42):
     return clf, X_test, y_test
 
 if __name__ == "__main__":
-    features, labels = load_samples("data/samples/selection5/merged2_sphaignes_lichen_crevasse.json")
+    features, labels = load_samples("data/samples/selection6/merged_pop6.json")
     clf, X_test, y_test = train_random_forest(features, labels)
     # Sauvegarde du modèle
     import joblib
-    joblib.dump(clf, "data/samples/selection5/model5.joblib")
+    joblib.dump(clf, "data/samples/selection6/model6_2.joblib")
 
 
 def grid_search_rf(features, labels, test_size=0.3, random_state=42):

@@ -60,12 +60,12 @@ class SamplesSet:
         for sample in self.samples.values():
             sample.compute_neighbors_color(sample_set=self, depth_neighbors=depth_neighbors)
 
-    def fill_neighbors_all(self, depth_neighbors=1):
+    def fill_neighbors_all(self, depth_neighbors=1, depth_neighbors_z=1):
             """
             Calcule et remplit les moyennes des couleurs des voisins pour tous les samples du set.
             """
             for sample in self.samples.values():
-                sample.compute_neighbors_all(sample_set=self, depth_neighbors=depth_neighbors)
+                sample.compute_neighbors_all(sample_set=self, depth_neighbors=depth_neighbors, depth_neighbors_z = depth_neighbors_z)
 
     def fill_slope(self, depth_neighbors=1):
         """

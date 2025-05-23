@@ -132,11 +132,11 @@ def random_forest_regression_lichen_multi(csv_path, indicateur_dir, databand1_pa
 if __name__ == "__main__":
     distance_bord = 0  # ou autre valeur
     random_forest_regression_lichen_multi(
-        csv_path="data/samples/selection5/regression/sqrt_balanced_2.csv",
+        csv_path="data/samples/selection6/regression/lichen_balanced.csv",
         indicateur_dir="data/sentinel2/indicateurs",
         databand1_path="data/sentinel2/rgb/databand1_reshaped.tif",
-        out_png="data/samples/selection5/regression/multiband_sqrt_balanced_2.png",
+        out_png="data/samples/selection6/regression/multiband1.png",
         distance_bord=distance_bord,
         show_mask=False,
-        sqrt=True
+        sqrt=False
     )

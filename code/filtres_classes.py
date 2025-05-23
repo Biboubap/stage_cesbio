@@ -53,12 +53,45 @@ def process_lichen_extraction(classif_tif, rgb_tif, out_mask_tif, out_lichen_tif
     print(out_lichen_tif)
     print(out_nonlichen_tif)
 
+def create_lichen_chicoutai_masks(classif, nodata_val=255):
+    """
+    Retourne deux masques uint8 : 
+    - lichen_mask = 1 pour lichen, 0 sinon, 255 pour nodata
+    - chicoutai_mask = 1 pour chicoutai, 0 sinon, 255 pour nodata
+    """
+    lichen_mask = np.zeros_like(classif, dtype=np.uint8)
+    chicoutai_mask = np.zeros_like(classif, dtype=np.uint8)
+
+    lichen_mask[classif == 1] = 1
+    chicoutai_mask[classif == 2] = 1
+
+    lichen_mask[classif == nodata_val] = nodata_val
+    chicoutai_mask[classif == nodata_val] = nodata_val
+
+    return lichen_mask, chicoutai_mask
+
+def process_lichen_extraction(classif_tif, rgb_tif, out_lichen_mask_tif, out_chicoutai_mask_tif, out_lichen_tif, out_nonlichen_tif):
+    classif, rgb, ds_classif, ds_rgb = load_classification_and_rgb(classif_tif, rgb_tif)
+    lichen_mask, chicoutai_mask = create_lichen_chicoutai_masks(classif)
+    lichen_rgb, nonlichen_rgb = apply_mask_to_rgb(rgb, lichen_mask)
+    save_mask(lichen_mask, ds_classif, out_lichen_mask_tif)
+    save_mask(chicoutai_mask, ds_classif, out_chicoutai_mask_tif)
+    save_rgb(lichen_rgb, ds_rgb, out_lichen_tif)
+    save_rgb(nonlichen_rgb, ds_rgb, out_nonlichen_tif)
+    print("Fichiers sauvegardés :")
+    print(out_lichen_mask_tif)
+    print(out_chicoutai_mask_tif)
+    print(out_lichen_tif)
+    print(out_nonlichen_tif)
+
 # Exemple d'utilisation
 if __name__ == "__main__":
+    
     process_lichen_extraction(
-        classif_tif="data/samples/selection5/classification_result.tif",
+        classif_tif="data/samples/selection6/classification_result_2.tif",
         rgb_tif="data/rgb_reshaped.tif",
-        out_mask_tif="data/samples/selection5/lichen_mask.tif",
-        out_lichen_tif="data/samples/selection5/lichen_rgb.tif",
-        out_nonlichen_tif="data/samples/selection5/nonlichen_rgb.tif"
+        out_lichen_mask_tif="data/samples/selection6/lichen_mask.tif",
+        out_chicoutai_mask_tif="data/samples/selection6/chicoutai_mask.tif",
+        out_lichen_tif="data/samples/selection6/lichen_rgb.tif",
+        out_nonlichen_tif="data/samples/selection6/nonlichen_rgb.tif"
     )
