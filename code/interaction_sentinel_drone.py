@@ -270,13 +270,11 @@ def mask_interior_pixels(df, distance=0, show=False):
 
     if show:
         # Affichage du masque
-        plt.imshow(mask_none, cmap='gray', interpolation='nearest')
+        plt.imshow(mask_none, cmap='gray')
         plt.title("Masque des pixels None")
-        plt.colorbar()
         plt.show()
 
-        plt.imshow(mask_valid, cmap='gray', interpolation='nearest')
-        plt.title("Masque des pixels valides")
+        plt.imshow(mask_valid, cmap='gray')
         plt.colorbar()
         plt.show()
 
@@ -392,10 +390,10 @@ def filter_and_balance_lichen(csv_in, csv_out, max_high=250, col="proportion_lic
 
 # # Exemple d'utilisation :
 # if __name__ == "__main__":
-#     transform_proportion_to_sqrt(
-#         "data/samples/selection5/lichen_proportion.csv",
-#         "data/samples/selection5/lichen_sqrt_proportion.csv"
-#     )
+    # transform_proportion_to_sqrt(
+    #     "data/samples/selection5/lichen_proportion.csv",
+    #     "data/samples/selection5/lichen_sqrt_proportion.csv"
+    # )
 #     transform_proportion_to_log(
 #         "data/samples/selection5/lichen_proportion.csv",
 #         "data/samples/selection5/lichen_log_proportion.csv"
@@ -411,28 +409,34 @@ def filter_and_balance_lichen(csv_in, csv_out, max_high=250, col="proportion_lic
 #     sqrt=True
 #     )
 
-
-# # Exemple d'utilisation :
+# Exemple d'utilisation :
 if __name__ == "__main__":
-#     plot_lichen_proportion_histogram(
-#         "data/samples/selection6/regression/lichen_proportion.csv",
-#         "data/samples/selection6/regression/hist_lichen.png",
-#     sqrt=False
-#    )
-    # transform_proportion_to_sqrt(
-    #     "data/samples/selection6/regression/lichen_proportion.csv",
-    #     "data/samples/selection6/regression/lichen_sqrt_proportion.csv"
-    # )
-    filter_and_balance_lichen(
-        "data/samples/selection6/regression/lichen_proportion.csv",
-        "data/samples/selection6/regression/lichen_balanced.csv",
-        max_high=10
+    
+    result = compute_lichen_proportion_per_sentinel_pixel(
+        mask_path="data/samples/selection8/lichen_mask.tif",
+        sentinel_path="DataCubeS2/Bandes/STACK_2023_BandB2_Twin_Lake_V2.tif"
     )
+    save_proportion_dict_to_csv(result, "data/samples/selection8/lichen_proportion_3.csv")
+
     plot_lichen_proportion_histogram(
-        "data/samples/selection6/regression/lichen_balanced.csv",
-        "data/samples/selection6/regression/hist_lichen_balanced.png",
+        "data/samples/selection8/regression/lichen_3.csv",
+        "data/samples/selection8/regression/hist_lichen_3.png",
     sqrt=False
    )
+#     # transform_proportion_to_sqrt(
+#     #     "data/samples/selection8/regression/lichen_proportion.csv",
+#     #     "data/samples/selection8/regression/lichen_sqrt_proportion.csv"
+#     # )
+#     filter_and_balance_lichen(
+#         "data/samples/selection8/regression/lichen_proportion_2.csv",
+#         "data/samples/selection8/regression/lichen_balanced_22.csv",
+#         max_high=20
+#     )
+#     plot_lichen_proportion_histogram(
+#         "data/samples/selection8/regression/lichen_balanced_22.csv",
+#         "data/samples/selection8/regression/hist_lichen_balanced_22.png",
+#     sqrt=False
+#    )
 #     plot_lichen_proportion_histogram(
 #         "data/samples/selection6/regression/lichen_sqrt_proportion.csv",
 #         "data/samples/selection6/regression/hist_sqrt_lichen.png",
@@ -440,13 +444,7 @@ if __name__ == "__main__":
 #    )
 
 # # # Exemple d'utilisation :
-# if __name__ == "__main__":
-#     result = compute_lichen_proportion_per_sentinel_pixel(
-#         mask_path="data/samples/selection6/lichen_mask.tif",
-#         sentinel_path="data/sentinel2/rgb/databand1_reshaped.tif"
-#     )
-#     save_proportion_dict_to_csv(result, "data/samples/selection6/lichen_proportion.csv")
-
+# 
 
 
 # # Exemple d'utilisation :

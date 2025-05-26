@@ -88,10 +88,11 @@ def process_lichen_extraction(classif_tif, rgb_tif, out_lichen_mask_tif, out_chi
 if __name__ == "__main__":
     
     process_lichen_extraction(
-        classif_tif="data/samples/selection6/classification_result_2.tif",
+        classif_tif="data/samples/selection8/classification_result_2.tif",
         rgb_tif="data/rgb_reshaped.tif",
-        out_lichen_mask_tif="data/samples/selection6/lichen_mask.tif",
-        out_chicoutai_mask_tif="data/samples/selection6/chicoutai_mask.tif",
-        out_lichen_tif="data/samples/selection6/lichen_rgb.tif",
-        out_nonlichen_tif="data/samples/selection6/nonlichen_rgb.tif"
+        out_lichen_mask_tif="data/samples/selection8/lichen_mask.tif",
+        out_chicoutai_mask_tif="data/samples/selection8/chicoutai_mask.tif",
+        out_lichen_tif="data/samples/selection8/lichen_rgb.tif",
+        out_nonlichen_tif="data/samples/selection8/nonlichen_rgb.tif"
     )
+    

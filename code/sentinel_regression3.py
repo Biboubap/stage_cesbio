@@ -10,24 +10,22 @@ import os
 
 from interaction_sentinel_drone import load_proportion_csv, mask_interior_pixels
 
-def load_all_sentinel_features(indicateur_dir, databand1_path):
-    """
-    Charge toutes les bandes des fichiers *_reshaped.tif dans indicateur_dir,
-    ainsi que databand1_path, et retourne un tableau (n_bandes, rows, cols)
-    et la liste des noms de bandes.
-    """
+def load_all_sentinel_features(indices_dir, bands_dir):
+    
     # Liste tous les fichiers *_reshaped.tif (hors databand1)
-    tif_files = sorted(glob.glob(os.path.join(indicateur_dir, "*_reshaped.tif")))
+    bandes_files = sorted(glob.glob(os.path.join(bands_dir, "*.tif")))
+    indices_files = sorted(glob.glob(os.path.join(indices_dir, "*.tif")))
     # S'assure que databand1 est en premier
-    if databand1_path not in tif_files:
-        tif_files = [databand1_path] + tif_files
-    else:
-        tif_files.remove(databand1_path)
-        tif_files = [databand1_path] + tif_files
+
 
     bands = []
     band_names = []
-    for tif in tif_files:
+    for tif in bandes_files:
+        ds = gdal.Open(tif)
+        arr = ds.GetRasterBand(1).ReadAsArray()
+        bands.append(arr)
+        band_names.append(os.path.splitext(os.path.basename(tif))[0])
+    for tif in indices_files:
         ds = gdal.Open(tif)
         arr = ds.GetRasterBand(1).ReadAsArray()
         bands.append(arr)
@@ -36,10 +34,10 @@ def load_all_sentinel_features(indicateur_dir, databand1_path):
     return features, band_names
 
 
-def random_forest_regression_lichen_multi(csv_path, indicateur_dir, databand1_path, out_png, distance_bord=0, show_mask=False, sqrt=False):
+def random_forest_regression_lichen_multi(csv_path, indices, bandes, out_png, distance_bord=0, show_mask=False, sqrt=False):
     # Charge les données
     df = load_proportion_csv(csv_path)
-    features, band_names = load_all_sentinel_features(indicateur_dir, databand1_path)
+    features, band_names = load_all_sentinel_features(indices_dir=indices, bands_dir=bandes)
 
     # Choix de la colonne cible selon sqrt
     target_col = "sqrt_proportion_lichen" if sqrt else "proportion_lichen"
@@ -131,13 +129,13 @@ def random_forest_regression_lichen_multi(csv_path, indicateur_dir, databand1_pa
 
 # Exemple d'utilisation :
 if __name__ == "__main__":
-    distance_bord = 0  # ou autre valeur
+    distance_bord = 1  # ou autre valeur
     random_forest_regression_lichen_multi(
-        csv_path="data/samples/selection8/regression/lichen_balanced.csv",
-        indicateur_dir="data/sentinel2/indicateurs",
-        databand1_path="data/sentinel2/rgb/databand1_reshaped.tif",
-        out_png="data/samples/selection8/regression/multiband1.png",
+        csv_path="data/samples/selection8/regression/lichen_balanced_22.csv",
+        bandes="DataCubeS2/Bandes/median",
+        indices="DataCubeS2/Indices/median",
+        out_png="data/samples/selection8/regression/multiband_and_indices_1.png",
         distance_bord=distance_bord,
-        show_mask=False,
+        show_mask=True,
         sqrt=False
     )
