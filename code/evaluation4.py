@@ -44,23 +44,25 @@ def predict_samples_2(clf, features, positions, n_samples_x, n_samples_y, sample
     class_to_val = {
         "lichen": 1,
         "chicoutai": 2,
+        "crevasse": 3,
+        "sphaignes": 4,
         "None": 0
     }
     samples_matrix = samples_set.get_samples_matrix() if samples_set is not None else None
 
     for idx, (i_x, i_y) in enumerate(positions):
         s = samples_matrix[i_y][i_x] if samples_matrix is not None else None
-        # Vérification du cas "pas de données"
+        # Cas "pas de données" via masque
         if s is not None and mask is not None:
-            # Pixel central du patch
             cx = s.x + size_patch // 2
             cy = s.y + size_patch // 2
             if mask[cx, cy] == 0:
-                pred_map[i_y, i_x] = 255
-                continue
-            if s.r_mean == 0 and s.g_mean == 0 and s.b_mean == 0:
                 pred_map[i_y, i_x] = 0
                 continue
+        # Cas "patch noir" (hors masque ou masque absent)
+        if s is not None and s.r_mean == 0 and s.g_mean == 0 and s.b_mean == 0:
+            pred_map[i_y, i_x] = 0
+            continue
         pred_map[i_y, i_x] = class_to_val.get(preds[idx], 0)
     return pred_map
 
@@ -70,7 +72,9 @@ def create_classification_map(pred_map, size_patch):
     color_dict = {
         1: [200, 200, 200],   # lichen : gris clair
         2: [0, 100, 0],       # chicoutai : vert foncé
-        255: [0, 0, 0],       # mask out : noir
+        3: [60, 60, 60],      # crevasse : gris foncé
+        4: [181, 101, 29],    # sphaignes : brun
+        0: [0, 0, 0],       # mask out : noir
     }
     for i_x in range(n_samples_x):
         for i_y in range(n_samples_y):
@@ -93,10 +97,12 @@ def plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path=N
     # Légende des couleurs
     color_labels = [
         ("lichen",      [200, 200, 200]),
+        ("chicoutai",   [0, 100, 0]),
         ("sphaignes",    [181, 101, 29]),
         ("crevasse",    [60, 60, 60]),
+        
         # ("foret",       [0, 80, 0]),
-        ("flaque",      [0, 0, 120]),
+        #("flaque",      [0, 0, 120]),
         # ("lac",         [64, 224, 208]),
     ]
     patches = [mpatches.Patch(color=np.array(rgb)/255, label=label) for label, rgb in color_labels]
@@ -237,6 +243,22 @@ def load_precomputed_data(path_prefix):
     print(f"Pré-calculs chargés depuis préfixe {path_prefix}")
     return data["samples_set"], data["n_samples_x"], data["n_samples_y"], rgb_img, data["features"], data["positions"]
 
+def create_classification_map_transparent(pred_map, size_patch):
+    n_samples_y, n_samples_x = pred_map.shape
+    color_map = np.zeros((n_samples_x*size_patch, n_samples_y*size_patch, 4), dtype=np.uint8)  # 4 canaux (RGBA)
+    color_dict = {
+        1: [200, 200, 200, 255],   # lichen : gris clair
+        2: [0, 100, 0, 255],       # chicoutai : vert foncé
+        3: [60, 60, 60, 255],      # crevasse : gris foncé
+        4: [181, 101, 29, 255],    # sphaignes : brun
+        0: [0, 0, 0, 0],         # mask out : transparent
+    }
+    for i_x in range(n_samples_x):
+        for i_y in range(n_samples_y):
+            val = pred_map[i_y, i_x]
+            color = color_dict.get(val, [0, 0, 0, 0])
+            color_map[i_x*size_patch:(i_x+1)*size_patch, i_y*size_patch:(i_y+1)*size_patch, :] = color
+    return color_map
 
 def main_prediction():
     # Paramètres de la fenêtre à tester
@@ -248,9 +270,9 @@ def main_prediction():
     size_patch = 16
     
     # 1. Créer les samples et calculer les paramètres
-    samples_set, n_samples_x, n_samples_y = create_samples_and_compute(
-        x_start, y_start, x_end, y_end, size_patch
-    )
+    # samples_set, n_samples_x, n_samples_y = create_samples_and_compute(
+    #     x_start, y_start, x_end, y_end, size_patch
+    # )
 
     # # 2. Générer l'image RGB à partir des samples
     # rgb_img = create_rgb_image_from_samples(samples_set, n_samples_x, n_samples_y, size_patch)
@@ -264,38 +286,39 @@ def main_prediction():
     samples_set, n_samples_x, n_samples_y, rgb_img, features, positions = load_precomputed_data("data/samples/selection6/precalc")
 
     # 4. Charger le modèle
-    clf = joblib.load("data/samples/selection6/model6_2.joblib")
+    clf = joblib.load("data/samples/selection7/model7.joblib")
     print("Modèle chargé.")
     
-    #4.5 Définir la zone de prédiction
-    mask_path = "data/samples/selection5/lichen_mask.tif"
-    mask = load_mask_tiff(mask_path)
+    # #4.5 Définir la zone de prédiction
+    # mask_path = "data/samples/selection5/lichen_mask.tif"
+    # mask = load_mask_tiff(mask_path)
 
     # 5. Prédire
     pred_map = predict_samples_2(
         clf, features, positions, n_samples_x, n_samples_y, samples_set,
-        mask=mask, size_patch=size_patch
+        mask=None, size_patch=size_patch
     )
     print("Prédictions effectuées.")
     
     # 6. Filtrage des samples isolés
-    pred_map_filtered = filter_isolated_samples(pred_map)
+    pred_map_filtered = pred_map#filter_isolated_samples(pred_map)
 
     # 7. Créer la carte de classification
     color_map = create_classification_map(pred_map_filtered, size_patch)
+    
     print("Carte de classification créée.")
     # 8. Afficher et sauvegarder les résultats
-    plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path="data/samples/selection6/classification_result_2.png")
+    plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path="data/samples/selection7/classification_result_1.png")
     print("Résultats affichés et sauvegardés.")
 
     # 9. Sauvegarder la carte de classification au format .tif
     save_classification_to_tif(
         pred_map_filtered,
         ref_tif_path="data/rgb_reshaped.tif",
-        out_tif_path="data/samples/selection6/classification_result_2.tif",
+        out_tif_path="data/samples/selection7/classification_result_1.tif",
         size_patch = size_patch
     )
-    plot_feature_importances(clf, save_path = "data/samples/selection6/feature_importances_2.png")
+    plot_feature_importances(clf, save_path = "data/samples/selection7/feature_importances_1.png")
 
    
 if __name__ == "__main__":

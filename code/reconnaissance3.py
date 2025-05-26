@@ -28,13 +28,13 @@ def load_samples(json_path):
         labels.append(s["category"])
     return np.array(features), np.array(labels)
 
-def train_random_forest(features, labels, test_size=0.3, random_state=42):
+def train_random_forest(features, labels, test_size=0.2, random_state=42):
     X_train, X_test, y_train, y_test = train_test_split(
         features, labels, test_size=test_size, random_state=random_state, stratify=labels
     )
     clf = RandomForestClassifier(
         n_estimators=200,
-        max_depth=15,
+        max_depth=20,
         class_weight="balanced",
         random_state=42,
         n_jobs=-1,
@@ -50,11 +50,11 @@ def train_random_forest(features, labels, test_size=0.3, random_state=42):
     return clf, X_test, y_test
 
 if __name__ == "__main__":
-    features, labels = load_samples("data/samples/selection6/merged_pop6.json")
+    features, labels = load_samples("data/samples/selection7/merged_pop7.json")
     clf, X_test, y_test = train_random_forest(features, labels)
     # Sauvegarde du modèle
     import joblib
-    joblib.dump(clf, "data/samples/selection6/model6_2.joblib")
+    joblib.dump(clf, "data/samples/selection7/model7.joblib")
 
 
 def grid_search_rf(features, labels, test_size=0.3, random_state=42):
@@ -85,11 +85,11 @@ def grid_search_rf(features, labels, test_size=0.3, random_state=42):
     return grid.best_estimator_, X_test, y_test
 
 # if __name__ == "__main__":
-#     features, labels = load_samples("data/samples/selection5/merged2_sphaignes_lichen_crevasse.json")
+#     features, labels = load_samples("data/samples/selection7/merged_pop7.json")
 #     clf, X_test, y_test = grid_search_rf(features, labels)
 #     # Sauvegarde du meilleur modèle
-#     import joblib
-#     joblib.dump(clf, "data/samples/selection3/random_forest_best_model5.joblib")
+#     # import joblib
+#     # joblib.dump(clf, "data/samples/selection3/random_forest_best_model5.joblib")
 
 # from sklearn.ensemble import RandomForestClassifier
 # from sklearn.model_selection import cross_val_score

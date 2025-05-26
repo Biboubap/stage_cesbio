@@ -27,36 +27,29 @@ def merge_populations(json_paths):
         "n_samples_y": None,
         "samples": all_samples
     }
-def merge_populations_from_dir(directory):
+def merge_populations_from_dir(directory, mosaic_to_reshaped=False):
     """Fusionne toutes les populations JSON d'un dossier et retourne un SamplesSet."""
-    json_files = glob.glob(os.path.join(directory, "crevasse_*.json"))
+    json_files = glob.glob(os.path.join(directory, "*.json"))
     print(f"Fichiers JSON trouvés : {json_files}")
-    all_samples = []
+    samples_set = SamplesSet(n_samples_x=None, n_samples_y=None)
     for path in json_files:
         data = load_population(path)
         for s in data.get("samples", []):
+            x=s.get("x")
+            y=s.get("y")
+            if mosaic_to_reshaped:
+                        x -= 2454
+                        y -= 4963
             sample = Sample(
-                i_x=s.get("i_x"),
-                i_y=s.get("i_y"),
-                x=s.get("x"),
-                y=s.get("y"),
+                i_x=None,
+                i_y=None,
+                x = x,
+                y = y,
                 size_patch=s.get("size_patch"),
                 category=s.get("category", None)
             )
             # Remplis ici d'autres attributs si besoin
-            all_samples.append(sample)
-    # Déduire n_samples_x et n_samples_y si possible, sinon None
-    n_samples_x = None
-    n_samples_y = None
-    if all_samples:
-        i_xs = [s.i_x for s in all_samples if s.i_x is not None]
-        i_ys = [s.i_y for s in all_samples if s.i_y is not None]
-        if i_xs and i_ys:
-            n_samples_x = max(i_xs) + 1
-            n_samples_y = max(i_ys) + 1
-    samples_set = SamplesSet(n_samples_x=n_samples_x, n_samples_y=n_samples_y)
-    for s in all_samples:
-        samples_set.add_sample(s)
+            samples_set.add_sample(sample)
     return samples_set
 
 
@@ -71,7 +64,8 @@ def filter_categories(samples, keep_categories):
     """Ne garde que certaines catégories dans une liste de samples."""
     return [s for s in samples if s.get("category") in keep_categories]
 
-def count_categories(samples):
+def count_categories(sample_set):
+    samples = sample_set.samples.values() 
     """Compte le nombre d'échantillons par catégorie."""
     # Supporte à la fois dicts et objets Sample
     def get_cat(s):
@@ -84,13 +78,18 @@ def count_categories(samples):
         print(f"{cat}: {n}")
     return counts
 
-def random_sample_category(samples, category, n_max):
+def random_sample_category(sample_set, category, n_max):
+    samples = list(sample_set.samples.values())
     """Garde au maximum n_max échantillons d'une catégorie, choisis au hasard."""
-    cat_samples = [s for s in samples if s.get("category") == category]
-    other_samples = [s for s in samples if s.get("category") != category]
+    cat_samples = [s for s in samples if getattr(s, "category", None) == category]
+    other_samples = [s for s in samples if getattr(s, "category", None) != category]
     if len(cat_samples) > n_max:
         cat_samples = random.sample(cat_samples, n_max)
-    return cat_samples + other_samples
+    # Création d'un nouveau SamplesSet pour rester cohérent avec le reste du code
+    new_set = SamplesSet()
+    for s in cat_samples + other_samples:
+        new_set.add_sample(s)
+    return new_set
 
 def balance_two_categories(samples, cat1, cat2):
     """Équilibre deux catégories en gardant le même nombre d'échantillons pour chaque."""
@@ -110,7 +109,7 @@ def split_sampleset(samples_set):
     Découpe chaque sample 32x32 en 4 samples 16x16, complète leurs données,
     et retourne un nouveau SamplesSet.
     """
-    new_samples = []
+    new_samples_set = SamplesSet()
     for s in samples_set.samples.values():
         x0, y0 = s.x, s.y
         for dx in [0, 16]:
@@ -121,45 +120,54 @@ def split_sampleset(samples_set):
                     i_y=None,
                     x=x0 + dx,
                     y=y0 + dy,
-                    size_patch=16,
+                    size_patch=getattr(s, "size_patch", None),
                     category=getattr(s, "category", None)
                 )
-                new_samples.append(new_sample)
+                new_samples_set.add_sample(new_sample)
     # Création du nouveau SamplesSet (sans grille imposée)
-    new_samples_set = SamplesSet()
-    for s in new_samples:
-        new_samples_set.add_sample(s)
+
     return new_samples_set
 
 # Exemple d'utilisation :
 if __name__ == "__main__":
-    # Fusionne deux populations, renomme, filtre, limite le nombre de lichen, sauvegarde
-    #pop1 = load_population("data/samples/selection4/pop3_noforestlake.json")
-    crevasses = merge_populations_from_dir("data/samples/selection3")
-    print("Nombre d'échantillons avant : ", len(crevasses.samples))
-    crevasses_split=split_sampleset(crevasses)
-    print(crevasses_split)
-    crevasses_split.fill_neighbors_all()
-    #all_samples = pop1["samples"] + pop2["samples"]
+   
+    # pop6 = SamplesSet.load_samples_from_json("data/samples/selection6/merged_pop6.json")
+    # pop7 = merge_populations_from_dir("data/samples/selection7")
+    # pop_merged=SamplesSet.concatenate_set(pop6, pop7)
+    
+    
+    
+    # #all_samples = pop1["samples"] + pop2["samples"]
 
-    # Renomme "sphegnes" en "sphaignes"
-    #all_samples = rename_category(all_samples, "sphegnes", "sphaignes")
+    # # Renomme "sphegnes" en "sphaignes"
+    # #all_samples = rename_category(all_samples, "sphegnes", "sphaignes")
 
-    # Ne garde que sphaignes, lichen, crevasse
-    #keep_classes = {"sphaignes", "lichen", "crevasse"}
-    #all_samples = filter_categories(all_samples, keep_classes)
+    # # Ne garde que sphaignes, lichen, crevasse
+    # #keep_classes = {"sphaignes", "lichen", "crevasse"}
+    # #all_samples = filter_categories(all_samples, keep_classes)
 
-    # Limite à 1600 lichen
-    #all_samples = random_sample_category(pop2["samples"],"chicoutai", 834)
-
-    # Compte les classes
-    print("Comptage final :")
-    count_categories(crevasses_split.samples)
-
-    # # Sauvegarde
+    # # Limite à 1600 lichen
+    # for category in ["chicoutai", "crevasse", "sphaignes"]:
+    #     pop_merged = random_sample_category(pop_merged,category, 850)
+    
+    # pop_merged.fill_neighbors_all()
+    # print("Comptage final :")
+    # count_categories(pop_merged)
+    # pop_merged.save_samples_to_json("data/samples/selection7/pop7_merged.json")
+    # # # Sauvegarde
     # merged_data = {
     #     "n_samples_x": None,
     #     "n_samples_y": None,
     #     "samples": all_samples
     # }
-    crevasses_split.save_samples_to_json("data/samples/selection7/crevasses16.json")
+
+    #Decoupage des samples 32x32 en 16x16
+    crevasses = merge_populations_from_dir("data/samples/selection3/crevasses", mosaic_to_reshaped=True)
+    crevasses_split=split_sampleset(crevasses)
+    print(crevasses_split)
+    crevasses_split.fill_neighbors_all()
+ 
+    print("Comptage final :")
+    count_categories(crevasses_split)
+
+    crevasses_split.save_samples_to_json("data/samples/selection7/crevasses.json")
