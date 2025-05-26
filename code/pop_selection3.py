@@ -168,21 +168,21 @@ def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_p
 
 if __name__ == "__main__":
     # Paramètres de la grille globale
-    x_start = 10486
-    y_start =  6976
+    x_start = 11839
+    y_start = 15119
     size_patch = 16
     depth_neighbors = 1
 
     n_samples_x = 20
-    n_samples_y = 80
-    file_path = "data/samples/selection7/"
+    n_samples_y = 10
+    file_path = "data/samples/selection8/"
 
     class_dict = {
         "l": "lichen", #white and green lichen with small bushs
         "c" : "chicoutai", #chicoutai & thé du Labrador
 
         "s": "sphaignes", #orange sphaignes in dry troughs and land
-        "c": "crevasses", #troughs with water
+        "t": "crevasse", #troughs with water
         # "w": "lac", #lakecn
         # "f": "foret",
         # "qe" : "flaque_eau", #large depression with water

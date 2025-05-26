@@ -1,0 +1,64 @@
+Accuracy: 0.9375886524822695
+Confusion matrix:
+ [[181   2   6  11]
+ [  1 124   0   3]
+ [  8   0 177   0]
+ [ 13   0   0 179]]
+Classification report:
+               precision    recall  f1-score   support
+
+   chicoutai       0.89      0.91      0.90       200
+   crevasses       0.98      0.97      0.98       128
+      lichen       0.97      0.96      0.96       185
+   sphaignes       0.93      0.93      0.93       192
+
+    accuracy                           0.94       705
+   macro avg       0.94      0.94      0.94       705
+weighted avg       0.94      0.94      0.94       705
+
+def train_random_forest(features, labels, test_size=0.2, random_state=42):
+    X_train, X_test, y_train, y_test = train_test_split(
+        features, labels, test_size=test_size, random_state=random_state, stratify=labels
+    )
+    clf = RandomForestClassifier(
+        n_estimators=200,
+        max_depth=15,
+        class_weight="balanced",
+        random_state=42,
+        n_jobs=-1,
+        min_samples_leaf=3,
+        min_samples_split=3,
+        max_features="sqrt"    # Nombre de features considérées à chaque split (standard pour RF)
+    )
+
+Comptage final :
+crevasses: 641
+sphaignes: 958
+chicoutai: 1000
+lichen: 923  
+
+
+
+Model2
+Accuracy: 0.9402697495183044
+Confusion matrix:
+ [[120   3   2   5]
+ [  2 124   0   3]
+ [  4   0 126   0]
+ [ 11   1   0 118]]
+Classification report:
+               precision    recall  f1-score   support
+
+   chicoutai       0.88      0.92      0.90       130
+   crevasses       0.97      0.96      0.96       129
+      lichen       0.98      0.97      0.98       130
+   sphaignes       0.94      0.91      0.92       130
+
+    accuracy                           0.94       519
+   macro avg       0.94      0.94      0.94       519
+weighted avg       0.94      0.94      0.94       519
+Comptage final :
+crevasses: 641
+sphaignes: 650
+chicoutai: 650
+lichen: 650  

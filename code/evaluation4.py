@@ -286,7 +286,7 @@ def main_prediction():
     samples_set, n_samples_x, n_samples_y, rgb_img, features, positions = load_precomputed_data("data/samples/selection6/precalc")
 
     # 4. Charger le modèle
-    clf = joblib.load("data/samples/selection7/model7.joblib")
+    clf = joblib.load("data/samples/selection8/model8_2.joblib")
     print("Modèle chargé.")
     
     # #4.5 Définir la zone de prédiction
@@ -308,17 +308,17 @@ def main_prediction():
     
     print("Carte de classification créée.")
     # 8. Afficher et sauvegarder les résultats
-    plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path="data/samples/selection7/classification_result_1.png")
+    plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path="data/samples/selection8/classification_result_2.png")
     print("Résultats affichés et sauvegardés.")
 
     # 9. Sauvegarder la carte de classification au format .tif
     save_classification_to_tif(
         pred_map_filtered,
         ref_tif_path="data/rgb_reshaped.tif",
-        out_tif_path="data/samples/selection7/classification_result_1.tif",
+        out_tif_path="data/samples/selection8/classification_result_2.tif",
         size_patch = size_patch
     )
-    plot_feature_importances(clf, save_path = "data/samples/selection7/feature_importances_1.png")
+    plot_feature_importances(clf, save_path = "data/samples/selection8/feature_importances_2.png")
 
    
 if __name__ == "__main__":

@@ -1,0 +1,4 @@
+crevasses: 645
+sphaignes: 93
+chicoutai: 448
+lichen: 89

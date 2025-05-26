@@ -53,12 +53,13 @@ def merge_populations_from_dir(directory, mosaic_to_reshaped=False):
     return samples_set
 
 
-def rename_category(samples, old_name, new_name):
+def rename_category(sample_set, old_name, new_name):
+    samples = sample_set.samples.values()
     """Renomme une catégorie dans une liste de samples."""
     for s in samples:
-        if s.get("category") == old_name:
-            s["category"] = new_name
-    return samples
+        if getattr(s, "category", None) == old_name:
+            s.category = new_name
+    
 
 def filter_categories(samples, keep_categories):
     """Ne garde que certaines catégories dans une liste de samples."""
@@ -131,29 +132,31 @@ def split_sampleset(samples_set):
 # Exemple d'utilisation :
 if __name__ == "__main__":
    
-    # pop6 = SamplesSet.load_samples_from_json("data/samples/selection6/merged_pop6.json")
-    # pop7 = merge_populations_from_dir("data/samples/selection7")
-    # pop_merged=SamplesSet.concatenate_set(pop6, pop7)
+    pop6 = SamplesSet.load_samples_from_json("data/samples/selection6/merged_pop6.json")
+    pop7 = merge_populations_from_dir("data/samples/selection7")
+    pop8 = merge_populations_from_dir("data/samples/selection8")
+    pop_merged=SamplesSet.concatenate_set(SamplesSet.concatenate_set(pop6, pop7),pop8)
+    rename_category(pop_merged, "crevasses", "crevasse")
     
     
     
     # #all_samples = pop1["samples"] + pop2["samples"]
 
     # # Renomme "sphegnes" en "sphaignes"
-    # #all_samples = rename_category(all_samples, "sphegnes", "sphaignes")
+    # #
 
     # # Ne garde que sphaignes, lichen, crevasse
     # #keep_classes = {"sphaignes", "lichen", "crevasse"}
     # #all_samples = filter_categories(all_samples, keep_classes)
 
-    # # Limite à 1600 lichen
-    # for category in ["chicoutai", "crevasse", "sphaignes"]:
-    #     pop_merged = random_sample_category(pop_merged,category, 850)
     
-    # pop_merged.fill_neighbors_all()
-    # print("Comptage final :")
-    # count_categories(pop_merged)
-    # pop_merged.save_samples_to_json("data/samples/selection7/pop7_merged.json")
+    for category in ["chicoutai", "crevasse", "sphaignes", "lichen"]:
+        pop_merged = random_sample_category(pop_merged,category, 650)
+    
+    pop_merged.fill_neighbors_all()
+    print("Comptage final :")
+    count_categories(pop_merged)
+    pop_merged.save_samples_to_json("data/samples/selection8/merged_pop/merged_pop8_2.json")
     # # # Sauvegarde
     # merged_data = {
     #     "n_samples_x": None,
@@ -161,13 +164,13 @@ if __name__ == "__main__":
     #     "samples": all_samples
     # }
 
-    #Decoupage des samples 32x32 en 16x16
-    crevasses = merge_populations_from_dir("data/samples/selection3/crevasses", mosaic_to_reshaped=True)
-    crevasses_split=split_sampleset(crevasses)
-    print(crevasses_split)
-    crevasses_split.fill_neighbors_all()
+    # #Decoupage des samples 32x32 en 16x16
+    # crevasses = merge_populations_from_dir("data/samples/selection3/crevasses", mosaic_to_reshaped=True)
+    # crevasses_split=split_sampleset(crevasses)
+    # print(crevasses_split)
+    # crevasses_split.fill_neighbors_all()
  
-    print("Comptage final :")
-    count_categories(crevasses_split)
+    # print("Comptage final :")
+    # count_categories(crevasses_split)
 
-    crevasses_split.save_samples_to_json("data/samples/selection7/crevasses.json")
+    # crevasses_split.save_samples_to_json("data/samples/selection7/crevasses.json")
