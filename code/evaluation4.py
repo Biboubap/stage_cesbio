@@ -57,7 +57,7 @@ def predict_samples_2(clf, features, positions, n_samples_x, n_samples_y, sample
             cx = s.x + size_patch // 2
             cy = s.y + size_patch // 2
             if mask[cx, cy] == 0:
-                pred_map[i_y, i_x] = 0
+                pred_map[i_y, i_x] = 255
                 continue
         # Cas "patch noir" (hors masque ou masque absent)
         if s is not None and s.r_mean == 0 and s.g_mean == 0 and s.b_mean == 0:
@@ -75,6 +75,7 @@ def create_classification_map(pred_map, size_patch):
         3: [60, 60, 60],      # crevasse : gris foncé
         4: [181, 101, 29],    # sphaignes : brun
         0: [0, 0, 0],       # mask out : noir
+        255: [0, 0, 0]      # no data : noir
     }
     for i_x in range(n_samples_x):
         for i_y in range(n_samples_y):
@@ -85,15 +86,17 @@ def create_classification_map(pred_map, size_patch):
 
 def plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path=None):
     import matplotlib.patches as mpatches
-
+    print("test0")
     fig, axes = plt.subplots(1, 2, figsize=(16, 8))
+    print("rgb_img shape:", rgb_img.shape)
+    print("color_map shape:", color_map.shape)
     axes[0].imshow(rgb_img)
     axes[0].set_title(f"Image RGB\nFenêtre x: {x_start}-{x_end}, y: {y_start}-{y_end}")
     axes[0].axis("off")
     axes[1].imshow(color_map)
     axes[1].set_title("Carte de classification\nFenêtre x: {}-{}, y: {}-{}".format(x_start, x_end, y_start, y_end))
     axes[1].axis("off")
-
+    print("test1")
     # Légende des couleurs
     color_labels = [
         ("lichen",      [200, 200, 200]),
@@ -107,7 +110,7 @@ def plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path=N
     ]
     patches = [mpatches.Patch(color=np.array(rgb)/255, label=label) for label, rgb in color_labels]
     axes[1].legend(handles=patches, loc='lower right', fontsize=10, title="Écozones")
-
+    print("test2")
     plt.tight_layout()
     if save_path:
         plt.savefig(save_path)
@@ -260,6 +263,46 @@ def create_classification_map_transparent(pred_map, size_patch):
             color_map[i_x*size_patch:(i_x+1)*size_patch, i_y*size_patch:(i_y+1)*size_patch, :] = color
     return color_map
 
+from osgeo import gdal
+import numpy as np
+
+def merge_classif(classif1_path, classif2_path, out_path, nodata_val=0, both_val=255):
+    """
+    Fusionne deux rasters de classification :
+    - Si un pixel est non nul dans une seule classif, on prend sa valeur.
+    - Si un pixel est nul dans les deux, on met 0 (et transparent si RGBA).
+    - Si un pixel est non nul dans les deux, on met 255.
+    """
+    ds1 = gdal.Open(classif1_path)
+    ds2 = gdal.Open(classif2_path)
+    arr1 = ds1.GetRasterBand(1).ReadAsArray()
+    arr2 = ds2.GetRasterBand(1).ReadAsArray()
+    assert arr1.shape == arr2.shape, "Les deux rasters doivent avoir la même taille"
+
+    merged = np.zeros_like(arr1, dtype=np.uint8)
+
+    # Cas 1 : non nul dans les deux
+    arr1[arr1 == 255] = 0
+    arr2[arr2 == 255] = 0
+    arr2[arr2 != 0] += 10
+    merged = arr1 + arr2 
+   
+    # Cas 4 : nul dans les deux => déjà à 0 (transparent si RGBA)
+
+    # Sauvegarde
+    driver = gdal.GetDriverByName('GTiff')
+    out_ds = driver.Create(out_path, arr1.shape[1], arr1.shape[0], 1, gdal.GDT_Byte)
+    out_ds.GetRasterBand(1).WriteArray(merged)
+    out_ds.GetRasterBand(1).SetNoDataValue(nodata_val)
+    out_ds.SetGeoTransform(ds1.GetGeoTransform())
+    out_ds.SetProjection(ds1.GetProjection())
+    out_ds.FlushCache()
+    out_ds = None
+    print(f"Carte fusionnée sauvegardée dans {out_path}")
+
+# Exemple d'utilisation :
+# merge_classif("classif1.tif", "classif2.tif", "fusion_classif.tif")
+
 def main_prediction():
     # Paramètres de la fenêtre à tester
     
@@ -286,17 +329,17 @@ def main_prediction():
     samples_set, n_samples_x, n_samples_y, rgb_img, features, positions = load_precomputed_data("data/samples/selection6/precalc")
 
     # 4. Charger le modèle
-    clf = joblib.load("data/samples/selection8/model8_2.joblib")
+    clf = joblib.load("data/samples/selection9/model_nonlichen.joblib")
     print("Modèle chargé.")
     
-    # #4.5 Définir la zone de prédiction
-    # mask_path = "data/samples/selection5/lichen_mask.tif"
-    # mask = load_mask_tiff(mask_path)
+    #4.5 Définir la zone de prédiction
+    mask_path = "data/samples/selection9/non_lichen_mask.tif"
+    mask = load_mask_tiff(mask_path)
 
     # 5. Prédire
     pred_map = predict_samples_2(
         clf, features, positions, n_samples_x, n_samples_y, samples_set,
-        mask=None, size_patch=size_patch
+        mask=mask, size_patch=size_patch
     )
     print("Prédictions effectuées.")
     
@@ -308,19 +351,19 @@ def main_prediction():
     
     print("Carte de classification créée.")
     # 8. Afficher et sauvegarder les résultats
-    plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path="data/samples/selection8/classification_result_2.png")
+    plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path="data/samples/selection9/classification_result_nonlichen.png")
     print("Résultats affichés et sauvegardés.")
 
     # 9. Sauvegarder la carte de classification au format .tif
     save_classification_to_tif(
         pred_map_filtered,
         ref_tif_path="data/rgb_reshaped.tif",
-        out_tif_path="data/samples/selection8/classification_result_2.tif",
+        out_tif_path="data/samples/selection8/classification_result_nonlichen.tif",
         size_patch = size_patch
     )
-    plot_feature_importances(clf, save_path = "data/samples/selection8/feature_importances_2.png")
+    plot_feature_importances(clf, save_path = "data/samples/selection9/feature_importances_nonlichen.png")
 
-   
+ 
 if __name__ == "__main__":
-    main_prediction()
-   
+    #main_prediction()
+    merge_classif("data/samples/selection6/classification_result_2.tif", "data/samples/selection9/classification_result_nonlichen.tif", "data/samples/selection9/fusion_classif.tif")

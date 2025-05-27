@@ -50,11 +50,11 @@ def train_random_forest(features, labels, test_size=0.2, random_state=42):
     return clf, X_test, y_test
 
 if __name__ == "__main__":
-    features, labels = load_samples("data/samples/selection8/merged_pop/merged_pop8_2.json")
+    features, labels = load_samples("data/samples/selection9/merged_pop9.json")
     clf, X_test, y_test = train_random_forest(features, labels)
     # Sauvegarde du modèle
     import joblib
-    joblib.dump(clf, "data/samples/selection8/model8_2.joblib")
+    joblib.dump(clf, "data/samples/selection9/model_nonlichen.joblib")
 
 
 def grid_search_rf(features, labels, test_size=0.3, random_state=42):

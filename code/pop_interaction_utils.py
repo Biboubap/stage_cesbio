@@ -61,9 +61,14 @@ def rename_category(sample_set, old_name, new_name):
             s.category = new_name
     
 
-def filter_categories(samples, keep_categories):
+def filter_categories(sample_set, keep_categories):
+    samples = sample_set.samples.values()
     """Ne garde que certaines catégories dans une liste de samples."""
-    return [s for s in samples if s.get("category") in keep_categories]
+    new_sample_set = SamplesSet(n_samples_x=None, n_samples_y=None)
+    for s in samples:
+        if getattr(s, "category", None) in keep_categories:
+            new_sample_set.add_sample(s)
+    return new_sample_set
 
 def count_categories(sample_set):
     samples = sample_set.samples.values() 
@@ -146,17 +151,17 @@ if __name__ == "__main__":
     # #
 
     # # Ne garde que sphaignes, lichen, crevasse
-    # #keep_classes = {"sphaignes", "lichen", "crevasse"}
-    # #all_samples = filter_categories(all_samples, keep_classes)
+    keep_classes = {"sphaignes", "chicoutai", "crevasse"}
+    pop_merged = filter_categories(pop_merged, keep_classes)
 
     
     for category in ["chicoutai", "crevasse", "sphaignes", "lichen"]:
-        pop_merged = random_sample_category(pop_merged,category, 650)
+        pop_merged = random_sample_category(pop_merged,category, 800)
     
     pop_merged.fill_neighbors_all()
     print("Comptage final :")
     count_categories(pop_merged)
-    pop_merged.save_samples_to_json("data/samples/selection8/merged_pop/merged_pop8_2.json")
+    pop_merged.save_samples_to_json("data/samples/selection9/merged_pop9.json")
     # # # Sauvegarde
     # merged_data = {
     #     "n_samples_x": None,

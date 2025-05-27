@@ -8,7 +8,7 @@ from osgeo import gdal
 import glob
 import os
 
-from interaction_sentinel_drone import load_proportion_csv, mask_interior_pixels
+from interaction_sentinel_drone import load_proportion_csv#, mask_interior_pixels
 
 def load_all_sentinel_features(indicateur_dir, databand1_path):
     """
@@ -46,9 +46,9 @@ def random_forest_regression_lichen_multi(csv_path, indicateur_dir, databand1_pa
     df = df[df[target_col].notnull()]
 
     # Filtre les pixels "intérieurs" selon la distance au bord
-    if distance_bord > 0:
-        mask = mask_interior_pixels(df, distance=distance_bord, show=show_mask)
-        df = df[mask]
+    # if distance_bord > 0:
+    #     #mask = mask_interior_pixels(df, distance=distance_bord, show=show_mask)
+    #     df = df[mask]
 
     # Prépare les features et la cible
     X = []
@@ -133,10 +133,10 @@ def random_forest_regression_lichen_multi(csv_path, indicateur_dir, databand1_pa
 if __name__ == "__main__":
     distance_bord = 0  # ou autre valeur
     random_forest_regression_lichen_multi(
-        csv_path="data/samples/selection8/regression/lichen_balanced.csv",
+        csv_path="data/samples/selection9/lichen_balanced.csv",
         indicateur_dir="data/sentinel2/indicateurs",
         databand1_path="data/sentinel2/rgb/databand1_reshaped.tif",
-        out_png="data/samples/selection8/regression/multiband1.png",
+        out_png="data/samples/selection9/multiband_1.png",
         distance_bord=distance_bord,
         show_mask=False,
         sqrt=False

@@ -82,9 +82,11 @@ def load_pickle_dict(path):
 # sentinel_to_drone = load_pickle_dict("data/sentinel2/sentinel_to_drone.pkl")
 # drone_to_sentinel = load_pickle_dict("drone_to_sentinel.pkl")
 
-def sentinel_to_drone_bounds(col_s, row_s):
-    ds_5m = gdal.Open("data/sentinel2/rgb/databand1_reshaped.tif")
-    ds_1cm = gdal.Open("data/rgb_reshaped.tif")
+def sentinel_to_drone_bounds(col_s, row_s, ds_5m=None, ds_1cm=None):
+    if ds_5m is None :
+        ds_5m = gdal.Open("data/sentinel2/rgb/databand1_reshaped.tif")
+    if ds_1cm is None:
+        ds_1cm = gdal.Open("data/rgb_reshaped.tif")
     gt_5m = ds_5m.GetGeoTransform()
     gt_1cm = ds_1cm.GetGeoTransform()
 
@@ -128,7 +130,7 @@ def compute_lichen_proportion_per_sentinel_pixel(mask_path, sentinel_path):
 
     for row_s in range(rows_5m):
         for col_s in range(cols_5m):
-            xmin, xmax, ymin, ymax = sentinel_to_drone_bounds(col_s, row_s)
+            xmin, xmax, ymin, ymax = sentinel_to_drone_bounds(col_s, row_s, ds_5m = ds_5m)
             # Vérifie que la fenêtre est dans les bornes du masque
             if xmin < 0 or ymin < 0 or xmax > mask.shape[1] or ymax > mask.shape[0]:
                 result_dict[(col_s, row_s)] = None
@@ -236,49 +238,69 @@ def plot_rgb_vs_lichen_proportion(csv_path, sentinel_path, out_png, distance_bor
 
 
 from scipy.ndimage import binary_dilation
+from osgeo import gdal
 
-def mask_interior_pixels(df, distance=0, show=False):
+def mask_interior_pixel(sentinel_tif, csv_in=None, csv_out=None, show=False, out_mask_tif=None):
     """
-    Renvoie un masque booléen de la même taille que df, True si le pixel est "intérieur"
-    (aucun pixel None à moins de 'distance' en distance de Manhattan).
+    Ne garde que les pixels Sentinel "intérieurs" (aucun voisin 4-connecté à 0).
+    Filtre le CSV pour ne garder que ces pixels.
+    Affiche le masque si show=True.
+    Sauvegarde le masque intérieur au format tif si out_mask_tif est fourni.
     """
-    # Création de la matrice des proportions (None -> nan)
-    max_row = df["row_s"].max() + 1
-    max_col = df["col_s"].max() + 1
-    mat = np.full((max_row, max_col), np.nan)
-    for _, row in df.iterrows():
-        mat[int(row["row_s"]), int(row["col_s"])] = row["proportion_lichen"]
+    # Charge le raster Sentinel (première bande)
+    ds = gdal.Open(sentinel_tif)
+    arr = ds.GetRasterBand(1).ReadAsArray()
+    rows, cols = arr.shape
 
-    # Pixels None (bord)
-    mask_none = np.isnan(mat)
-    if distance == 0:
-        # Tous les pixels non-None sont valides
-        mask_valid = ~mask_none
-    else:
-        # Dilate les pixels None pour marquer les pixels proches du bord
-        struct = np.zeros((2*distance+1, 2*distance+1), dtype=bool)
-        for i in range(2*distance+1):
-            for j in range(2*distance+1):
-                if abs(i-distance) + abs(j-distance) <= distance:
-                    struct[i, j] = True
-        mask_border = binary_dilation(mask_none, structure=struct)
-        mask_valid = (~mask_none) & (~mask_border)
-    # Création d'un set des indices valides
-    valid_indices = set(zip(*np.where(mask_valid)))
-    # Masque pour le DataFrame
-    mask_df = df.apply(lambda row: (int(row["row_s"]), int(row["col_s"])) in valid_indices, axis=1)
+    # Crée un masque des pixels intérieurs
+    mask = np.zeros(arr.shape)
+    mask[arr != 0] = 1
+    mask2 = mask.copy()
+    mask2[0, :] = 0
+    mask2[-1, :] = 0
+    mask2[:, 0] = 0
+    mask2[:, -1] = 0
+
+    for i in range(1, rows-1):
+        for j in range(1, cols-1):
+            for r in range (i-1, i+2):
+                for c in range (j-1, j+2):
+                    if mask[r,c] == 0:
+                        mask2[i, j] = 0
+
+    # Sauvegarde du masque intérieur au format tif si demandé
+    if out_mask_tif is not None:
+        driver = gdal.GetDriverByName('GTiff')
+        out_ds = driver.Create(out_mask_tif, arr.shape[1], arr.shape[0], 1, gdal.GDT_Byte)
+        out_ds.GetRasterBand(1).WriteArray(mask2.astype(np.uint8))
+        out_ds.SetGeoTransform(ds.GetGeoTransform())
+        out_ds.SetProjection(ds.GetProjection())
+        out_ds.FlushCache()
+        out_ds = None
+        print(f"Masque intérieur sauvegardé dans {out_mask_tif}")
 
     if show:
-        # Affichage du masque
-        plt.imshow(mask_none, cmap='gray')
-        plt.title("Masque des pixels None")
+        plt.figure(figsize=(10,4))
+        plt.subplot(1,2,1)
+        plt.title("Masque Sentinel (pixels=0 en noir)")
+        plt.imshow(mask, cmap='gray')
+        plt.subplot(1,2,2)
+        plt.title("Pixels intérieurs retenus (blanc)")
+        plt.imshow(mask2, cmap='gray')
+        plt.tight_layout()
         plt.show()
 
-        plt.imshow(mask_valid, cmap='gray')
-        plt.colorbar()
-        plt.show()
+    # Charge le CSV et filtre selon le masque
+    
+    df = pd.read_csv(csv_in)
+    print("mask2 shape:", mask2.shape)
+    print("row_s min/max:", df["row_s"].min(), df["row_s"].max())
+    print("col_s min/max:", df["col_s"].min(), df["col_s"].max())
+    mask_df = df.apply(lambda row: bool(mask2[int(row["row_s"]), int(row["col_s"])]), axis=1)
+    df_filtered = df[mask_df.values]
+    df_filtered.to_csv(csv_out, index=False)
+    print(f"{len(df_filtered)} pixels intérieurs sauvegardés dans {csv_out}")
 
-    return mask_df
 
 def plot_lichen_proportion_histogram(csv_path, out_png=None, sqrt=False, log=False):
     """
@@ -414,46 +436,29 @@ if __name__ == "__main__":
     
     result = compute_lichen_proportion_per_sentinel_pixel(
         mask_path="data/samples/selection8/lichen_mask.tif",
-        sentinel_path="DataCubeS2/Bandes/STACK_2023_BandB2_Twin_Lake_V2.tif"
+        sentinel_path="DataCubeS2/Indices/median/median_clipped_GNDVI_cube_2023_Twin_Lake_V2.tif"
     )
-    save_proportion_dict_to_csv(result, "data/samples/selection8/lichen_proportion_3.csv")
-
+    save_proportion_dict_to_csv(result, "data/samples/selection8/regression/lichen_proportion_3.csv")
+    mask_interior_pixel(
+    sentinel_tif="DataCubeS2/Indices/median/median_clipped_GNDVI_cube_2023_Twin_Lake_V2.tif",
+    csv_in="data/samples/selection8/regression/lichen_proportion_3.csv",
+    csv_out="data/samples/selection8/regression/lichen_3_interior.csv",
+    show=True,
+    out_mask_tif="data/samples/selection8/regression/lichen_3_interior.tif"
+    )
     plot_lichen_proportion_histogram(
-        "data/samples/selection8/regression/lichen_3.csv",
-        "data/samples/selection8/regression/hist_lichen_3.png",
+        "data/samples/selection8/regression/lichen_3_interior.csv",
+        "data/samples/selection8/regression/hist_lichen_interior.png",
     sqrt=False
    )
-#     # transform_proportion_to_sqrt(
-#     #     "data/samples/selection8/regression/lichen_proportion.csv",
-#     #     "data/samples/selection8/regression/lichen_sqrt_proportion.csv"
-#     # )
-#     filter_and_balance_lichen(
-#         "data/samples/selection8/regression/lichen_proportion_2.csv",
-#         "data/samples/selection8/regression/lichen_balanced_22.csv",
-#         max_high=20
-#     )
-#     plot_lichen_proportion_histogram(
-#         "data/samples/selection8/regression/lichen_balanced_22.csv",
-#         "data/samples/selection8/regression/hist_lichen_balanced_22.png",
-#     sqrt=False
-#    )
-#     plot_lichen_proportion_histogram(
-#         "data/samples/selection6/regression/lichen_sqrt_proportion.csv",
-#         "data/samples/selection6/regression/hist_sqrt_lichen.png",
-#     sqrt=True
-#    )
-
-# # # Exemple d'utilisation :
-# 
-
-
-# # Exemple d'utilisation :
-# if __name__ == "__main__":
-#     distance_bord=0
-#     plot_rgb_vs_lichen_proportion(
-#         csv_path="data/samples/selection5/lichen_proportion.csv",
-#         sentinel_path="data/sentinel2/rgb/databand1_reshaped.tif",
-#         out_png=f"data/samples/selection5/rgb_vs_lichen.png",
-#         distance_bord=distance_bord,
-#         show_mask=True
-#     )
+    
+    filter_and_balance_lichen(
+        "data/samples/selection8/regression/lichen_3_interior.csv",
+        "data/samples/selection8/regression/lichen_3_interior_balanced.csv",
+        max_high=15
+    )
+    plot_lichen_proportion_histogram(
+        "data/samples/selection8/regression/lichen_3_interior_balanced.csv",
+        "data/samples/selection8/regression/hist_lichen_3_interior_balanced.png",
+    sqrt=False
+   )

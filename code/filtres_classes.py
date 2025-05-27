@@ -84,15 +84,43 @@ def process_lichen_extraction(classif_tif, rgb_tif, out_lichen_mask_tif, out_chi
     print(out_lichen_tif)
     print(out_nonlichen_tif)
 
-# Exemple d'utilisation
+def create_lichen_and_nonlichen_masks(classif_tif, out_lichen_mask_tif, out_nonlichen_mask_tif, nodata_val=255):
+    """
+    Crée deux masques à partir d'une carte de classification :
+    - lichen_mask : 1 pour classe 1 (lichen), 0 sinon, 255 pour nodata
+    - non_lichen_mask : 1 pour classes 2, 3, 4 (non-lichen), 0 sinon, 255 pour nodata
+    """
+    ds_classif = gdal.Open(classif_tif)
+    classif = ds_classif.GetRasterBand(1).ReadAsArray()
+
+    # Masque lichen (classe 1)
+    lichen_mask = np.zeros_like(classif, dtype=np.uint8)
+    lichen_mask[classif == 1] = 1
+    lichen_mask[classif == nodata_val] = nodata_val
+
+    # Masque non-lichen (classes 2, 3, 4)
+    non_lichen_mask = np.zeros_like(classif, dtype=np.uint8)
+    non_lichen_mask[np.isin(classif, [2, 3, 4, 12, 13, 14])] = 1
+    non_lichen_mask[classif == nodata_val] = nodata_val
+
+    save_mask(lichen_mask, ds_classif, out_lichen_mask_tif, nodata_val=nodata_val)
+    save_mask(non_lichen_mask, ds_classif, out_nonlichen_mask_tif, nodata_val=nodata_val)
+    print("Masques sauvegardés :")
+    print(out_lichen_mask_tif)
+    print(out_nonlichen_mask_tif)
+
+# # Exemple d'utilisation
 if __name__ == "__main__":
-    
-    process_lichen_extraction(
-        classif_tif="data/samples/selection8/classification_result_2.tif",
-        rgb_tif="data/rgb_reshaped.tif",
-        out_lichen_mask_tif="data/samples/selection8/lichen_mask.tif",
-        out_chicoutai_mask_tif="data/samples/selection8/chicoutai_mask.tif",
-        out_lichen_tif="data/samples/selection8/lichen_rgb.tif",
-        out_nonlichen_tif="data/samples/selection8/nonlichen_rgb.tif"
-    )
-    
+    create_lichen_and_nonlichen_masks(
+    classif_tif="data/samples/selection9/fusion_classif.tif",
+    out_lichen_mask_tif="data/samples/selection9/lichen_mask.tif",
+    out_nonlichen_mask_tif="data/samples/selection9/non_lichen_mask.tif"
+)
+#     process_lichen_extraction(
+#         classif_tif="data/samples/selection8/classification_result_2.tif",
+#         rgb_tif="data/rgb_reshaped.tif",
+#         out_lichen_mask_tif="data/samples/selection8/lichen_mask.tif",
+#         out_chicoutai_mask_tif="data/samples/selection8/chicoutai_mask.tif",
+#         out_lichen_tif="data/samples/selection8/lichen_rgb.tif",
+#         out_nonlichen_tif="data/samples/selection8/nonlichen_rgb.tif"
+#     )

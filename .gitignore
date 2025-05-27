@@ -19,3 +19,5 @@
 /**/*.csv
 /**/*.pkl
 /**/*.npy
+
+/drone_treated/
