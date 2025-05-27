@@ -173,18 +173,13 @@ def load_sentinel_rgb_bands(sentinel_path):
     b = ds.GetRasterBand(3).ReadAsArray()
     return r, g, b
 
-def plot_rgb_vs_lichen_proportion(csv_path, sentinel_path, out_png, distance_bord=0, show_mask=False):
+def plot_rgb_vs_lichen_proportion(csv_path, sentinel_path, out_png):
     # Charge les données
     df = load_proportion_csv(csv_path)
     r, g, b = load_sentinel_rgb_bands(sentinel_path)
 
     # Ne garde que les pixels avec une proportion définie (non None et non NaN)
     df = df[df["proportion_lichen"].notnull()]
-
-    # Filtre les pixels "intérieurs" selon la distance au bord
-    if distance_bord > 0:
-        mask = mask_interior_pixels(df, distance=distance_bord, show = show_mask)
-        df = df[mask]
 
     # Récupère les valeurs RGB et la proportion pour chaque pixel Sentinel
     reds = []
@@ -436,29 +431,29 @@ if __name__ == "__main__":
     
     result = compute_lichen_proportion_per_sentinel_pixel(
         mask_path="data/samples/selection8/lichen_mask.tif",
-        sentinel_path="DataCubeS2/Indices/median/median_clipped_GNDVI_cube_2023_Twin_Lake_V2.tif"
+        sentinel_path="DataCubeS2/Bandes/mediane2/mediane_clipped_STACK_2023_BandB2_Twin_Lake_V2.tif"
     )
     save_proportion_dict_to_csv(result, "data/samples/selection8/regression/lichen_proportion_3.csv")
     mask_interior_pixel(
-    sentinel_tif="DataCubeS2/Indices/median/median_clipped_GNDVI_cube_2023_Twin_Lake_V2.tif",
+    sentinel_tif="DataCubeS2/Bandes/mediane2/mediane_clipped_STACK_2023_BandB2_Twin_Lake_V2.tif",
     csv_in="data/samples/selection8/regression/lichen_proportion_3.csv",
-    csv_out="data/samples/selection8/regression/lichen_3_interior.csv",
+    csv_out="data/samples/selection8/regression/lichen_4_interior.csv",
     show=True,
-    out_mask_tif="data/samples/selection8/regression/lichen_3_interior.tif"
+    out_mask_tif="data/samples/selection8/regression/lichen_4_interior.tif"
     )
     plot_lichen_proportion_histogram(
-        "data/samples/selection8/regression/lichen_3_interior.csv",
-        "data/samples/selection8/regression/hist_lichen_interior.png",
+        "data/samples/selection8/regression/lichen_4_interior.csv",
+        "data/samples/selection8/regression/hist_lichen_interior_4.png",
     sqrt=False
    )
     
     filter_and_balance_lichen(
-        "data/samples/selection8/regression/lichen_3_interior.csv",
-        "data/samples/selection8/regression/lichen_3_interior_balanced.csv",
+        "data/samples/selection8/regression/lichen_4_interior.csv",
+        "data/samples/selection8/regression/lichen_4_interior_balanced.csv",
         max_high=15
     )
     plot_lichen_proportion_histogram(
-        "data/samples/selection8/regression/lichen_3_interior_balanced.csv",
-        "data/samples/selection8/regression/hist_lichen_3_interior_balanced.png",
+        "data/samples/selection8/regression/lichen_4_interior_balanced.csv",
+        "data/samples/selection8/regression/hist_lichen_4_interior_balanced.png",
     sqrt=False
    )
