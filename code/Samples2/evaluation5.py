@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import joblib
 from samples_set2 import SamplesSet2
+from sample2 import Sample2
+from rasters_manager import RastersManager
 from osgeo import gdal
 import pickle
 
@@ -16,7 +18,7 @@ def create_samples_and_compute(x_start, y_start, x_end, y_end, size_patch, ds_pa
         n_samples_y=n_samples_y
     )
     samples_set.create_samples_grid(x_start=x_start, y_start=y_start, size_patch=size_patch)
-    samples_set.fill_neighbors_all(depth_neighbors=1)
+    samples_set.fill_neighbors_all(distance_large=3)  # Use the new parameter name
     return samples_set, n_samples_x, n_samples_y
 
 
@@ -31,9 +33,11 @@ def extract_features(samples_set, n_samples_x, n_samples_y):
                 s.r_mean, s.g_mean, s.b_mean,
                 s.r_var, s.g_var, s.b_var,
                 s.r_n_mean, s.g_n_mean, s.b_n_mean,
-                s.r_n_var, s.g_n_var, s.b_n_var,
-                s.t_mean, s.t_n_mean, s.t_var, s.t_n_var,
-                s.z_var, s.z_moins_z_n
+                # Removed _n_var features
+                s.t_mean, s.t_n_mean, s.t_var,
+                # Added large neighborhood features
+                s.r_large_mean, s.g_large_mean, s.b_large_mean, s.t_large_mean,
+                s.z_var, s.z_moins_z_n, s.z_moins_z_large
             ]
             features.append(feat)
             positions.append((i_x, i_y))
@@ -165,9 +169,10 @@ def plot_tree_model(clf):
     plt.figure(figsize=(20, 10))
     plot_tree(clf.estimators_[0], 
             feature_names=["r_mean", "g_mean", "b_mean", "r_var", "g_var", "b_var", 
-                            "r_n_mean", "g_n_mean", "b_n_mean", "r_n_var", "g_n_var", "b_n_var",
-                            "t_mean", "t_n_mean", "t_var", "t_n_var",
-                            "z_var", "z_moins_z_n"],
+                           "r_n_mean", "g_n_mean", "b_n_mean", 
+                           "t_mean", "t_n_mean", "t_var", 
+                           "r_large_mean", "g_large_mean", "b_large_mean", "t_large_mean",
+                           "z_var", "z_moins_z_n", "z_moins_z_large"],
             class_names=clf.classes_,
             filled=True, rounded=True, max_depth=3)  # max_depth=3 pour lisibilité
     plt.show()
@@ -181,9 +186,10 @@ def plot_feature_importances(clf, save_path, feature_names=None):
 
     if feature_names is None:
         feature_names = ["r_mean", "g_mean", "b_mean", "r_var", "g_var", "b_var", 
-                            "r_n_mean", "g_n_mean", "b_n_mean", "r_n_var", "g_n_var", "b_n_var",
-                            "t_mean", "t_n_mean", "t_var", "t_n_var",
-                            "z_var", "z_moins_z_n"]
+                         "r_n_mean", "g_n_mean", "b_n_mean", 
+                         "t_mean", "t_n_mean", "t_var", 
+                         "r_large_mean", "g_large_mean", "b_large_mean", "t_large_mean",
+                         "z_var", "z_moins_z_n", "z_moins_z_large"]
     importances = clf.feature_importances_
     indices = np.argsort(importances)[::-1]
 
@@ -271,9 +277,6 @@ def create_classification_map_transparent(pred_map, size_patch):
             color_map[i_x*size_patch:(i_x+1)*size_patch, i_y*size_patch:(i_y+1)*size_patch, :] = color
     return color_map
 
-from osgeo import gdal
-import numpy as np
-
 def merge_classif(classif1_path, classif2_path, out_path, nodata_val=0, both_val=255):
     """
     Fusionne deux rasters de classification :
@@ -307,9 +310,6 @@ def merge_classif(classif1_path, classif2_path, out_path, nodata_val=0, both_val
     out_ds.FlushCache()
     out_ds = None
     print(f"Carte fusionnée sauvegardée dans {out_path}")
-
-# Exemple d'utilisation :
-# merge_classif("classif1.tif", "classif2.tif", "fusion_classif.tif")
 
 def main_prediction():
     # Paramètres de la fenêtre à tester

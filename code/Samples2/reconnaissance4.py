@@ -7,10 +7,14 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import GridSearchCV
 
 
-def get_available_features(samples):
+def get_available_features(samples, exclude_temp=False):
     """
     Détecte dynamiquement les features disponibles dans le JSON.
     Retourne la liste des features utilisables.
+    
+    Args:
+        samples: Liste des échantillons
+        exclude_temp: Si True, exclut les features liées à la température
     """
     # Liste de toutes les features possibles, dans l'ordre
     all_features = [
@@ -21,6 +25,12 @@ def get_available_features(samples):
         "r_large_mean", "g_large_mean", "b_large_mean", "t_large_mean",
         "z_var", "z_moins_z_n", "z_moins_z_large"
     ]
+    
+    # Si on exclut les features de température
+    if exclude_temp:
+        temp_features = ["t_mean", "t_n_mean", "t_var", "t_large_mean"]
+        all_features = [f for f in all_features if f not in temp_features]
+    
     # Prend le premier sample non None pour détecter les features présentes
     for s in samples:
         present = [f for f in all_features if f in s and s[f] is not None]
@@ -29,11 +39,11 @@ def get_available_features(samples):
         return present
     return []
 
-def load_samples(json_path):
+def load_samples(json_path, exclude_temp=False):
     with open(json_path) as f:
         data = json.load(f)
     samples = data["samples"]
-    feature_names = get_available_features(samples)
+    feature_names = get_available_features(samples, exclude_temp)
     features = []
     labels = []
     for s in samples:
@@ -75,11 +85,17 @@ def train_random_forest(features, labels, feature_names, test_size=0.2, random_s
     return clf, X_test, y_test, feature_names
 
 if __name__ == "__main__":
-    features, labels, feature_names = load_samples("data/samples/selection9/merged_pop9.json")
+    features, labels, feature_names = load_samples("data/samples/selection10/pop8_converted.json", exclude_temp=True)
     clf, X_test, y_test, feature_names = train_random_forest(features, labels, feature_names)
+
     # Sauvegarde du modèle et des features utilisées
     import joblib
-    joblib.dump({"model": clf, "feature_names": feature_names}, "data/samples/selection9/model_nonlichen.joblib")
+    joblib.dump({"model": clf, "feature_names": feature_names}, "data/samples/selection10/model10.joblib")
+
+
+
+
+
 
 
 def grid_search_rf(features, labels, feature_names, test_size=0.3, random_state=42):
