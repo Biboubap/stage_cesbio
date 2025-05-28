@@ -19,8 +19,10 @@
 /**/*.csv
 /**/*.pkl
 /**/*.npy
+/**/*.pyc 
 
 /drone_treated/
 
 !/data/rendus/
 /data/rendus/**/*.tif
+
