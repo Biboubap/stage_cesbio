@@ -137,7 +137,7 @@ def split_sampleset(samples_set):
 # Exemple d'utilisation :
 if __name__ == "__main__":
    
-    pop6 = SamplesSet.load_samples_from_json("data/samples/selection6/merged_pop6.json")
+    pop6 = SamplesSet.load_samples_from_json("data/samples/selection3/flaque_1.json")
     pop7 = merge_populations_from_dir("data/samples/selection7")
     pop8 = merge_populations_from_dir("data/samples/selection8")
     pop_merged=SamplesSet.concatenate_set(SamplesSet.concatenate_set(pop6, pop7),pop8)
