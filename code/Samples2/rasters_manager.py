@@ -77,3 +77,47 @@ class RastersManager:
         t = self.rast_t[x:x + size_patch, y:y + size_patch] if self.rast_t is not None else None
         
         return r, g, b, z, t
+    
+    def calculate_patch_stats(self, x, y, size_patch):
+        """
+        Calculate statistics for patches directly without storing the entire patch.
+        Returns a dictionary with mean and variance values for r, g, b, z, t.
+        """
+        if not self.is_loaded:
+            self.load_rasters()
+
+        stats = {}
+        
+        # RGB statistics
+        if self.rast_r is not None and self.rast_g is not None and self.rast_b is not None:
+            r_patch = self.rast_r[x:x + size_patch, y:y + size_patch]
+            g_patch = self.rast_g[x:x + size_patch, y:y + size_patch]
+            b_patch = self.rast_b[x:x + size_patch, y:y + size_patch]
+            
+            stats['r_mean'] = float(np.mean(r_patch))
+            stats['g_mean'] = float(np.mean(g_patch))
+            stats['b_mean'] = float(np.mean(b_patch))
+            stats['r_var'] = float(np.var(r_patch))
+            stats['g_var'] = float(np.var(g_patch))
+            stats['b_var'] = float(np.var(b_patch))
+        else:
+            stats['r_mean'] = stats['g_mean'] = stats['b_mean'] = None
+            stats['r_var'] = stats['g_var'] = stats['b_var'] = None
+            
+        # Altitude (z)
+        if self.rast_z is not None:
+            z_patch = self.rast_z[x:x + size_patch, y:y + size_patch]
+            stats['z_mean'] = float(np.mean(z_patch))
+            stats['z_var'] = float(np.var(z_patch))
+        else:
+            stats['z_mean'] = stats['z_var'] = None
+            
+        # Température (t)
+        if self.rast_t is not None:
+            t_patch = self.rast_t[x:x + size_patch, y:y + size_patch]
+            stats['t_mean'] = float(np.mean(t_patch))
+            stats['t_var'] = float(np.var(t_patch))
+        else:
+            stats['t_mean'] = stats['t_var'] = None
+            
+        return stats

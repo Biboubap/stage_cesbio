@@ -23,36 +23,24 @@ class Sample2:
         # Ensure rasters are loaded
         self.rasters.load_rasters()
         
-        # Extract patches and calculate statistics
-        r, g, b, z, t = self.rasters.get_patch(x, y, size_patch)
+        # Calculate statistics directly without storing patches
+        stats = self.rasters.calculate_patch_stats(x, y, size_patch)
         
         # RGB statistics
-        if r is not None and g is not None and b is not None:
-            self.r_mean = float(np.mean(r))
-            self.g_mean = float(np.mean(g))
-            self.b_mean = float(np.mean(b))
-            self.r_var = float(np.var(r))
-            self.g_var = float(np.var(g))
-            self.b_var = float(np.var(b))
-        else:
-            self.r_mean = self.g_mean = self.b_mean = None
-            self.r_var = self.g_var = self.b_var = None
+        self.r_mean = stats['r_mean']
+        self.g_mean = stats['g_mean']
+        self.b_mean = stats['b_mean']
+        self.r_var = stats['r_var']
+        self.g_var = stats['g_var']
+        self.b_var = stats['b_var']
 
         # Altitude (z)
-        if z is not None:
-            self.z_mean = float(np.mean(z))
-            self.z_var = float(np.var(z))
-        else:
-            self.z_mean = None
-            self.z_var = None
+        self.z_mean = stats['z_mean']
+        self.z_var = stats['z_var']
 
         # Température (t)
-        if t is not None:
-            self.t_mean = float(np.mean(t))
-            self.t_var = float(np.var(t))
-        else:
-            self.t_mean = None
-            self.t_var = None
+        self.t_mean = stats['t_mean']
+        self.t_var = stats['t_var']
 
         # Statistiques des voisins (initialisées à None)
         self.r_n_mean = self.g_n_mean = self.b_n_mean = None
@@ -108,12 +96,13 @@ class Sample2:
                     0 <= x_n < rast_shape_r[0] - size_patch and
                     0 <= y_n < rast_shape_r[1] - size_patch
                 ):
-                    r_patch, g_patch, b_patch, _, t_patch = self.rasters.get_patch(x_n, y_n, size_patch)
-                    r_sum += np.mean(r_patch)
-                    g_sum += np.mean(g_patch)
-                    b_sum += np.mean(b_patch)
-                    if has_t and t_patch is not None:
-                        t_sum += np.mean(t_patch)
+                    # Calculer directement les statistiques au lieu de charger tout le patch
+                    stats = self.rasters.calculate_patch_stats(x_n, y_n, size_patch)
+                    r_sum += stats['r_mean']
+                    g_sum += stats['g_mean']
+                    b_sum += stats['b_mean']
+                    if has_t and stats['t_mean'] is not None:
+                        t_sum += stats['t_mean']
                     nb_neighbors += 1
 
         # Calculate neighbor means if neighbors exist
@@ -148,12 +137,13 @@ class Sample2:
                     0 <= x_n < rast_shape_r[0] - size_patch and
                     0 <= y_n < rast_shape_r[1] - size_patch
                 ):
-                    r_patch, g_patch, b_patch, _, t_patch = self.rasters.get_patch(x_n, y_n, size_patch)
-                    r_large_sum += np.mean(r_patch)
-                    g_large_sum += np.mean(g_patch)
-                    b_large_sum += np.mean(b_patch)
-                    if has_t and t_patch is not None:
-                        tL_sum += np.mean(t_patch)
+                    # Calculer directement les statistiques au lieu de charger tout le patch
+                    stats = self.rasters.calculate_patch_stats(x_n, y_n, size_patch)
+                    r_large_sum += stats['r_mean']
+                    g_large_sum += stats['g_mean']
+                    b_large_sum += stats['b_mean']
+                    if has_t and stats['t_mean'] is not None:
+                        tL_sum += stats['t_mean']
                     nb_neighborsL += 1
         
         # Calculate large neighbor means if neighbors exist
@@ -187,9 +177,10 @@ class Sample2:
                         0 <= x_n < rast_shape_z[0] - size_patch and
                         0 <= y_n < rast_shape_z[1] - size_patch
                     ):
-                        _, _, _, z_patch, _ = self.rasters.get_patch(x_n, y_n, size_patch)
-                        if z_patch is not None:
-                            z_sum += np.mean(z_patch)
+                        # Calculer directement la moyenne Z au lieu de charger tout le patch
+                        stats = self.rasters.calculate_patch_stats(x_n, y_n, size_patch)
+                        if stats['z_mean'] is not None:
+                            z_sum += stats['z_mean']
                             nb_neighbors_z += 1
             
             if nb_neighbors_z > 0:
@@ -217,9 +208,10 @@ class Sample2:
                         0 <= x_n < rast_shape_z[0] - size_patch and
                         0 <= y_n < rast_shape_z[1] - size_patch
                     ):
-                        _, _, _, z_patch, _ = self.rasters.get_patch(x_n, y_n, size_patch)
-                        if z_patch is not None:
-                            z_large_sum += np.mean(z_patch)
+                        # Calculer directement la moyenne Z au lieu de charger tout le patch
+                        stats = self.rasters.calculate_patch_stats(x_n, y_n, size_patch)
+                        if stats['z_mean'] is not None:
+                            z_large_sum += stats['z_mean']
                             nb_neighbors_z_large += 1
             
             if nb_neighbors_z_large > 0:

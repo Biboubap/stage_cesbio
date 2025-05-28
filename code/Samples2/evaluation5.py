@@ -26,6 +26,17 @@ def extract_features(samples_set, n_samples_x, n_samples_y):
     samples_matrix = samples_set.get_samples_matrix()
     features = []
     positions = []
+    
+    # Define feature names
+    feature_names = [
+        "r_mean", "g_mean", "b_mean",
+        "r_var", "g_var", "b_var",
+        "r_n_mean", "g_n_mean", "b_n_mean",
+        "t_mean", "t_n_mean", "t_var",
+        "r_large_mean", "g_large_mean", "b_large_mean", "t_large_mean",
+        "z_var", "z_moins_z_n", "z_moins_z_large"
+    ]
+    
     for i_y in range(n_samples_y):
         for i_x in range(n_samples_x):
             s = samples_matrix[i_y][i_x]
@@ -41,7 +52,7 @@ def extract_features(samples_set, n_samples_x, n_samples_y):
             ]
             features.append(feat)
             positions.append((i_x, i_y))
-    return np.array(features), positions
+    return np.array(features), positions, feature_names
 
 def load_mask_tiff(mask_path):
     ds = gdal.Open(mask_path)
@@ -96,7 +107,6 @@ def create_classification_map(pred_map, size_patch):
 
 def plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path=None):
     import matplotlib.patches as mpatches
-    print("test0")
     fig, axes = plt.subplots(1, 2, figsize=(16, 8))
     print("rgb_img shape:", rgb_img.shape)
     print("color_map shape:", color_map.shape)
@@ -106,7 +116,6 @@ def plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path=N
     axes[1].imshow(color_map)
     axes[1].set_title("Carte de classification\nFenêtre x: {}-{}, y: {}-{}".format(x_start, x_end, y_start, y_end))
     axes[1].axis("off")
-    print("test1")
     # Légende des couleurs
     color_labels = [
         ("lichen",      [200, 200, 200]),
@@ -120,7 +129,6 @@ def plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path=N
     ]
     patches = [mpatches.Patch(color=np.array(rgb)/255, label=label) for label, rgb in color_labels]
     axes[1].legend(handles=patches, loc='lower right', fontsize=10, title="Écozones")
-    print("test2")
     plt.tight_layout()
     if save_path:
         plt.savefig(save_path)
@@ -230,10 +238,36 @@ def save_classification_to_tif(pred_map, ref_tif_path, out_tif_path, size_patch=
     out_ds = None
     print(f"Carte de classification sauvegardée dans {out_tif_path}")
 
-
-def save_precomputed_data(samples_set, n_samples_x, n_samples_y, rgb_img, features, positions, ds_path, dz_path, dt_path, path_prefix):
+def filter_features(features, all_feature_names, needed_feature_names):
     """
-    Sauvegarde les objets nécessaires pour éviter de tout recalculer, y compris les chemins des rasters.
+    Filtre les features pour ne garder que celles dont on a besoin pour le modèle.
+    
+    Args:
+        features: Tableau numpy des features (n_samples × n_features)
+        all_feature_names: Liste des noms de toutes les features disponibles
+        needed_feature_names: Liste des noms des features dont on a besoin
+    
+    Returns:
+        Tableau numpy des features filtrées
+    """
+    # Vérifier si tous les noms requis existent
+    for name in needed_feature_names:
+        if name not in all_feature_names:
+            print(f"Attention: la feature '{name}' n'existe pas dans les données")
+    
+    # Trouver les indices des features à conserver
+    indices_to_keep = [all_feature_names.index(name) for name in needed_feature_names 
+                      if name in all_feature_names]
+    
+    # Filtrer les features
+    filtered_features = features[:, indices_to_keep]
+    
+    print(f"Features filtrées : {features.shape[1]} → {filtered_features.shape[1]}")
+    return filtered_features
+
+def save_precomputed_data(samples_set, n_samples_x, n_samples_y, rgb_img, features, positions, ds_path, dz_path, dt_path, path_prefix, feature_names=None):
+    """
+    Sauvegarde les objets nécessaires pour éviter de tout recalculer, y compris les chemins des rasters et les noms des features.
     """
     with open(f"{path_prefix}_meta.pkl", "wb") as f:
         pickle.dump({
@@ -242,6 +276,7 @@ def save_precomputed_data(samples_set, n_samples_x, n_samples_y, rgb_img, featur
             "n_samples_y": n_samples_y,
             "features": features,
             "positions": positions,
+            "feature_names": feature_names,  # Ajout des noms de features
             "ds_path": ds_path,
             "dz_path": dz_path,
             "dt_path": dt_path
@@ -251,14 +286,15 @@ def save_precomputed_data(samples_set, n_samples_x, n_samples_y, rgb_img, featur
 
 def load_precomputed_data(path_prefix):
     """
-    Charge les objets nécessaires pour éviter de tout recalculer, y compris les chemins des rasters.
+    Charge les objets nécessaires pour éviter de tout recalculer, y compris les chemins des rasters et les noms des features.
     """
     with open(f"{path_prefix}_meta.pkl", "rb") as f:
         data = pickle.load(f)
     rgb_img = np.load(f"{path_prefix}_rgb.npy")
     print(f"Pré-calculs chargés depuis préfixe {path_prefix}")
     return (data["samples_set"], data["n_samples_x"], data["n_samples_y"], rgb_img,
-            data["features"], data["positions"], data.get("ds_path"), data.get("dz_path"), data.get("dt_path"))
+            data["features"], data["positions"], data.get("ds_path"), data.get("dz_path"), data.get("dt_path"),
+            data.get("feature_names"))  # Retourne aussi les noms de features
 
 def create_classification_map_transparent(pred_map, size_patch):
     n_samples_y, n_samples_x = pred_map.shape
@@ -316,20 +352,26 @@ def main_prediction():
     
     x_start = 0
     y_start = 0
-    x_end = 31715
-    y_end = 17416
+    x_end = 12742 
+    y_end = 12796
     size_patch = 16
 
     # Chemins vers les rasters
-    ds_path = "drone_treated/WAP32_full_transparent_mosaic_group1.tif"
-    dz_path = "data/dsm_reshaped.tif"
+    # ds_path = "data/rgb_reshaped.tif"
+    # dz_path = "data/dsm_reshaped.tif"
+    # dt_path = None
+
+    ds_path = "drone_treated/WAP32_partial_rgb2.tif"
+    dz_path = "drone_treated/WAP32_partial_dsm2.tif"
     dt_path = None
-   
+    
     # 1. Créer les samples et calculer les paramètres
+    print("Création des samples et calcul des paramètres...")
     samples_set, n_samples_x, n_samples_y = create_samples_and_compute(
         x_start, y_start, x_end, y_end, size_patch,
         ds_path=ds_path, dz_path=dz_path, dt_path=dt_path
     )
+    print("Samples créés et paramètres calculés. Génération de l'image RGB en cours...")
 
     # 2. Générer l'image RGB à partir des samples
     rgb_img = create_rgb_image_from_samples(samples_set, n_samples_x, n_samples_y, size_patch)
@@ -337,52 +379,68 @@ def main_prediction():
    
    
     # 3. Extraire les features
-    features, positions = extract_features(samples_set, n_samples_x, n_samples_y)
+    features, positions, feature_names = extract_features(samples_set, n_samples_x, n_samples_y)
     print(f"Features extraites avec taille : {features.shape}")
 
     # Pour sauvegarder
     save_precomputed_data(samples_set, n_samples_x, n_samples_y, rgb_img, features=features, positions=positions,
-                          ds_path=ds_path, dz_path=dz_path, dt_path=dt_path, path_prefix="data/samples/selection8/precalc")
+                          ds_path=ds_path, dz_path=dz_path, dt_path=dt_path, path_prefix="data/samples/selection10/precalc_Wap32_2",
+                          feature_names=feature_names)
 
-    # Pour charger
-    # samples_set, n_samples_x, n_samples_y, rgb_img, features, positions, ds_path, dz_path, dt_path = \
-    #     load_precomputed_data("data/samples/selection8/precalc")
-
-    # 4. Charger le modèle
-    clf = joblib.load("data/samples/selection8/model8.joblib")
-    print("Modèle chargé.")
     
-    # #4.5 Définir la zone de prédiction
+    # # # 4. Charger le modèle
+    model_data = joblib.load("data/samples/selection10/model10.joblib")
+    clf = model_data["model"]  # Extraire le modèle du dictionnaire
+    feature_names_model = model_data["feature_names"]  # Récupérer aussi les noms de features
+    print("Modèle RF chargé.")
+
+    # # #Pour charger 1.2.3
+    # samples_set, n_samples_x, n_samples_y, rgb_img, features, positions, ds_path, dz_path, dt_path, feature_names = \
+    #     load_precomputed_data("data/samples/selection8/precalc")
+    # print(f"Pré-calculs chargés")
+
+
+    #5 Filtrer les features pour qu'elles correspondent au modèle
+    features_filtered = filter_features(features, feature_names, feature_names_model)
+    print(f"Features extraites avec taille après filtrage: {features_filtered.shape}")
+
+
+    # 6 Définir la zone de prédiction
     mask = None
     # mask_path = "data/samples/selection9/non_lichen_mask.tif"
     # mask = load_mask_tiff(mask_path)
+    print("Masque chargé." if mask is not None else "Aucun masque utilisé.")
     
-    # 5. Prédire
+    # 7. Prédire
     pred_map = predict_samples_2(
-        clf, features, positions, n_samples_x, n_samples_y, samples_set,
+        clf, features_filtered, positions, n_samples_x, n_samples_y, samples_set,
         mask=mask, size_patch=size_patch
     )
     print("Prédictions effectuées.")
     
-    # 6. Filtrage des samples isolés
+    # 8. Filtrage des samples isolés
     pred_map_filtered = pred_map#filter_isolated_samples(pred_map)
+    #print("Samples isolés filtrés.")
 
-    # 7. Créer la carte de classification
+    # 9. Créer la carte de classification
     color_map = create_classification_map(pred_map_filtered, size_patch)
-    
     print("Carte de classification créée.")
-    # 8. Afficher et sauvegarder les résultats
-    plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path="data/samples/selection8/classif_samples2.png")
+
+    # 10. Afficher et sauvegarder les résultats
+    plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path="data/samples/selection10/classif_WAP32_2.png")
     print("Résultats affichés et sauvegardés.")
 
-    # 9. Sauvegarder la carte de classification au format .tif
+    # 11. Sauvegarder la carte de classification au format .tif
     save_classification_to_tif(
         pred_map_filtered,
-        ref_tif_path="data/rgb_reshaped.tif",
-        out_tif_path="data/samples/selection8/classif_samples2.tif",
+        ref_tif_path="ds_path",
+        out_tif_path="data/samples/selection10/classif_WAP32_2.tif",
         size_patch = size_patch
     )
-    plot_feature_importances(clf, save_path = "data/samples/selection8/features_samples2.png")
+
+    # 12. Sauvegarder les importances des features
+    plot_feature_importances(clf, save_path="data/samples/selection10/features_WAP32_2.png", 
+                         feature_names=feature_names)
 
  
 if __name__ == "__main__":
