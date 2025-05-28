@@ -3,60 +3,63 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sample2 import Sample2 
 import json
+from rasters_manager import RastersManager
 
 class SamplesSet2:
-    def __init__(self, ds_path, dz_path=None, dt_path=None, n_samples_x=None, n_samples_y=None):
-        self.ds_path = ds_path
-        self.dz_path = dz_path
-        self.dt_path = dt_path
+    """
+    Gère un ensemble de Sample2, leur création, calcul des voisins, sauvegarde/chargement, etc.
+    """
+    def __init__(self, ds_path=None, dz_path=None, dt_path=None, n_samples_x=None, n_samples_y=None):
+        # Dimensions de la grille
         self.n_samples_x = n_samples_x
         self.n_samples_y = n_samples_y
         self.samples = {}
-
-        # Chargement des rasters
-        self.rast_r, self.rast_g, self.rast_b = None, None, None
-        self.rast_z, self.rast_t = None, None
-
-        if ds_path is not None:
-            ds = gdal.Open(ds_path)
-            self.rast_r = ds.GetRasterBand(1).ReadAsArray()
-            self.rast_g = ds.GetRasterBand(2).ReadAsArray()
-            self.rast_b = ds.GetRasterBand(3).ReadAsArray()
-        if dz_path is not None:
-            dz = gdal.Open(dz_path)
-            self.rast_z = dz.GetRasterBand(1).ReadAsArray()
-        if dt_path is not None:
-            dt = gdal.Open(dt_path)
-            self.rast_t = dt.GetRasterBand(1).ReadAsArray()
-
-    def add_Sample2(self, sample):
-        self.samples[(sample.x, sample.y)] = sample
+        
+        # Initialize the RastersManager and set paths
+        self.rasters = RastersManager()
+        self.rasters.set_paths(ds_path, dz_path, dt_path)
+        
+        # Store paths for later reference
+        self.ds_path = ds_path
+        self.dz_path = dz_path
+        self.dt_path = dt_path
 
     def create_samples_grid(self, x_start, y_start, size_patch, category=None):
+        """
+        Crée une grille régulière de samples à partir des rasters chargés.
+        """
         if self.n_samples_x is None or self.n_samples_y is None:
             raise ValueError("n_samples_x and n_samples_y must be defined before creating a grid.")
+        
+        # Ensure rasters are loaded
+        self.rasters.load_rasters()
+        
         self.samples = {}
         for i_x in range(self.n_samples_x):
             for i_y in range(self.n_samples_y):
                 x = x_start + i_x * size_patch
                 y = y_start + i_y * size_patch
                 sample = Sample2(
-                    i_x, i_y, x, y, size_patch,
-                    self.rast_r, self.rast_g, self.rast_b,
-                    self.rast_z, self.rast_t,
-                    category=category
+                    i_x, i_y, x, y, size_patch, category=category
                 )
                 self.samples[(x, y)] = sample
 
-    def fill_neighbors_all(self, depth_neighbors=1, depth_neighbors_z=1):
+    def fill_neighbors_all(self, distance_large=3):
+        """
+        Calcule et remplit les statistiques des voisins pour tous les samples du set.
+        """
         for sample in self.samples.values():
-            sample.compute_neighbors_all(self, depth_neighbors=depth_neighbors, depth_neighbors_z=depth_neighbors_z)
+            sample.compute_neighbors_all(sample_set=self, distance_large=distance_large)
 
     def __repr__(self):
+        # Affichage synthétique de l'ensemble
         return (f"SamplesSet2(n_samples_x={self.n_samples_x}, n_samples_y={self.n_samples_y}, n_total={len(self.samples)},\n"
                 f"  ds_path={self.ds_path}, dz_path={self.dz_path}, dt_path={self.dt_path})")
 
     def plot_samples(self):
+        """
+        Affiche la grille de samples sous forme d'images RGB.
+        """
         if self.n_samples_x is None or self.n_samples_y is None:
             raise ValueError("n_samples_x and n_samples_y must be defined before plotting samples.")
         matrix = [[None for _ in range(self.n_samples_x)] for _ in range(self.n_samples_y)]
@@ -74,6 +77,9 @@ class SamplesSet2:
         plt.tight_layout()
 
     def get_samples_matrix(self):
+        """
+        Retourne la matrice 2D (i_y, i_x) des samples.
+        """
         if self.n_samples_x is None or self.n_samples_y is None:
             raise ValueError("n_samples_x and n_samples_y must be defined before getting the samples matrix.")
         matrix = [[None for _ in range(self.n_samples_x)] for _ in range(self.n_samples_y)]
@@ -97,17 +103,6 @@ class SamplesSet2:
             del self.samples[to_remove]
             self.n_samples_x = None
             self.n_samples_y = None
-
-    
-    def fill_neighbors_all(self, depth_neighbors=1, depth_neighbors_z=1):
-            """
-            Calcule et remplit les moyennes des couleurs des voisins pour tous les samples du set.
-            """
-            for sample in self.samples.values():
-                sample.compute_neighbors_all(sample_set=self, depth_neighbors=depth_neighbors, depth_neighbors_z = depth_neighbors_z)
-
-    def __repr__(self):
-        return f"SamplesSet2(n_samples_x={self.n_samples_x}, n_samples_y={self.n_samples_y}, n_total={len(self.samples)})"
 
     def plot_samples_as_list(self):
         """
@@ -142,7 +137,6 @@ class SamplesSet2:
         plt.tight_layout()
         #plt.show()
 
-    
     def save_samples_to_json(self, filename):
         """
         Sauvegarde le set et les samples dans un fichier JSON.
@@ -168,6 +162,7 @@ class SamplesSet2:
                 "g_mean": getattr(s, "g_mean", None),
                 "b_mean": getattr(s, "b_mean", None),
                 "t_mean": getattr(s, "t_mean", None),
+                "z_mean": getattr(s, "z_mean", None),
                 "r_var": getattr(s, "r_var", None),
                 "g_var": getattr(s, "g_var", None),
                 "b_var": getattr(s, "b_var", None),
@@ -178,11 +173,12 @@ class SamplesSet2:
                 "b_n_mean": getattr(s, "b_n_mean", None),
                 "t_n_mean": getattr(s, "t_n_mean", None),
                 "z_moins_z_n": getattr(s, "z_moins_z_n", None),
-                "r_n_var": getattr(s, "r_n_var", None),
-                "g_n_var": getattr(s, "g_n_var", None),
-                "b_n_var": getattr(s, "b_n_var", None),
-                "t_n_var": getattr(s, "t_n_var", None),
-                "z_n_var": getattr(s, "z_n_var", None),
+                # Features avec le voisinage large renommées
+                "r_large_mean": getattr(s, "r_large_mean", None),
+                "g_large_mean": getattr(s, "g_large_mean", None),
+                "b_large_mean": getattr(s, "b_large_mean", None),
+                "t_large_mean": getattr(s, "t_large_mean", None),
+                "z_moins_z_large": getattr(s, "z_moins_z_large", None),
             }
             data["samples"].append(sample_dict)
         with open(filename, "w") as f:
@@ -203,6 +199,10 @@ class SamplesSet2:
             n_samples_x=data.get("n_samples_x", None),
             n_samples_y=data.get("n_samples_y", None)
         )
+        
+        # Make sure rasters are loaded
+        samples_set.rasters.load_rasters()
+        
         for s in data["samples"]:
             sample = Sample2(
                 i_x=s["i_x"],
@@ -210,22 +210,16 @@ class SamplesSet2:
                 x=s["x"],
                 y=s["y"],
                 size_patch=s["size_patch"],
-                rast_r=samples_set.rast_r,
-                rast_g=samples_set.rast_g,
-                rast_b=samples_set.rast_b,
-                rast_z=samples_set.rast_z,
-                rast_t=samples_set.rast_t,
                 category=s.get("category", None)
             )
             for attr in [
                 "r_var", "g_var", "b_var", "t_var", "z_var",
-                "r_mean", "g_mean", "b_mean", "t_mean",
-                "r_n_mean", "g_n_mean", "b_n_mean", "t_n_mean",
-                "r_n_var", "g_n_var", "b_n_var", "t_n_var",
-                "z_n_var", "z_moins_z_n"
+                "r_mean", "g_mean", "b_mean", "t_mean", "z_mean",  
+                "r_n_mean", "g_n_mean", "b_n_mean", "t_n_mean", "z_moins_z_n",
+                "r_large_mean", "g_large_mean", "b_large_mean", "t_large_mean", "z_moins_z_large"
             ]:
                 setattr(sample, attr, s.get(attr, None))
-            samples_set.add_Sample2(sample)
+            samples_set.add_Sample(sample)
         return samples_set
 
     @staticmethod
@@ -241,40 +235,48 @@ class SamplesSet2:
         dt_path = set1.dt_path if set1.dt_path is not None else set2.dt_path
 
         new_set = SamplesSet2(ds_path=ds_path, dz_path=dz_path, dt_path=dt_path, n_samples_x=None, n_samples_y=None)
+        
         samples_list = list(set1.samples.values()) + list(set2.samples.values())
         for new_i_x, s in enumerate(samples_list):
             s_copy = Sample2(
                 i_x=new_i_x, i_y=0, x=s.x, y=s.y, size_patch=s.size_patch,
-                rast_r=new_set.rast_r, rast_g=new_set.rast_g, rast_b=new_set.rast_b,
-                rast_z=new_set.rast_z, rast_t=new_set.rast_t,
                 category=getattr(s, "category", None)
             )
             for attr in [
                 "r_mean", "g_mean", "b_mean", "t_mean", 
                 "r_var", "g_var", "b_var", "z_var", "t_var",
-                "r_n_mean", "g_n_mean", "b_n_mean", "t_n_mean", 
-                "r_n_var", "g_n_var", "b_n_var", "t_n_var",
-                "z_n_var", "z_moins_z_n"
+                "r_n_mean", "g_n_mean", "b_n_mean", "t_n_mean", "z_moins_z_n",
+                "r_large_mean", "g_large_mean", "b_large_mean", "t_large_mean", "z_moins_z_large"
             ]:
                 setattr(s_copy, attr, getattr(s, attr, None))
             new_set.samples[(s_copy.x, s_copy.y)] = s_copy
         return new_set
-   
 
+    def clear_rasters(self):
+        """Libère la mémoire des rasters chargés"""
+        self.rasters.clear_rasters()
+    
+    def add_Sample(self, sample):
+        """
+        Ajoute un sample à l'ensemble (clé = (x, y)).
+        Fonction pour compatibilité avec le code existant.
+        """
+        self.samples[(sample.x, sample.y)] = sample
+
+    
 if __name__ == "__main__":
-   
+    # Initialize with paths
     ds_path = "data/rgb_reshaped.tif"
     dz_path = "data/dsm_reshaped.tif"
     dt_path = "data/thermal_reshaped.tif"
    
-   
     print("Test de la classe SamplesSet")
 
     # Créer un ensemble de samples
-    x_1 = 12800
-    y_1 = 12000
-    x_2 = 14000
-    y_2 = 14000
+    x_1 = 10000
+    y_1 = 10000
+    x_2 = 11000
+    y_2 = 11000
     row_start = int(np.round(x_1/32))*32 #row X
     column_start = int(np.round(y_1/32))*32 #column Y
     n_samples_x = 3
@@ -284,13 +286,14 @@ if __name__ == "__main__":
     size_patch= 32
     samples_set = SamplesSet2(ds_path, dz_path, dt_path, n_samples_x=n_samples_x, n_samples_y=n_samples_y)
     samples_set.create_samples_grid(x_start=row_start, y_start=column_start, size_patch=size_patch, category="tourbiere")
-    samples_set.fill_neighbors_all(depth_neighbors=1)
+    samples_set.fill_neighbors_all()
     samples_set.plot_samples()
     # plt.show()
     print("Supprimer un sample")
     samples_set.remove_Sample2(2, 2)
     samples_set.plot_samples_as_list()
     # plt.show()
+    samples_set.clear_rasters()  
 
     print("Samples_set 2")
     n_samples_x = 2
@@ -299,20 +302,26 @@ if __name__ == "__main__":
     column_start = int(np.round(y_2/32))*32 #column Y
     samples_set2 = SamplesSet2(ds_path, dz_path, dt_path, n_samples_x=n_samples_x, n_samples_y=n_samples_y)
     samples_set2.create_samples_grid(x_start=row_start, y_start=column_start, size_patch=size_patch, category="tourbière")
-    samples_set2.fill_neighbors_all(depth_neighbors=1)
+    samples_set2.fill_neighbors_all()
     samples_set2.plot_samples_as_list()
-    # plt.show()
+    samples_set2.clear_rasters() 
 
     print("Samples_set 1 + Samples_set 2")
     merged_set = SamplesSet2.concatenate_set(samples_set, samples_set2)
     merged_set.plot_samples_as_list()
-    plt.show()
+    merged_set.clear_rasters()  # Libération de mémoire des rasters
+    #plt.show()
 
+   
     print("Sauvegarde et chargement des samples")
     # Sauvegarder les samples dans un fichier json
     path = "data/samples/"
     merged_set.save_samples_to_json(path+"testT.json")
+    print(f"Samples sauvegardés dans {path}testT.json")
+    
+
     #  Charger les samples depuis le fichier json
     loaded_set = SamplesSet2.load_samples_from_json(path+"testT.json")
+    print(f"Samples chargés depuis {path}testT.json")
     loaded_set.plot_samples_as_list()
     plt.show()
