@@ -174,11 +174,11 @@ class SamplesSet2:
                 "t_n_mean": getattr(s, "t_n_mean", None),
                 "z_moins_z_n": getattr(s, "z_moins_z_n", None),
                 # Features avec le voisinage large renommées
-                "r_large_mean": getattr(s, "r_large_mean", None),
-                "g_large_mean": getattr(s, "g_large_mean", None),
-                "b_large_mean": getattr(s, "b_large_mean", None),
-                "t_large_mean": getattr(s, "t_large_mean", None),
-                "z_moins_z_large": getattr(s, "z_moins_z_large", None),
+                # "r_large_mean": getattr(s, "r_large_mean", None),
+                # "g_large_mean": getattr(s, "g_large_mean", None),
+                # "b_large_mean": getattr(s, "b_large_mean", None),
+                # "t_large_mean": getattr(s, "t_large_mean", None),
+                # "z_moins_z_large": getattr(s, "z_moins_z_large", None),
             }
             data["samples"].append(sample_dict)
         with open(filename, "w") as f:
@@ -216,7 +216,7 @@ class SamplesSet2:
                 "r_var", "g_var", "b_var", "t_var", "z_var",
                 "r_mean", "g_mean", "b_mean", "t_mean", "z_mean",  
                 "r_n_mean", "g_n_mean", "b_n_mean", "t_n_mean", "z_moins_z_n",
-                "r_large_mean", "g_large_mean", "b_large_mean", "t_large_mean", "z_moins_z_large"
+                # "r_large_mean", "g_large_mean", "b_large_mean", "t_large_mean", "z_moins_z_large"
             ]:
                 setattr(sample, attr, s.get(attr, None))
             samples_set.add_Sample(sample)
@@ -246,7 +246,7 @@ class SamplesSet2:
                 "r_mean", "g_mean", "b_mean", "t_mean", 
                 "r_var", "g_var", "b_var", "z_var", "t_var",
                 "r_n_mean", "g_n_mean", "b_n_mean", "t_n_mean", "z_moins_z_n",
-                "r_large_mean", "g_large_mean", "b_large_mean", "t_large_mean", "z_moins_z_large"
+                # "r_large_mean", "g_large_mean", "b_large_mean", "t_large_mean", "z_moins_z_large"
             ]:
                 setattr(s_copy, attr, getattr(s, attr, None))
             new_set.samples[(s_copy.x, s_copy.y)] = s_copy

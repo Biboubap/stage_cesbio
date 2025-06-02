@@ -33,8 +33,8 @@ def extract_features(samples_set, n_samples_x, n_samples_y):
         "r_var", "g_var", "b_var",
         "r_n_mean", "g_n_mean", "b_n_mean",
         "t_mean", "t_n_mean", "t_var",
-        "r_large_mean", "g_large_mean", "b_large_mean", "t_large_mean",
-        "z_var", "z_moins_z_n", "z_moins_z_large"
+        #"r_large_mean", "g_large_mean", "b_large_mean", "t_large_mean",
+        "z_var", "z_moins_z_n", #"z_moins_z_large"
     ]
     
     for i_y in range(n_samples_y):
@@ -47,8 +47,8 @@ def extract_features(samples_set, n_samples_x, n_samples_y):
                 # Removed _n_var features
                 s.t_mean, s.t_n_mean, s.t_var,
                 # Added large neighborhood features
-                s.r_large_mean, s.g_large_mean, s.b_large_mean, s.t_large_mean,
-                s.z_var, s.z_moins_z_n, s.z_moins_z_large
+                #s.r_large_mean, s.g_large_mean, s.b_large_mean, s.t_large_mean,
+                s.z_var, s.z_moins_z_n,#s.z_moins_z_large
             ]
             features.append(feat)
             positions.append((i_x, i_y))
@@ -179,8 +179,9 @@ def plot_tree_model(clf):
             feature_names=["r_mean", "g_mean", "b_mean", "r_var", "g_var", "b_var", 
                            "r_n_mean", "g_n_mean", "b_n_mean", 
                            "t_mean", "t_n_mean", "t_var", 
-                           "r_large_mean", "g_large_mean", "b_large_mean", "t_large_mean",
-                           "z_var", "z_moins_z_n", "z_moins_z_large"],
+                           #"r_large_mean", "g_large_mean", "b_large_mean", "t_large_mean",
+                           "z_var", "z_moins_z_n", #"z_moins_z_large"
+                           ],
             class_names=clf.classes_,
             filled=True, rounded=True, max_depth=3)  # max_depth=3 pour lisibilité
     plt.show()
@@ -196,8 +197,8 @@ def plot_feature_importances(clf, save_path, feature_names=None):
         feature_names = ["r_mean", "g_mean", "b_mean", "r_var", "g_var", "b_var", 
                          "r_n_mean", "g_n_mean", "b_n_mean", 
                          "t_mean", "t_n_mean", "t_var", 
-                         "r_large_mean", "g_large_mean", "b_large_mean", "t_large_mean",
-                         "z_var", "z_moins_z_n", "z_moins_z_large"]
+                         #"r_large_mean", "g_large_mean", "b_large_mean", "t_large_mean",
+                         "z_var", "z_moins_z_n" ] #"z_moins_z_large"]
     importances = clf.feature_importances_
     indices = np.argsort(importances)[::-1]
 
@@ -352,8 +353,8 @@ def main_prediction():
     
     x_start = 0
     y_start = 0
-    x_end = 12742 
-    y_end = 12796
+    x_end = 5000 
+    y_end = 5000
     size_patch = 16
 
     # Chemins vers les rasters
@@ -389,7 +390,7 @@ def main_prediction():
 
     
     # # # 4. Charger le modèle
-    model_data = joblib.load("data/samples/selection10/model10.joblib")
+    model_data = joblib.load("data/samples/selection10/model10_no_large.joblib")
     clf = model_data["model"]  # Extraire le modèle du dictionnaire
     feature_names_model = model_data["feature_names"]  # Récupérer aussi les noms de features
     print("Modèle RF chargé.")
@@ -427,19 +428,19 @@ def main_prediction():
     print("Carte de classification créée.")
 
     # 10. Afficher et sauvegarder les résultats
-    plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path="data/samples/selection10/classif_WAP32_2.png")
+    plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path="data/samples/selection10/classif_WAP32_3.png")
     print("Résultats affichés et sauvegardés.")
 
     # 11. Sauvegarder la carte de classification au format .tif
     save_classification_to_tif(
         pred_map_filtered,
-        ref_tif_path="ds_path",
-        out_tif_path="data/samples/selection10/classif_WAP32_2.tif",
+        ref_tif_path=ds_path,
+        out_tif_path="data/samples/selection10/classif_WAP32_3.tif",
         size_patch = size_patch
     )
 
     # 12. Sauvegarder les importances des features
-    plot_feature_importances(clf, save_path="data/samples/selection10/features_WAP32_2.png", 
+    plot_feature_importances(clf, save_path="data/samples/selection10/features_WAP32_3.png", 
                          feature_names=feature_names)
 
  
