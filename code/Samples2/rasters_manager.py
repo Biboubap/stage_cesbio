@@ -1,5 +1,6 @@
 import numpy as np
 from osgeo import gdal
+import gc 
 
 class RastersManager:
     """
@@ -61,6 +62,7 @@ class RastersManager:
         self.rast_z = None
         self.rast_t = None
         self.is_loaded = False
+        gc.collect()  # Force garbage collection to free memory
     
     def get_patch(self, x, y, size_patch):
         """

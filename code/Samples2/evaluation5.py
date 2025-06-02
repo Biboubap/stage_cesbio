@@ -353,8 +353,8 @@ def main_prediction():
     
     x_start = 0
     y_start = 0
-    x_end = 5000 
-    y_end = 5000
+    x_end = 4992 
+    y_end = 4992
     size_patch = 16
 
     # Chemins vers les rasters
