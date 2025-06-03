@@ -61,16 +61,17 @@ def merge_populations_to_samples_set(json_paths, ds_path=None, dz_path=None, dt_
     
     # Create a new SamplesSet2
     samples_set = SamplesSet2(ds_path, dz_path, dt_path, n_samples_x=None, n_samples_y=None)
-    
+    offset = 0
     for path in json_paths:
         data = load_population(path)
+        print(f"Chargement de {len(data.get('samples', []))} samples depuis {path}")
         for s in data.get("samples", []):
             # Create Sample2 objects from json data
             sample = Sample2(
-                i_x=s.get("i_x"),
-                i_y=s.get("i_y"), 
-                x=s.get("x"),
-                y=s.get("y"),
+                i_x=s.get("i_x")+ offset,
+                i_y=s.get("i_y")+ offset, 
+                x=s.get("x")+ offset*s.get("size_patch"),
+                y=s.get("y")+ offset*s.get("size_patch"),
                 size_patch=s.get("size_patch"),
                 category=s.get("category")
             )
@@ -87,7 +88,9 @@ def merge_populations_to_samples_set(json_paths, ds_path=None, dz_path=None, dt_
                     setattr(sample, attr, s.get(attr))
             
             samples_set.add_Sample(sample)
-    
+        offset += 80
+        
+    print(f"Total samples fusionnés: {len(samples_set.samples)}")
     return samples_set
 
 def merge_populations_from_dir(directory, ds_path=None, dz_path=None, dt_path=None, mosaic_to_reshaped=False):
@@ -283,18 +286,67 @@ def balance_samples_by_category(samples_set, max_per_category=None):
 
 # Exemple d'utilisation :
 if __name__ == "__main__":
-    # Initialize paths
-    ds_path = "data/rgb_reshaped.tif"
-    dz_path = "data/dsm_reshaped.tif" 
-    dt_path = "data/thermal_reshaped.tif"
+    import glob
+    import os
+
+    # Paths
+    base_dir = "data/samples/selection11"
+    out_dir = os.path.join(base_dir, "pop_merged")
+    os.makedirs(out_dir, exist_ok=True)
+    out_json = os.path.join(out_dir, "pop_merged.json")
+    temp_json = os.path.join(out_dir, "all_samples_combined.json")
+
+    # ds_path = "data/rgb_reshaped.tif"
+    # dz_path = "data/dsm_reshaped.tif"
+    # dt_path = "data/thermal_reshaped.tif"
+
+    # Chercher tous les fichiers forest_*, large_depression_*, peat_plateau_*
+    patterns = [
+        os.path.join(base_dir, "forest_*.json"),
+        os.path.join(base_dir, "large_depression_*.json"),
+        os.path.join(base_dir, "peat_plateau_*.json"),
+    ]
+    json_files = []
+    for pat in patterns:
+        json_files.extend(glob.glob(pat))
+    print(f"Fichiers trouvés ({len(json_files)}): {json_files}")
+
+    # ÉTAPE 1: Fusionner tous les samples au niveau JSON (préserve tous les samples)
+    print("Fusion des échantillons au format JSON...")
+    merged_json = merge_populations_to_json(json_files, temp_json)
     
-    # Convert legacy samples
-    samples_set = convert_legacy_samples(
-        "data/samples/selection8/merged_pop/merged_pop8_2.json",
-        ds_path, dz_path, dt_path
-    )
+    # Compter les samples par catégorie avant équilibrage
+    category_counts = Counter([s["category"] for s in merged_json["samples"]])
+    print(f"Samples avant équilibrage: {len(merged_json['samples'])}")
+    print(f"Répartition initiale: {category_counts}")
     
-    # Save the result with the new features
-    samples_set.save_samples_to_json("data/samples/selection10/pop8_converted.json")
+    # ÉTAPE 2: Équilibrer les catégories dans le JSON
+    balanced_samples = {}
+    for s in merged_json["samples"]:
+        category = s["category"]
+        if category not in balanced_samples:
+            balanced_samples[category] = []
+        balanced_samples[category].append(s)
     
-    print(f"Samples converted and saved. Total: {len(samples_set.samples)}")
+    # Limiter chaque catégorie à 3300 samples
+    all_balanced_samples = []
+    for category, samples in balanced_samples.items():
+        if len(samples) > 3300:
+            selected = random.sample(samples, 3300)
+        else:
+            selected = samples
+        all_balanced_samples.extend(selected)
+    
+    # ÉTAPE 3: Sauvegarder le résultat équilibré
+    final_data = {
+        "n_samples_x": None,
+        "n_samples_y": None,
+        "samples": all_balanced_samples
+    }
+    save_population(final_data, out_json)
+    
+    # Statistiques finales
+    final_counts = Counter([s["category"] for s in all_balanced_samples])
+    print(f"Équilibrage terminé: {len(all_balanced_samples)} samples au total")
+    print(f"Répartition par catégorie: {final_counts}")
+    print(f"Population fusionnée et équilibrée sauvegardée dans {out_json}")

@@ -168,21 +168,33 @@ def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_p
 
 if __name__ == "__main__":
     # Paramètres de la grille globale
-    x_start = 11839
-    y_start = 15119
-    size_patch = 16
+    x_start = 0
+    y_start = 0
+    size_patch = 64
     depth_neighbors = 1
 
     n_samples_x = 20
     n_samples_y = 10
-    file_path = "data/samples/selection8/"
+    file_path = "drone_treated/WAP32_tiles/rgb/WAP32_full_transparent_mosaic_group1_07_08.tif"
 
     class_dict = {
-        "l": "lichen", #white and green lichen with small bushs
-        "c" : "chicoutai", #chicoutai & thé du Labrador
+        "pp": "peat_plateau",
+        "bt" : "big_through",
+        "ld" : "large_depression",
+        "fo": "forest",
+        "la": "lake"
+        # "li": "lichen", #white and green lichen with small bushs
+        # "ch" : "chicoutai", #chicoutai & thé du Labrador
+        # "sp": "sphaignes", #orange sphaignes in dry troughs and land
+        # "th": "through",
+        # "dld" : "dry_large_depression", #large depression with no water
+        # "wld" : "wet_large_depression", #large depression with water
+        # "fld" : "fen_large_depression", #large depression with vegetation
+        # "tr" : "trees",
+        # "la" : "lake"
 
-        "s": "sphaignes", #orange sphaignes in dry troughs and land
-        "t": "crevasse", #troughs with water
+
+        # "t": "crevasse", #troughs with water
         # "w": "lac", #lakecn
         # "f": "foret",
         # "qe" : "flaque_eau", #large depression with water

@@ -426,34 +426,242 @@ def filter_and_balance_lichen(csv_in, csv_out, max_high=250, col="proportion_lic
 #     sqrt=True
 #     )
 
-# Exemple d'utilisation :
-if __name__ == "__main__":
+def compute_proportion(classif, sentinel_path):
+    """
+    Compute the proportion of each class (lichen, chicoutai, crevasses, sphaignes) per Sentinel pixel.
     
-    result = compute_lichen_proportion_per_sentinel_pixel(
-        mask_path="data/samples/selection8/lichen_mask.tif",
-        sentinel_path="DataCubeS2/Bandes/mediane2/mediane_clipped_STACK_2023_BandB2_Twin_Lake_V2.tif"
-    )
-    save_proportion_dict_to_csv(result, "data/samples/selection8/regression/lichen_proportion_3.csv")
-    mask_interior_pixel(
-    sentinel_tif="DataCubeS2/Bandes/mediane2/mediane_clipped_STACK_2023_BandB2_Twin_Lake_V2.tif",
-    csv_in="data/samples/selection8/regression/lichen_proportion_3.csv",
-    csv_out="data/samples/selection8/regression/lichen_4_interior.csv",
-    show=True,
-    out_mask_tif="data/samples/selection8/regression/lichen_4_interior.tif"
-    )
-    plot_lichen_proportion_histogram(
-        "data/samples/selection8/regression/lichen_4_interior.csv",
-        "data/samples/selection8/regression/hist_lichen_interior_4.png",
-    sqrt=False
-   )
+    Args:
+        classif: Path to the classification mask (values: 1=lichen, 2=chicoutai, 3=crevasse, 4=sphaignes, 0=other, 255=nodata)
+        sentinel_path: Path to any Sentinel-2 band to get dimensions and geotransform
+        
+    Returns:
+        Dictionary with (col_s, row_s) as keys and a dictionary of class proportions as values:
+        {(col_s, row_s): {'lichen': float, 'chicoutai': float, 'crevasse': float, 'sphaignes': float, 
+                          'valid_pixels': int, 'valid_proportion': float, 'total_pixels': int}}
+    """
+    # Load the classification mask
+    ds_mask = gdal.Open(classif)
+    mask = ds_mask.GetRasterBand(1).ReadAsArray()
+    ds_5m = gdal.Open(sentinel_path)
+    cols_5m = ds_5m.RasterXSize
+    rows_5m = ds_5m.RasterYSize
+
+    result_dict = {}
     
-    filter_and_balance_lichen(
-        "data/samples/selection8/regression/lichen_4_interior.csv",
-        "data/samples/selection8/regression/lichen_4_interior_balanced.csv",
-        max_high=15
-    )
-    plot_lichen_proportion_histogram(
-        "data/samples/selection8/regression/lichen_4_interior_balanced.csv",
-        "data/samples/selection8/regression/hist_lichen_4_interior_balanced.png",
-    sqrt=False
-   )
+    # Class mapping
+    class_ids = {
+        1: 'lichen',
+        2: 'chicoutai',
+        3: 'crevasse',
+        4: 'sphaignes'
+    }
+
+    for row_s in tqdm(range(rows_5m), desc="Computing class proportions"):
+        for col_s in range(cols_5m):
+            xmin, xmax, ymin, ymax = sentinel_to_drone_bounds(col_s, row_s, ds_5m=ds_5m)
+            
+            # Check if the window is within the bounds of the mask
+            if xmin < 0 or ymin < 0 or xmax > mask.shape[1] or ymax > mask.shape[0]:
+                result_dict[(col_s, row_s)] = None
+                continue
+                
+            submask = mask[ymin:ymax, xmin:xmax]
+            
+            # Skip if submask is empty
+            if submask.size == 0:
+                result_dict[(col_s, row_s)] = None
+                continue
+            
+            # Count valid pixels (non-zero and non-nodata)
+            total_pixels = submask.size
+            valid_pixels = np.sum((submask != 0) & (submask != 255))
+            valid_proportion = valid_pixels / total_pixels if total_pixels > 0 else 0
+            
+            # If there are no valid pixels, skip
+            if valid_pixels == 0:
+                result_dict[(col_s, row_s)] = None
+                continue
+            
+            # Initialize proportions dictionary for this sentinel pixel
+            proportions = {
+                'valid_pixels': valid_pixels,
+                'valid_proportion': valid_proportion,
+                'total_pixels': total_pixels
+            }
+            
+            # Calculate proportion for each class
+            for class_id, class_name in class_ids.items():
+                count = np.sum(submask == class_id)
+                prop = count / valid_pixels if valid_pixels > 0 else 0
+                proportions[class_name] = prop
+            
+            result_dict[(col_s, row_s)] = proportions
+
+    return result_dict
+
+def save_proportions_to_csv(result_dict, out_csv):
+    """
+    Save the proportions dictionary to a CSV file.
+    
+    Args:
+        result_dict: Dictionary with class proportions from compute_proportion()
+        out_csv: Path to save the CSV file
+    """
+    rows = []
+    
+    for (col_s, row_s), props in result_dict.items():
+        if props is None:
+            # No valid data for this pixel
+            row = {
+                "col_s": col_s,
+                "row_s": row_s,
+                "lichen": None,
+                "chicoutai": None,
+                "crevasse": None,
+                "sphaignes": None,
+                "valid_pixels": 0,
+                "valid_proportion": 0.0,
+                "total_pixels": 0
+            }
+        else:
+            # Valid data with proportions
+            row = {
+                "col_s": col_s,
+                "row_s": row_s,
+                "lichen": props.get('lichen', 0),
+                "chicoutai": props.get('chicoutai', 0),
+                "crevasse": props.get('crevasse', 0),
+                "sphaignes": props.get('sphaignes', 0),
+                "valid_pixels": props.get('valid_pixels', 0),
+                "valid_proportion": props.get('valid_proportion', 0.0),
+                "total_pixels": props.get('total_pixels', 0)
+            }
+        rows.append(row)
+    
+    df = pd.DataFrame(rows)
+    df.to_csv(out_csv, index=False)
+    print(f"Proportions saved to {out_csv}")
+
+def plot_class_proportions_histogram(csv_path, out_dir=None):
+    """
+    Plot histograms of class proportions from CSV file
+    
+    Args:
+        csv_path: Path to the CSV file with class proportions
+        out_dir: Directory to save the plots (None to display only)
+    """
+    df = pd.read_csv(csv_path)
+    
+    # Classes to plot
+    classes = ['lichen', 'chicoutai', 'crevasse', 'sphaignes']
+    colors = ['lightgray', 'darkgreen', 'dimgray', 'brown']
+    
+    # Create a figure with 2x2 subplots
+    fig, axs = plt.subplots(2, 2, figsize=(12, 10))
+    axs = axs.flatten()
+    
+    for i, (class_name, color) in enumerate(zip(classes, colors)):
+        # Drop NaN values
+        values = df[class_name].dropna() * 100  # Convert to percentage
+        
+        # Create histogram
+        axs[i].hist(values, bins=20, color=color, edgecolor='black', alpha=0.7)
+        axs[i].set_title(f"Distribution of {class_name} proportion")
+        axs[i].set_xlabel("Proportion (%)")
+        axs[i].set_ylabel("Number of sentinel pixels")
+        axs[i].grid(axis='y', alpha=0.3)
+    
+    plt.tight_layout()
+    
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+        out_path = os.path.join(out_dir, "class_proportions_histogram.png")
+        plt.savefig(out_path)
+        print(f"Histogram saved to {out_path}")
+    else:
+        plt.show()
+
+
+def mask_invalid(csv_in, csv_out, min_valid_proportion=0.5, show=False, out_png=None):
+    """
+    Filter out Sentinel pixels with less than the specified proportion of valid drone pixels.
+    
+    Args:
+        csv_in: Input CSV file with class proportions
+        csv_out: Output CSV file with filtered data
+        min_valid_proportion: Minimum proportion of valid pixels required to keep a sample (0-1)
+        show: Whether to show a visualization of the mask
+        out_png: Path to save the visualization as PNG
+    """
+    # Load the CSV file
+    df = pd.read_csv(csv_in)
+    
+    # Count rows before filtering
+    total_rows = len(df)
+    
+    # Filter by valid pixel proportion
+    df_filtered = df[df['valid_proportion'] >= min_valid_proportion]
+    
+    # Count rows after filtering
+    kept_rows = len(df_filtered)
+    
+    print(f"Filtered from {total_rows} to {kept_rows} pixels " +
+          f"({kept_rows/total_rows*100:.1f}%) having at least {min_valid_proportion*100:.0f}% valid pixels")
+    
+    # Save the filtered DataFrame
+    df_filtered.to_csv(csv_out, index=False)
+    print(f"Saved filtered data to {csv_out}")
+    
+    # Create a visualization if requested
+    if show or out_png:
+        try:
+            # Use a non-interactive backend to avoid display issues
+            import matplotlib
+            matplotlib.use('Agg')  # Use the 'Agg' backend that doesn't require a GUI
+            
+            # Get sentinel dimensions from the data
+            max_row = int(max(max(df['row_s']), max(df_filtered['row_s']))) + 1
+            max_col = int(max(max(df['col_s']), max(df_filtered['col_s']))) + 1
+            
+            # Create mask arrays
+            all_mask = np.zeros((max_row, max_col), dtype=np.uint8)
+            valid_mask = np.zeros((max_row, max_col), dtype=np.uint8)
+            
+            # Fill masks
+            for _, row in df.iterrows():
+                all_mask[int(row['row_s']), int(row['col_s'])] = 1
+            
+            for _, row in df_filtered.iterrows():
+                valid_mask[int(row['row_s']), int(row['col_s'])] = 1
+            
+            # Create the figure with two plots side by side
+            plt.figure(figsize=(10, 4))
+            
+            # Plot all pixels with data
+            plt.subplot(1, 2, 1)
+            plt.imshow(all_mask, cmap='gray')
+            plt.title("All pixels with data")
+            plt.axis('off')
+            
+            # Plot the mask of retained pixels
+            plt.subplot(1, 2, 2)
+            plt.imshow(valid_mask, cmap='gray')
+            plt.title(f'Pixels with ≥{min_valid_proportion*100:.0f}% Valid Data')
+            plt.axis('off')
+            
+            plt.tight_layout()
+            
+            # Save the figure if requested
+            if out_png:
+                plt.savefig(out_png, bbox_inches='tight', dpi=150)
+                print(f"Visualization saved to {out_png}")
+            
+            # Show the figure if requested (might not work in non-interactive environments)
+            if show:
+                plt.show()
+            else:
+                plt.close()
+            
+        except Exception as e:
+            print(f"Error creating visualization: {str(e)}")
+            print("Continuing without visualization.")
