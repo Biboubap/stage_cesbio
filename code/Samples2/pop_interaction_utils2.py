@@ -352,6 +352,152 @@ def merge_Wap_samples():
     print(f"Répartition par catégorie: {final_counts}")
     print(f"Population fusionnée et équilibrée sauvegardée dans {out_json}")
 
+# def merge_selection12_samples():
+#     """
+#     Fusionne toutes les populations de selection12 avec des modifications spécifiques:
+#     - Reclassifie les 75 derniers samples de watered_depression_3 en "green_depression"
+#     - Retire les 35 premiers samples de sphaignes_2
+#     - Retire les 57 derniers samples de green_depression_2
+#     """
+#     import os
+#     import glob
+    
+#     # Paths
+#     base_dir = "data/samples/selection12"
+#     out_dir = "data/samples/pop_merged"
+#     os.makedirs(out_dir, exist_ok=True)
+#     out_json = os.path.join(out_dir, "pop_12.json")
+    
+#     # Find all JSON files in selection12
+#     json_files = glob.glob(os.path.join(base_dir, "*.json"))
+#     print(f"Fichiers trouvés ({len(json_files)}): {json_files}")
+    
+#     # Load and modify all samples
+#     all_samples = []
+    
+#     for path in json_files:
+#         data = load_population(path)
+#         samples = data.get("samples", [])
+#         filename = os.path.basename(path)
+        
+#         # Apply specific modifications
+#         if filename == "watered_depression_3.json":
+#             # Reclassify the last 75 samples as "green_depression"
+#             if len(samples) >= 75:
+#                 for i in range(len(samples) - 75, len(samples)):
+#                     samples[i]["category"] = "green_depression"
+#             print(f"Reclassifiés {min(75, len(samples))} derniers samples de {filename} en 'green_depression'")
+                
+#         elif filename == "sphaignes_2.json":
+#             # Remove the first 35 samples
+#             if len(samples) >= 35:
+#                 samples = samples[35:]
+#             else:
+#                 samples = []
+#             print(f"Retirés {min(35, len(data.get('samples', [])))} premiers samples de {filename}")
+                
+#         elif filename == "green_depression_2.json":
+#             # Remove the last 57 samples
+#             if len(samples) >= 57:
+#                 samples = samples[:-57]
+#             print(f"Retirés {min(57, len(data.get('samples', [])))} derniers samples de {filename}")
+        
+#         all_samples.extend(samples)
+    
+#     # Create the merged data
+#     merged_data = {
+#         "n_samples_x": None,
+#         "n_samples_y": None,
+#         "samples": all_samples
+#     }
+    
+#     # Save the merged data
+#     save_population(merged_data, out_json)
+    
+#     # Count samples by category
+#     categories_count = Counter([s["category"] for s in all_samples])
+#     print(f"\nPopulation fusionnée: {len(all_samples)} samples au total")
+#     print(f"Répartition par catégorie:")
+#     for category, count in sorted(categories_count.items(), key=lambda x: x[0]):
+#         print(f"  - {category}: {count} samples")
+#     print(f"Population sauvegardée dans {out_json}")
+    
+#     return merged_data
+
+# def duplicate_and_balance_selection12():
+#     """
+#     Load pop12.json from selection12/pop_merged/, duplicate samples for chicoutai and green_depression,
+#     balance all categories to 2000 samples each, and save back to the same directory.
+#     """
+#     import os
+    
+#     # Paths
+#     input_path = "data/samples/selection12/pop_merged/pop_12.json"
+#     output_path = "data/samples/selection12/pop_merged/pop_12_balanced.json"
+    
+#     print(f"Loading samples from {input_path}...")
+#     data = load_population(input_path)
+#     samples = data.get("samples", [])
+    
+#     # Count initial samples by category
+#     category_counts = Counter([s["category"] for s in samples])
+#     print(f"Initial samples: {len(samples)} total")
+#     print(f"Initial distribution by category: {category_counts}")
+    
+#     # Organize samples by category
+#     samples_by_category = {}
+#     for s in samples:
+#         category = s["category"]
+#         if category not in samples_by_category:
+#             samples_by_category[category] = []
+#         samples_by_category[category].append(s)
+    
+#     # Duplicate samples for chicoutai and green_depression if needed
+#     for category in ["chicoutai", "green_depression"]:
+#         if category in samples_by_category:
+#             original_samples = samples_by_category[category].copy()
+#             while len(samples_by_category[category]) < 2000:
+#                 # Select a random sample to duplicate
+#                 sample_to_duplicate = random.choice(original_samples)
+#                 duplicate = sample_to_duplicate.copy()  # Create a deep copy
+                
+#                 # Add small variation to x, y coordinates to avoid exact duplicates
+#                 variation = random.randint(1, 5)
+#                 duplicate["x"] += variation
+#                 duplicate["y"] += variation
+                
+#                 samples_by_category[category].append(duplicate)
+    
+#     # Balance all categories to 2000 samples each
+#     balanced_samples = []
+#     for category, category_samples in samples_by_category.items():
+#         if len(category_samples) > 2000:
+#             # Randomly select 2000 samples
+#             selected_samples = random.sample(category_samples, 2000)
+#         else:
+#             selected_samples = category_samples
+        
+#         balanced_samples.extend(selected_samples)
+#         print(f"{category}: {len(selected_samples)} samples after balancing")
+    
+#     # Create final data structure
+#     balanced_data = {
+#         "n_samples_x": None,
+#         "n_samples_y": None,
+#         "samples": balanced_samples
+#     }
+    
+#     # Save balanced data
+#     save_population(balanced_data, output_path)
+    
+#     # Print final stats
+#     final_counts = Counter([s["category"] for s in balanced_samples])
+#     print(f"\nBalanced population: {len(balanced_samples)} samples total")
+#     print(f"Final distribution by category: {final_counts}")
+#     print(f"Balanced population saved to {output_path}")
+    
+#     return balanced_data
+
 if __name__ == "__main__":
     # Load samples from selection10/pop8_converted.json
     input_path = "data/samples/selection10/pop8_converted.json"
@@ -377,3 +523,4 @@ if __name__ == "__main__":
     # Save filtered samples
     filtered_set.save_samples_to_json(output_path)
     print(f"Filtered samples saved to {output_path}")
+
