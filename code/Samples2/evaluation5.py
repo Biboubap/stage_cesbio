@@ -65,10 +65,14 @@ def load_mask_tiff(mask_path):
 def predict_samples_2(clf, features, positions, n_samples_x, n_samples_y, samples_set=None, mask=None, size_patch=32):
     preds = clf.predict(features)
     pred_map = np.zeros((n_samples_y, n_samples_x), dtype=np.uint8)
+    # Update class_to_val to match the order specified in the classification report
     class_to_val = {
-        "peat_plateau": 1,
-        "forest": 2,
-        "large_depression": 3,
+        "chicoutai": 1,
+        "dry_depression": 2,
+        "green_depression": 3,
+        "lichen": 4,
+        "sphaignes": 5,
+        "watered_depression": 6,
         "None": 0
     }
     samples_matrix = samples_set.get_samples_matrix() if samples_set is not None else None
@@ -92,12 +96,16 @@ def predict_samples_2(clf, features, positions, n_samples_x, n_samples_y, sample
 def create_classification_map(pred_map, size_patch):
     n_samples_y, n_samples_x = pred_map.shape
     color_map = np.zeros((n_samples_x*size_patch, n_samples_y*size_patch, 3), dtype=np.uint8)
+    # Update color_dict to match the new class_to_val mapping
     color_dict = {
-        1: [200, 200, 200],   # peat_plateau : gris clair
-        2: [0, 80, 0],        # forest : vert foncé
-        3: [60, 60, 60],      # large_depression : gris foncé
-        0: [0, 0, 0],       # mask out : noir
-        255: [0, 0, 0]      # no data : noir
+        1: [0, 100, 0],       # chicoutai: vert foncé 
+        2: [153, 136, 0],     # dry_depression: noir-jaune
+        3: [50, 205, 50],     # green_depression: vert clair/flashy
+        4: [200, 200, 200],   # lichen: gris clair
+        5: [139, 69, 19],     # sphaignes: marron/orange foncé
+        6: [80, 80, 80],      # watered_depression: gris
+        0: [0, 0, 0],         # mask out: noir
+        255: [0, 0, 0]        # no data: noir
     }
     for i_x in range(n_samples_x):
         for i_y in range(n_samples_y):
@@ -119,14 +127,12 @@ def plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path=N
     axes[1].axis("off")
     # Légende des couleurs
     color_labels = [
-        ("peat_plateau",      [200, 200, 200]),
-        ("forest",            [0, 80, 0]),
-        ("large_depression",  [60, 60, 60]),
-        # Les anciennes classes sont laissées en commentaire pour référence
-        # ("lichen",      [200, 200, 200]),
-        # ("chicoutai",   [0, 100, 0]),
-        # ("sphaignes",   [181, 101, 29]),
-        # ("crevasse",    [60, 60, 60]),
+        ("chicoutai",         [0, 100, 0]),
+        ("dry_depression",    [153, 136, 0]),
+        ("green_depression",  [50, 205, 50]),
+        ("lichen",            [200, 200, 200]),
+        ("sphaignes",         [139, 69, 19]),
+        ("watered_depression",[80, 80, 80])
     ]
     patches = [mpatches.Patch(color=np.array(rgb)/255, label=label) for label, rgb in color_labels]
     axes[1].legend(handles=patches, loc='lower right', fontsize=10, title="Écozones")
@@ -148,27 +154,42 @@ def create_rgb_image_from_samples(samples_set, n_samples_x, n_samples_y, size_pa
     return rgb_img
 
 def filter_isolated_samples(pred_map):
-    """Si un sample est seul de sa classe parmi ses 8 voisins, il prend la classe majoritaire de ses voisins."""
+    """
+    Remplace chaque pixel isolé de sa classe par la classe majoritaire parmi ses voisins.
+    Un pixel est considéré isolé s'il n'a aucun voisin de la même classe dans son voisinage 3x3.
+    """
     from scipy.ndimage import generic_filter
 
     def filter_func(values):
-        center = values[4]
-        neighbors = np.delete(values, 4)
-        if center == 0:
+        center = values[4]  # La valeur centrale
+        if center == 0 or center == 255:  # Ne pas modifier les pixels de fond ou sans données
             return center
-        # Si aucun voisin n'a la même classe que le centre
+        
+        neighbors = np.delete(values, 4)  # Tous les voisins sauf le centre
+        
+        # Si aucun voisin n'a la même classe que le centre, le pixel est isolé
         if not np.any(neighbors == center):
-            # Prend la classe majoritaire des voisins (hors fond/0)
-            nonzero_neighbors = neighbors[neighbors != 0]
+            # Trouver la classe majoritaire parmi les voisins non-nuls
+            nonzero_neighbors = neighbors[neighbors > 0]
             if len(nonzero_neighbors) == 0:
-                return center
-            vals, counts = np.unique(nonzero_neighbors, return_counts=True)
-            return vals[np.argmax(counts)]
+                return center  # Si tous les voisins sont nuls, garder la valeur originale
+            
+            # Compter les occurrences de chaque classe
+            unique_vals, counts = np.unique(nonzero_neighbors, return_counts=True)
+            # Retourne la classe la plus fréquente
+            return unique_vals[np.argmax(counts)]
         else:
+            # Le pixel n'est pas isolé, garder sa valeur originale
             return center
 
-    filtered = generic_filter(pred_map, filter_func, size=3, mode='constant', cval=0)
-    return filtered.astype(pred_map.dtype)
+    # Appliquer le filtre sur chaque pixel avec un noyau 3x3
+    filtered_map = generic_filter(pred_map, filter_func, size=3, mode='constant', cval=0)
+    
+    # Vérifier combien de pixels ont été modifiés
+    changed = np.sum(filtered_map != pred_map)
+    print(f"Filtrage des pixels isolés: {changed} pixels modifiés ({changed/(pred_map.size)*100:.2f}%)")
+    
+    return filtered_map.astype(pred_map.dtype)
 
 from sklearn.tree import plot_tree
 
@@ -302,10 +323,14 @@ def create_classification_map_transparent(pred_map, size_patch):
     n_samples_y, n_samples_x = pred_map.shape
     color_map = np.zeros((n_samples_x*size_patch, n_samples_y*size_patch, 4), dtype=np.uint8)  # 4 canaux (RGBA)
     color_dict = {
-        1: [200, 200, 200, 255],   # peat_plateau : gris clair
-        2: [0, 80, 0, 255],        # forest : vert foncé
-        3: [60, 60, 60, 255],      # large_depression : gris foncé
-        0: [0, 0, 0, 0],         # mask out : transparent
+        1: [0, 100, 0, 255],       # chicoutai: vert foncé
+        2: [153, 136, 0, 255],     # dry_depression: noir-jaune
+        3: [50, 205, 50, 255],     # green_depression: vert clair/flashy
+        4: [200, 200, 200, 255],   # lichen: gris clair
+        5: [139, 69, 19, 255],     # sphaignes: marron/orange foncé
+        6: [80, 80, 80, 255],      # watered_depression: gris
+        0: [0, 0, 0, 0],           # mask out: transparent
+        255: [0, 0, 0, 0]          # no data: transparent
     }
     for i_x in range(n_samples_x):
         for i_y in range(n_samples_y):
@@ -355,7 +380,7 @@ def main_prediction():
     y_start = 0
     x_end = 4992 
     y_end = 4992
-    size_patch = 64
+    size_patch = 16
 
     # Chemins vers les rasters
     # ds_path = "data/rgb_reshaped.tif"
@@ -366,38 +391,38 @@ def main_prediction():
     dz_path = "drone_treated/WAP32_partial_dsm2.tif"
     dt_path = None
     
-    # 1. Créer les samples et calculer les paramètres
-    print("Création des samples et calcul des paramètres...")
-    samples_set, n_samples_x, n_samples_y = create_samples_and_compute(
-        x_start, y_start, x_end, y_end, size_patch,
-        ds_path=ds_path, dz_path=dz_path, dt_path=dt_path
-    )
-    print("Samples créés et paramètres calculés. Génération de l'image RGB en cours...")
+    # # 1. Créer les samples et calculer les paramètres
+    # print("Création des samples et calcul des paramètres...")
+    # samples_set, n_samples_x, n_samples_y = create_samples_and_compute(
+    #     x_start, y_start, x_end, y_end, size_patch,
+    #     ds_path=ds_path, dz_path=dz_path, dt_path=dt_path
+    # )
+    # print("Samples créés et paramètres calculés. Génération de l'image RGB en cours...")
 
-    # 2. Générer l'image RGB à partir des samples
-    rgb_img = create_rgb_image_from_samples(samples_set, n_samples_x, n_samples_y, size_patch)
-    print(f"Image RGB générée de taille : {rgb_img.shape}")
+    # # 2. Générer l'image RGB à partir des samples
+    # rgb_img = create_rgb_image_from_samples(samples_set, n_samples_x, n_samples_y, size_patch)
+    # print(f"Image RGB générée de taille : {rgb_img.shape}")
    
    
-    # 3. Extraire les features
-    features, positions, feature_names = extract_features(samples_set, n_samples_x, n_samples_y)
-    print(f"Features extraites avec taille : {features.shape}")
+    # # 3. Extraire les features
+    # features, positions, feature_names = extract_features(samples_set, n_samples_x, n_samples_y)
+    # print(f"Features extraites avec taille : {features.shape}")
 
-    # Pour sauvegarder
-    save_precomputed_data(samples_set, n_samples_x, n_samples_y, rgb_img, features=features, positions=positions,
-                          ds_path=ds_path, dz_path=dz_path, dt_path=dt_path, path_prefix="data/samples/selection11/pop_merged/precalc",
-                          feature_names=feature_names)
+    # # Pour sauvegarder
+    # save_precomputed_data(samples_set, n_samples_x, n_samples_y, rgb_img, features=features, positions=positions,
+    #                       ds_path=ds_path, dz_path=dz_path, dt_path=dt_path, path_prefix="data/samples/selection12/pop_merged/precalc",
+    #                       feature_names=feature_names)
 
     # # # 4. Charger le modèle
-    model_data = joblib.load("data/samples/selection11/pop_merged/model_pp_ld_fo.joblib")
+    model_data = joblib.load("data/samples/selection12/pop_merged/model_wap_32.joblib")
     clf = model_data["model"]  # Extraire le modèle du dictionnaire
     feature_names_model = model_data["feature_names"]  # Récupérer aussi les noms de features
     print("Modèle RF chargé.")
 
     # # #Pour charger 1.2.3
-    # samples_set, n_samples_x, n_samples_y, rgb_img, features, positions, ds_path, dz_path, dt_path, feature_names = \
-    #     load_precomputed_data("data/samples/selection8/precalc")
-    # print(f"Pré-calculs chargés")
+    samples_set, n_samples_x, n_samples_y, rgb_img, features, positions, ds_path, dz_path, dt_path, feature_names = \
+        load_precomputed_data("data/samples/selection12/pop_merged/precalc")
+    print(f"Pré-calculs chargés")
 
 
     #5 Filtrer les features pour qu'elles correspondent au modèle
@@ -418,31 +443,31 @@ def main_prediction():
     )
     print("Prédictions effectuées.")
     
-    # 8. Filtrage des samples isolés
-    pred_map_filtered = pred_map#filter_isolated_samples(pred_map)
-    #print("Samples isolés filtrés.")
+    # 8. Filtrage des samples isolés - activer le filtre
+    pred_map_filtered = filter_isolated_samples(pred_map)
+    print("Samples isolés filtrés.")
 
     # 9. Créer la carte de classification
     color_map = create_classification_map(pred_map_filtered, size_patch)
     print("Carte de classification créée.")
 
     # 10. Afficher et sauvegarder les résultats
-    plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path="data/samples/selection11/pop_merged/classif_WAP32_1.png")
+    plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path="data/samples/selection12/pop_merged/classif_WAP32_2.png")
     print("Résultats affichés et sauvegardés.")
 
     # 11. Sauvegarder la carte de classification au format .tif
     save_classification_to_tif(
         pred_map_filtered,
         ref_tif_path=ds_path,
-        out_tif_path="data/samples/selection11/pop_merged/classif_WAP32_1.tif",
+        out_tif_path="data/samples/selection12/pop_merged/classif_WAP32_2.tif",
         size_patch = size_patch
     )
 
     # 12. Sauvegarder les importances des features
     # When plotting feature importances, always use the feature_names from your model
-    plot_feature_importances(clf, 
-                         save_path="data/samples/selection11/pop_merged/features_WAP32_1.png", 
-                         feature_names=feature_names_model)
+    # plot_feature_importances(clf, 
+    #                      save_path="data/samples/selection12/pop_merged/features_WAP32_2.png", 
+    #                      feature_names=feature_names_model)
 
  
 if __name__ == "__main__":

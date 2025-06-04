@@ -67,12 +67,12 @@ def train_random_forest(features, labels, feature_names, test_size=0.2, random_s
     )
     clf = RandomForestClassifier(
         n_estimators=300,
-        max_depth=15,
+        max_depth=20,
         class_weight="balanced",
         random_state=42,
         n_jobs=-1,
         min_samples_leaf=3,
-        min_samples_split=3,
+        min_samples_split=4,
         max_features="sqrt"
     )
     clf.fit(X_train, y_train)
@@ -85,28 +85,22 @@ def train_random_forest(features, labels, feature_names, test_size=0.2, random_s
     return clf, X_test, y_test, feature_names
 
 if __name__ == "__main__":
-    features, labels, feature_names = load_samples("data/samples/selection11/pop_merged/pop_merged.json", exclude_temp=True)
+    features, labels, feature_names = load_samples("data/samples/selection12/pop_merged/pop_12_balanced.json", exclude_temp=True)
     clf, X_test, y_test, feature_names = train_random_forest(features, labels, feature_names)
-
-    # Sauvegarde du modèle et des features utilisées
+    # Sauvegarde du modèle
     import joblib
-    joblib.dump({"model": clf, "feature_names": feature_names}, "data/samples/selection11/pop_merged/model_pp_ld_fo.joblib")
+    joblib.dump({"model": clf, "feature_names": feature_names}, "data/samples/selection12/pop_merged/random_forest_model.joblib")
 
-
-
-
-
-
-
+    
 def grid_search_rf(features, labels, feature_names, test_size=0.3, random_state=42):
     X_train, X_test, y_train, y_test = train_test_split(
         features, labels, test_size=test_size, random_state=random_state, stratify=labels
     )
     param_grid = {
-        'n_estimators': [100, 200, 300],
-        'max_depth': [10, 15, 20],
-        'min_samples_leaf': [1, 5, 10, 20],
-        'min_samples_split': [2, 5, 10, 20, 40]
+        'n_estimators': [200, 300],
+        'max_depth': [15, 20, None],
+        'min_samples_leaf': [2, 3, 5, 8],
+        'min_samples_split': [3, 4, 5, 10]
     }
     base_params = dict(
         class_weight="balanced",
@@ -126,11 +120,11 @@ def grid_search_rf(features, labels, feature_names, test_size=0.3, random_state=
     return grid.best_estimator_, X_test, y_test, feature_names
 
 # if __name__ == "__main__":
-#     features, labels = load_samples("data/samples/selection8/merged_pop/merged_pop8.json")
-#     clf, X_test, y_test = grid_search_rf(features, labels)
+#     features, labels, feature_names = load_samples("data/samples/selection12/pop_merged/pop_12_balanced.json", exclude_temp=True)
+#     clf, X_test, y_test, feature_names = grid_search_rf(features, labels, feature_names)
 #     # Sauvegarde du meilleur modèle
 #     # import joblib
-#     # joblib.dump(clf, "data/samples/selection3/random_forest_best_model5.joblib")
+    # joblib.dump({"model": clf, "feature_names": feature_names}, "data/samples/selection12/pop_merged/random_forest_best_model.joblib")
 
 # from sklearn.ensemble import RandomForestClassifier
 # from sklearn.model_selection import cross_val_score
