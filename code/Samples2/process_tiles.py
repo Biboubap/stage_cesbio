@@ -42,8 +42,8 @@ def process_all_tiles(rgb_folder, dsm_folder, out_folder, model_path, max_tiles=
     
     # Extract tile coordinates and create a mapping
     # Modified pattern to match WAP32_full_transparent_mosaic_group1_XX_YY.tif
-    #rgb_pattern = re.compile(r'WAP32_full_transparent_mosaic_group1_(\d+)_(\d+)\.tif')
-    rgb_pattern = re.compile(r'Wap23_main_transparent_mosaic_group1_(\d+)_(\d+)\.tif')
+    rgb_pattern = re.compile(r'WAP32_full_transparent_mosaic_group1_(\d+)_(\d+)\.tif')
+    #rgb_pattern = re.compile(r'Wap23_main_transparent_mosaic_group1_(\d+)_(\d+)\.tif')
     
     tiles_info = []
     
@@ -53,12 +53,12 @@ def process_all_tiles(rgb_folder, dsm_folder, out_folder, model_path, max_tiles=
         if match:
             x_coord, y_coord = match.groups()
             # DSM file follows pattern WAP32_full_dsm_XX_YY.tif
-            dsm_file = os.path.join(dsm_folder, f"Wap23_main_dsm_{x_coord}_{y_coord}.tif")
-            
+            dsm_file = os.path.join(dsm_folder, f"WAP32_full_dsm_{x_coord}_{y_coord}.tif")
+
             # Check if corresponding DSM file exists
             if os.path.exists(dsm_file):
                 #out_file = os.path.join(out_folder, f"WAP32_classif_{x_coord}_{y_coord}.tif")
-                out_file = os.path.join(out_folder, f"WAP23_classif_{x_coord}_{y_coord}.tif")
+                out_file = os.path.join(out_folder, f"WAP32_classif_{x_coord}_{y_coord}.tif")
                 tiles_info.append((rgb_file, dsm_file, out_file, x_coord, y_coord))
     
     # First sort tiles by coordinates
@@ -288,11 +288,11 @@ def sort_tiles_by_coordinates(tiles_info):
 if __name__ == "__main__":
     # Example usage:
     process_all_tiles(
-        rgb_folder="drone_treated/WAP23_tiles/rgb",
-        dsm_folder="drone_treated/WAP23_tiles/dsm",
-        out_folder="drone_treated/WAP23_tiles/classification",
-        model_path="data/samples/selection10/model10_no_large.joblib",
-        max_tiles=None,  # Process all tiles, or specify a number to limit
+        rgb_folder="drone_treated/WAP32_tiles/rgb",
+        dsm_folder="drone_treated/WAP32_tiles/dsm",
+        out_folder="drone_treated/WAP32_tiles/classification_64",
+        model_path="data/samples/selection11/pop_merged/model_pp_ld_fo.joblib",
+        max_tiles=10,  # Process all tiles, or specify a number to limit
         size_patch=16,
         # start_column="00", 
         # start_row="00"   

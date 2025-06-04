@@ -32,9 +32,10 @@ def extract_features(samples_set, n_samples_x, n_samples_y):
         "r_mean", "g_mean", "b_mean",
         "r_var", "g_var", "b_var",
         "r_n_mean", "g_n_mean", "b_n_mean",
+        # We keep temperature features in the list, but we'll comment them out in the feature extraction
         "t_mean", "t_n_mean", "t_var",
-        #"r_large_mean", "g_large_mean", "b_large_mean", "t_large_mean",
-        "z_var", "z_moins_z_n", #"z_moins_z_large"
+        "r_large_mean", "g_large_mean", "b_large_mean", "t_large_mean",
+        "z_var", "z_moins_z_n", "z_moins_z_large"
     ]
     
     for i_y in range(n_samples_y):
@@ -44,11 +45,13 @@ def extract_features(samples_set, n_samples_x, n_samples_y):
                 s.r_mean, s.g_mean, s.b_mean,
                 s.r_var, s.g_var, s.b_var,
                 s.r_n_mean, s.g_n_mean, s.b_n_mean,
-                # Removed _n_var features
-                s.t_mean, s.t_n_mean, s.t_var,
-                # Added large neighborhood features
-                #s.r_large_mean, s.g_large_mean, s.b_large_mean, s.t_large_mean,
-                s.z_var, s.z_moins_z_n,#s.z_moins_z_large
+                # Temperature features - commented out as they are not used in the model
+                # (dt_path is None, so these values would be None anyway)
+                0, 0, 0,  # s.t_mean, s.t_n_mean, s.t_var - using 0 as placeholder
+                # Other features
+                s.r_large_mean, s.g_large_mean, s.b_large_mean, 
+                0,  # s.t_large_mean - using 0 as placeholder
+                s.z_var, s.z_moins_z_n, s.z_moins_z_large
             ]
             features.append(feat)
             positions.append((i_x, i_y))
@@ -63,10 +66,9 @@ def predict_samples_2(clf, features, positions, n_samples_x, n_samples_y, sample
     preds = clf.predict(features)
     pred_map = np.zeros((n_samples_y, n_samples_x), dtype=np.uint8)
     class_to_val = {
-        "lichen": 1,
-        "chicoutai": 2,
-        "crevasse": 3,
-        "sphaignes": 4,
+        "peat_plateau": 1,
+        "forest": 2,
+        "large_depression": 3,
         "None": 0
     }
     samples_matrix = samples_set.get_samples_matrix() if samples_set is not None else None
@@ -91,10 +93,9 @@ def create_classification_map(pred_map, size_patch):
     n_samples_y, n_samples_x = pred_map.shape
     color_map = np.zeros((n_samples_x*size_patch, n_samples_y*size_patch, 3), dtype=np.uint8)
     color_dict = {
-        1: [200, 200, 200],   # lichen : gris clair
-        2: [0, 100, 0],       # chicoutai : vert foncé
-        3: [60, 60, 60],      # crevasse : gris foncé
-        4: [181, 101, 29],    # sphaignes : brun
+        1: [200, 200, 200],   # peat_plateau : gris clair
+        2: [0, 80, 0],        # forest : vert foncé
+        3: [60, 60, 60],      # large_depression : gris foncé
         0: [0, 0, 0],       # mask out : noir
         255: [0, 0, 0]      # no data : noir
     }
@@ -118,14 +119,14 @@ def plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path=N
     axes[1].axis("off")
     # Légende des couleurs
     color_labels = [
-        ("lichen",      [200, 200, 200]),
-        ("chicoutai",   [0, 100, 0]),
-        ("sphaignes",    [181, 101, 29]),
-        ("crevasse",    [60, 60, 60]),
-        
-        # ("foret",       [0, 80, 0]),
-        #("flaque",      [0, 0, 120]),
-        # ("lac",         [64, 224, 208]),
+        ("peat_plateau",      [200, 200, 200]),
+        ("forest",            [0, 80, 0]),
+        ("large_depression",  [60, 60, 60]),
+        # Les anciennes classes sont laissées en commentaire pour référence
+        # ("lichen",      [200, 200, 200]),
+        # ("chicoutai",   [0, 100, 0]),
+        # ("sphaignes",   [181, 101, 29]),
+        # ("crevasse",    [60, 60, 60]),
     ]
     patches = [mpatches.Patch(color=np.array(rgb)/255, label=label) for label, rgb in color_labels]
     axes[1].legend(handles=patches, loc='lower right', fontsize=10, title="Écozones")
@@ -179,8 +180,8 @@ def plot_tree_model(clf):
             feature_names=["r_mean", "g_mean", "b_mean", "r_var", "g_var", "b_var", 
                            "r_n_mean", "g_n_mean", "b_n_mean", 
                            "t_mean", "t_n_mean", "t_var", 
-                           #"r_large_mean", "g_large_mean", "b_large_mean", "t_large_mean",
-                           "z_var", "z_moins_z_n", #"z_moins_z_large"
+                           "r_large_mean", "g_large_mean", "b_large_mean", "t_large_mean",
+                           "z_var", "z_moins_z_n", "z_moins_z_large"
                            ],
             class_names=clf.classes_,
             filled=True, rounded=True, max_depth=3)  # max_depth=3 pour lisibilité
@@ -197,8 +198,8 @@ def plot_feature_importances(clf, save_path, feature_names=None):
         feature_names = ["r_mean", "g_mean", "b_mean", "r_var", "g_var", "b_var", 
                          "r_n_mean", "g_n_mean", "b_n_mean", 
                          "t_mean", "t_n_mean", "t_var", 
-                         #"r_large_mean", "g_large_mean", "b_large_mean", "t_large_mean",
-                         "z_var", "z_moins_z_n" ] #"z_moins_z_large"]
+                         "r_large_mean", "g_large_mean", "b_large_mean", "t_large_mean",
+                         "z_var", "z_moins_z_n" "z_moins_z_large"]
     importances = clf.feature_importances_
     indices = np.argsort(importances)[::-1]
 
@@ -301,10 +302,9 @@ def create_classification_map_transparent(pred_map, size_patch):
     n_samples_y, n_samples_x = pred_map.shape
     color_map = np.zeros((n_samples_x*size_patch, n_samples_y*size_patch, 4), dtype=np.uint8)  # 4 canaux (RGBA)
     color_dict = {
-        1: [200, 200, 200, 255],   # lichen : gris clair
-        2: [0, 100, 0, 255],       # chicoutai : vert foncé
-        3: [60, 60, 60, 255],      # crevasse : gris foncé
-        4: [181, 101, 29, 255],    # sphaignes : brun
+        1: [200, 200, 200, 255],   # peat_plateau : gris clair
+        2: [0, 80, 0, 255],        # forest : vert foncé
+        3: [60, 60, 60, 255],      # large_depression : gris foncé
         0: [0, 0, 0, 0],         # mask out : transparent
     }
     for i_x in range(n_samples_x):
@@ -355,7 +355,7 @@ def main_prediction():
     y_start = 0
     x_end = 4992 
     y_end = 4992
-    size_patch = 16
+    size_patch = 64
 
     # Chemins vers les rasters
     # ds_path = "data/rgb_reshaped.tif"
@@ -385,12 +385,11 @@ def main_prediction():
 
     # Pour sauvegarder
     save_precomputed_data(samples_set, n_samples_x, n_samples_y, rgb_img, features=features, positions=positions,
-                          ds_path=ds_path, dz_path=dz_path, dt_path=dt_path, path_prefix="data/samples/selection10/precalc_Wap32_2",
+                          ds_path=ds_path, dz_path=dz_path, dt_path=dt_path, path_prefix="data/samples/selection11/pop_merged/precalc",
                           feature_names=feature_names)
 
-    
     # # # 4. Charger le modèle
-    model_data = joblib.load("data/samples/selection10/model10_no_large.joblib")
+    model_data = joblib.load("data/samples/selection11/pop_merged/model_pp_ld_fo.joblib")
     clf = model_data["model"]  # Extraire le modèle du dictionnaire
     feature_names_model = model_data["feature_names"]  # Récupérer aussi les noms de features
     print("Modèle RF chargé.")
@@ -428,20 +427,22 @@ def main_prediction():
     print("Carte de classification créée.")
 
     # 10. Afficher et sauvegarder les résultats
-    plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path="data/samples/selection10/classif_WAP32_3.png")
+    plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path="data/samples/selection11/pop_merged/classif_WAP32_1.png")
     print("Résultats affichés et sauvegardés.")
 
     # 11. Sauvegarder la carte de classification au format .tif
     save_classification_to_tif(
         pred_map_filtered,
         ref_tif_path=ds_path,
-        out_tif_path="data/samples/selection10/classif_WAP32_3.tif",
+        out_tif_path="data/samples/selection11/pop_merged/classif_WAP32_1.tif",
         size_patch = size_patch
     )
 
     # 12. Sauvegarder les importances des features
-    plot_feature_importances(clf, save_path="data/samples/selection10/features_WAP32_3.png", 
-                         feature_names=feature_names)
+    # When plotting feature importances, always use the feature_names from your model
+    plot_feature_importances(clf, 
+                         save_path="data/samples/selection11/pop_merged/features_WAP32_1.png", 
+                         feature_names=feature_names_model)
 
  
 if __name__ == "__main__":
