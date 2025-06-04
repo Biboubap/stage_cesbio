@@ -34,7 +34,7 @@ def load_all_sentinel_features(indices_dir, bands_dir):
     return features, band_names
 
 
-def random_forest_regression_lichen_multi(csv_path, indices, bandes, out_png, sqrt=False):
+def random_forest_regression_lichen_multi(csv_path, indices, bandes, out_png, sqrt=False, save_model_path=None):
     # Charge les données
     df = load_proportion_csv(csv_path)
     features, band_names = load_all_sentinel_features(indices_dir=indices, bands_dir=bandes)
@@ -125,6 +125,20 @@ def random_forest_regression_lichen_multi(csv_path, indices, bandes, out_png, sq
     plt.savefig(out_png.replace(".png", "_feature_importance.png"))
     plt.close()
     print("Graphe des importances sauvegardé dans", out_png.replace(".png", "_feature_importance.png"))
+    
+    # Sauvegarder le modèle si un chemin est fourni
+    if save_model_path:
+        # Sauvegarder le modèle avec les noms des bandes pour référence future
+        model_data = {
+            "model": rf,
+            "band_names": band_names,
+            "r2_score": r2,
+            "sqrt_transform": sqrt
+        }
+        joblib.dump(model_data, save_model_path)
+        print(f"Modèle entraîné sauvegardé dans {save_model_path}")
+    
+    return rf, band_names, r2
 
 from sklearn.model_selection import GridSearchCV
 
@@ -204,10 +218,13 @@ if __name__ == "__main__":
     #     out_model="data/samples/selection8/regression/rf_best_model.joblib",
     #     sqrt=False
     # )
+    
+    # Entraîner et sauvegarder le modèle
     random_forest_regression_lichen_multi(
         csv_path="data/samples/selection8/regression/lichen_4_interior_balanced.csv",
         indices="DataCubeS2/TwinLakeCubeIndex/mediane",
         bandes="DataCubeS2/Bandes/mediane2",
         out_png="data/samples/selection8/regression/multiband_and_indices_best_CubeIndex.png",
-        sqrt=False  
+        sqrt=False,
+        save_model_path="data/samples/selection8/regression/rf_lichen_regression_model.joblib"
     )
