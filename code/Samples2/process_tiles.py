@@ -13,6 +13,7 @@ from evaluation5 import (
     filter_features,
     predict_samples_2,
     save_classification_to_tif,
+    filter_isolated_samples,  # Import the filter function
     SamplesSet2
 )
 
@@ -199,10 +200,14 @@ def process_single_tile(rgb_path, dsm_path, out_path, clf, feature_names_model,
     if nan_positions:
         print(f"Marked {len(nan_positions)} transparent areas as class 0")
     
+    # Apply filter to remove isolated samples
+    print("Applying isolated samples filter...")
+    pred_map_filtered = filter_isolated_samples(pred_map)
+    
     # Save classification result as TIF
     print(f"Saving classification to: {out_path}")
     save_classification_to_tif(
-        pred_map,
+        pred_map_filtered,  # Use the filtered map
         ref_tif_path=rgb_path,
         out_tif_path=out_path,
         size_patch=size_patch
@@ -290,9 +295,9 @@ if __name__ == "__main__":
     process_all_tiles(
         rgb_folder="drone_treated/WAP32_tiles/rgb",
         dsm_folder="drone_treated/WAP32_tiles/dsm",
-        out_folder="drone_treated/WAP32_tiles/classification_64",
-        model_path="data/samples/selection11/pop_merged/model_pp_ld_fo.joblib",
-        max_tiles=10,  # Process all tiles, or specify a number to limit
+        out_folder="drone_treated/WAP32_tiles/classification_16_wap32",
+        model_path="data/samples/selection12/pop_merged/model_wap_32.joblib",  # Update to use the new model
+        max_tiles=None,  # Process all tiles, or specify a number to limit
         size_patch=16,
         # start_column="00", 
         # start_row="00"   
