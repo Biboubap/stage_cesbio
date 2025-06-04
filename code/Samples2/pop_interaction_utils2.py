@@ -285,7 +285,8 @@ def balance_samples_by_category(samples_set, max_per_category=None):
     return balanced_set
 
 # Exemple d'utilisation :
-if __name__ == "__main__":
+def merge_Wap_samples():
+    
     import glob
     import os
 
@@ -350,3 +351,29 @@ if __name__ == "__main__":
     print(f"Équilibrage terminé: {len(all_balanced_samples)} samples au total")
     print(f"Répartition par catégorie: {final_counts}")
     print(f"Population fusionnée et équilibrée sauvegardée dans {out_json}")
+
+if __name__ == "__main__":
+    # Load samples from selection10/pop8_converted.json
+    input_path = "data/samples/selection10/pop8_converted.json"
+    output_path = "data/samples/selection12/pop8_filtered.json"
+    
+    print(f"Loading samples from {input_path}...")
+    samples_set = SamplesSet2.load_samples_from_json(input_path)
+    
+    # Count initial samples by category
+    initial_counts = Counter([s.category for s in samples_set.samples.values()])
+    print(f"Initial samples: {len(samples_set.samples)} total")
+    print(f"Initial distribution by category: {initial_counts}")
+    
+    # Filter out "crevasse" category, keeping "lichen", "sphaignes", "chicoutai"
+    categories_to_keep = ["lichen", "sphaignes", "chicoutai"]
+    filtered_set = filter_samples_by_category(samples_set, categories_to_keep)
+    
+    # Count filtered samples by category
+    filtered_counts = Counter([s.category for s in filtered_set.samples.values()])
+    print(f"\nAfter filtering: {len(filtered_set.samples)} samples total")
+    print(f"Distribution by category: {filtered_counts}")
+    
+    # Save filtered samples
+    filtered_set.save_samples_to_json(output_path)
+    print(f"Filtered samples saved to {output_path}")

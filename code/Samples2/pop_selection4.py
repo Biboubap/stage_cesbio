@@ -24,7 +24,8 @@ def plot_rgb(xmin, ymin, xmax, ymax, ds_path, path):
     plt.imshow(rgb)
     plt.title("Fenêtre samples")
     plt.savefig(os.path.join(path, "fenetre_selection.png"))
-    plt.close()
+    plt.show()
+    
 
 def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_path, 
                  ds_path=None, dz_path=None, dt_path=None, default=0, distance_large=3, class_dict=None, samples_plot_nb = 10):
@@ -283,39 +284,44 @@ def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_p
 
 
 if __name__ == "__main__":
-    size_patch = 64
+    size_patch = 16
     distance_large = 3
 
-    n_samples_x = 38
-    n_samples_y = 76
-    samples_plot_nb = 16
+    n_samples_x = 45
+    n_samples_y = 45
+    samples_plot_nb = 15
     default = None
         
-    x_start = 2495
-    y_start = 0
+    x_start = 0
+    y_start = 1000
 
     # Chemins des rasters
-    nb = "10_05"
+    nb = "05_10"
     ds_path = f"drone_treated/WAP32_tiles/rgb/WAP32_full_transparent_mosaic_group1_{nb}.tif"
     dz_path = f"drone_treated/WAP32_tiles/dsm/WAP32_full_dsm_{nb}.tif"
     dt_path = None
     
-    save_dir = "data/samples/selection11/"
+    save_dir = "data/samples/selection12/"
 
     class_dict = {
-        "pp": "peat_plateau",
-        "ld" : "large_depression",
-        "fo": "forest",
-        "la": "lake"
+        # "pp": "peat_plateau",
+        # "ld" : "large_depression",
+        # "fo": "forest",
+        # "la": "lake"
+        "l": "lichen",
+        "s": "sphaignes",
+        "c" : "chicoutai",
+        "gd": "green_depression",
+        "wd": "watered_depression",
+        "dd" : "dry_depression",
     }
-    
-    
-    
+
+
     pop_selection(
-        x_start=x_start, 
-        y_start=y_start, 
-        n_samples_x=n_samples_x, 
-        n_samples_y=n_samples_y, 
+        x_start=x_start,
+        y_start=y_start,
+        n_samples_x=n_samples_x,
+        n_samples_y=n_samples_y,
         size_patch=size_patch, 
         file_path=save_dir,
         ds_path=ds_path,
