@@ -73,6 +73,7 @@ def predict_samples_2(clf, features, positions, n_samples_x, n_samples_y, sample
         "lichen": 4,
         "sphaignes": 5,
         "watered_depression": 6,
+        "black_depression" : 7,
         "None": 0
     }
     samples_matrix = samples_set.get_samples_matrix() if samples_set is not None else None
@@ -96,7 +97,7 @@ def predict_samples_2(clf, features, positions, n_samples_x, n_samples_y, sample
 def create_classification_map(pred_map, size_patch):
     n_samples_y, n_samples_x = pred_map.shape
     color_map = np.zeros((n_samples_x*size_patch, n_samples_y*size_patch, 3), dtype=np.uint8)
-    # Update color_dict to match the new class_to_val mapping
+    # Update color_dict to match the colors in the QML
     color_dict = {
         1: [0, 100, 0],       # chicoutai: vert foncé 
         2: [153, 136, 0],     # dry_depression: noir-jaune
@@ -104,6 +105,7 @@ def create_classification_map(pred_map, size_patch):
         4: [200, 200, 200],   # lichen: gris clair
         5: [139, 69, 19],     # sphaignes: marron/orange foncé
         6: [80, 80, 80],      # watered_depression: gris
+        7: [50, 45, 10],      # black_depression: updated color to dark brown
         0: [0, 0, 0],         # mask out: noir
         255: [0, 0, 0]        # no data: noir
     }
@@ -132,7 +134,8 @@ def plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path=N
         ("green_depression",  [50, 205, 50]),
         ("lichen",            [200, 200, 200]),
         ("sphaignes",         [139, 69, 19]),
-        ("watered_depression",[80, 80, 80])
+        ("watered_depression",[80, 80, 80]),
+        ("black_depression",  [25, 20, 0]),
     ]
     patches = [mpatches.Patch(color=np.array(rgb)/255, label=label) for label, rgb in color_labels]
     axes[1].legend(handles=patches, loc='lower right', fontsize=10, title="Écozones")
@@ -236,10 +239,132 @@ def plot_feature_importances(clf, save_path, feature_names=None):
     plt.tight_layout()
     plt.savefig(save_path)
 
-def save_classification_to_tif(pred_map, ref_tif_path, out_tif_path, size_patch=32):
+def create_qgis_colormap(output_qml, class_labels=None):
+    """
+    Creates a QGIS color map file (.qml) for the classified raster.
+    
+    Args:
+        output_qml: Path to save the QML file
+        class_labels: Optional dictionary mapping class values to labels
+    """
+    if class_labels is None:
+        class_labels = {
+            1: "Chicoutai",
+            2: "Dry Depression",
+            3: "Green Depression",
+            4: "Lichen",
+            5: "Sphaignes",
+            6: "Watered Depression",
+            7: "Black Depression",
+            0: "No Data",
+            255: "No Data"
+        }
+    
+    # Define colors for each class (matching our visualization)
+    color_dict = {
+        1: [0, 100, 0],       # chicoutai: vert foncé 
+        2: [153, 136, 0],     # dry_depression: noir-jaune
+        3: [50, 205, 50],     # green_depression: vert clair/flashy
+        4: [200, 200, 200],   # lichen: gris clair
+        5: [139, 69, 19],     # sphaignes: marron/orange foncé
+        6: [80, 80, 80],      # watered_depression: gris
+        7: [50, 45, 10],      # black_depression: dark brown
+        0: [0, 0, 0],         # mask out: noir
+        255: [0, 0, 0]        # no data: noir
+    }
+
+    # QGIS QML template matching the provided example format
+    qml_template = """<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>
+<qgis hasScaleBasedVisibilityFlag="0" maxScale="0" version="3.22.4-Białowieża" minScale="1e+08" styleCategories="AllStyleCategories">
+  <flags>
+    <Identifiable>1</Identifiable>
+    <Removable>1</Removable>
+    <Searchable>1</Searchable>
+    <Private>0</Private>
+  </flags>
+  <temporal enabled="0" fetchMode="0" mode="0">
+    <fixedRange>
+      <start></start>
+      <end></end>
+    </fixedRange>
+  </temporal>
+  <customproperties>
+    <Option type="Map">
+      <Option type="bool" value="false" name="WMSBackgroundLayer"/>
+      <Option type="bool" value="false" name="WMSPublishDataSourceUrl"/>
+      <Option type="int" value="0" name="embeddedWidgets/count"/>
+      <Option type="QString" value="Value" name="identify/format"/>
+    </Option>
+  </customproperties>
+  <pipe-data-defined-properties>
+    <Option type="Map">
+      <Option type="QString" value="" name="name"/>
+      <Option name="properties"/>
+      <Option type="QString" value="collection" name="type"/>
+    </Option>
+  </pipe-data-defined-properties>
+  <pipe>
+    <provider>
+      <resampling zoomedOutResamplingMethod="nearestNeighbour" enabled="false" maxOversampling="2" zoomedInResamplingMethod="nearestNeighbour"/>
+    </provider>
+    <rasterrenderer alphaBand="-1" nodataColor="" type="paletted" opacity="1" band="1">
+      <rasterTransparency/>
+      <minMaxOrigin>
+        <limits>None</limits>
+        <extent>WholeRaster</extent>
+        <statAccuracy>Estimated</statAccuracy>
+        <cumulativeCutLower>0.02</cumulativeCutLower>
+        <cumulativeCutUpper>0.98</cumulativeCutUpper>
+        <stdDevFactor>2</stdDevFactor>
+      </minMaxOrigin>
+      <colorPalette>
+{color_entries}
+      </colorPalette>
+      <colorramp type="randomcolors" name="[source]">
+        <Option/>
+      </colorramp>
+    </rasterrenderer>
+    <brightnesscontrast contrast="0" brightness="0" gamma="1"/>
+    <huesaturation invertColors="0" saturation="0" colorizeRed="255" colorizeOn="0" colorizeGreen="128" colorizeBlue="128" grayscaleMode="0" colorizeStrength="100"/>
+    <rasterresampler maxOversampling="2"/>
+    <resamplingStage>resamplingFilter</resamplingStage>
+  </pipe>
+  <blendMode>0</blendMode>
+</qgis>
+"""
+    
+    # Generate color entries for the XML in the exact format from the example
+    color_entries = []
+    for class_value, label in sorted(class_labels.items()):
+        rgb = color_dict.get(class_value, [0, 0, 0])
+        # Special handling for transparency
+        alpha = 0 if class_value in [0, 255] else 255
+        
+        # Format: <paletteEntry color="#RRGGBB" alpha="255" value="1" label="1"/>
+        hex_color = f"#{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"
+        entry = f'        <paletteEntry color="{hex_color}" alpha="{alpha}" value="{class_value}" label="{class_value}"/>'
+        color_entries.append(entry)
+    
+    # Insert color entries into template
+    qml_content = qml_template.format(color_entries="\n".join(color_entries))
+    
+    # Write the QML file
+    with open(output_qml, 'w') as f:
+        f.write(qml_content)
+    
+    print(f"QGIS color map saved to {output_qml}")
+
+def save_classification_to_tif(pred_map, ref_tif_path, out_tif_path, size_patch=32, create_qml=True):
     """
     Sauvegarde la carte de classification (pred_map) au format .tif,
     en utilisant la géoréférence et la taille du raster de référence.
+    
+    Args:
+        pred_map: Carte de classification sous forme d'un tableau numpy
+        ref_tif_path: Chemin vers le raster de référence pour la géoréférence
+        out_tif_path: Chemin de sortie pour sauvegarder le raster de classification
+        size_patch: Taille du patch (par défaut: 32)
+        create_qml: Si True, crée un fichier QML pour QGIS avec la même palette de couleurs
     """
     ds = gdal.Open(ref_tif_path)
     width = ds.RasterXSize
@@ -260,6 +385,11 @@ def save_classification_to_tif(pred_map, ref_tif_path, out_tif_path, size_patch=
     out_ds.FlushCache()
     out_ds = None
     print(f"Carte de classification sauvegardée dans {out_tif_path}")
+    
+    # Create QML file if requested
+    if create_qml:
+        qml_path = out_tif_path.replace('.tif', '.qml')
+        create_qgis_colormap(qml_path)
 
 def filter_features(features, all_feature_names, needed_feature_names):
     """
@@ -329,6 +459,7 @@ def create_classification_map_transparent(pred_map, size_patch):
         4: [200, 200, 200, 255],   # lichen: gris clair
         5: [139, 69, 19, 255],     # sphaignes: marron/orange foncé
         6: [80, 80, 80, 255],      # watered_depression: gris
+        7: [25, 20, 0, 255],       # black_depression: noir
         0: [0, 0, 0, 0],           # mask out: transparent
         255: [0, 0, 0, 0]          # no data: transparent
     }
@@ -414,7 +545,7 @@ def main_prediction():
     #                       feature_names=feature_names)
 
     # # # 4. Charger le modèle
-    model_data = joblib.load("data/samples/selection12/pop_merged/model_wap_32.joblib")
+    model_data = joblib.load("data/samples/selection13/merged/model_wap_32_5.joblib")
     clf = model_data["model"]  # Extraire le modèle du dictionnaire
     feature_names_model = model_data["feature_names"]  # Récupérer aussi les noms de features
     print("Modèle RF chargé.")
@@ -452,22 +583,23 @@ def main_prediction():
     print("Carte de classification créée.")
 
     # 10. Afficher et sauvegarder les résultats
-    plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path="data/samples/selection12/pop_merged/classif_WAP32_2.png")
+    plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path="data/samples/selection13/merged/classif_WAP32_5_filtered.png")
     print("Résultats affichés et sauvegardés.")
 
-    # 11. Sauvegarder la carte de classification au format .tif
+    # 11. Sauvegarder la carte de classification au format .tif with QML color map
     save_classification_to_tif(
         pred_map_filtered,
         ref_tif_path=ds_path,
-        out_tif_path="data/samples/selection12/pop_merged/classif_WAP32_2.tif",
-        size_patch = size_patch
+        out_tif_path="data/samples/selection13/merged/classif_WAP32_5_filtered.tif",
+        size_patch = size_patch,
+        create_qml=True
     )
 
     # 12. Sauvegarder les importances des features
     # When plotting feature importances, always use the feature_names from your model
-    # plot_feature_importances(clf, 
-    #                      save_path="data/samples/selection12/pop_merged/features_WAP32_2.png", 
-    #                      feature_names=feature_names_model)
+    plot_feature_importances(clf, 
+                         save_path="data/samples/selection13/merged/features_WAP32_5.png", 
+                         feature_names=feature_names_model)
 
  
 if __name__ == "__main__":

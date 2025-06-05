@@ -500,16 +500,16 @@ if __name__ == "__main__":
     size_patch = 16
     distance_large = 3
 
-    n_samples_x = (4982-3950)//15
-    n_samples_y = 45
+    n_samples_x = 60
+    n_samples_y = 60
     samples_plot_nb = 15
     default = None
         
-    x_start = 3950
-    y_start = 700
+    x_start = 2300
+    y_start = 4000
 
     # Chemins des rasters
-    nb = "05_10"
+    nb = "06_04"
     ds_path = f"drone_treated/WAP32_tiles/rgb/WAP32_full_transparent_mosaic_group1_{nb}.tif"
     dz_path = f"drone_treated/WAP32_tiles/dsm/WAP32_full_dsm_{nb}.tif"
     dt_path = None
@@ -527,6 +527,7 @@ if __name__ == "__main__":
         "gd": "green_depression",
         "wd": "watered_depression",
         "dd" : "dry_depression",
+        "bd": "black_depression",
     }
 
 

@@ -498,13 +498,15 @@ def merge_Wap_samples():
     
 #     return balanced_data
 
-def merge_selection12_and_13(balance_max=None):
+def merge_selection12_and_exclude_pop8(balance_max=2000):
     """
-    Merge pop_12.json from selection12/pop_merged with all JSON files from selection13
-    and count samples by category.
+    Merge pop_12.json from selection12/pop_merged (excluding pop8_filtered) with all JSON files from selection13
+    and count samples by category, limiting to balance_max samples per category.
     
-    Args:
-        balance_max: If provided, limits each category to this many samples (random selection)
+    Preserves the edits made to pop_12:
+    - Reclassifies the last 75 samples of watered_depression_3 to "green_depression"
+    - Removes the first 35 samples of sphaignes_2
+    - Removes the last 57 samples of green_depression_2
     """
     import os
     import glob
@@ -515,17 +517,72 @@ def merge_selection12_and_13(balance_max=None):
     selection13_dir = "data/samples/selection13"
     output_dir = "data/samples/selection13/merged"
     os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, "merged_12_13.json")
+    output_path = os.path.join(output_dir, "merged_5.json")
     
-    # Load samples from selection12
+    # First, apply the same edits to raw data as in the original merge_selection12_samples function
+    base_dir = "data/samples/selection12"
+    
+    # Find all JSON files in selection12
+    raw_json_files = glob.glob(os.path.join(base_dir, "*.json"))
+    print(f"Raw selection12 files found ({len(raw_json_files)}): {raw_json_files}")
+    
+    # Apply specific modifications to selection12 raw files
+    all_modified_samples = []
+    
+    for path in raw_json_files:
+        data = load_population(path)
+        samples = data.get("samples", [])
+        filename = os.path.basename(path)
+        
+        # Apply the specific modifications that were in merge_selection12_samples
+        if filename == "watered_depression_3.json":
+            # Reclassify the last 75 samples as "green_depression"
+            if len(samples) >= 75:
+                for i in range(len(samples) - 75, len(samples)):
+                    samples[i]["category"] = "green_depression"
+            print(f"Reclassified {min(75, len(samples))} last samples of {filename} to 'green_depression'")
+                
+        elif filename == "sphaignes_2.json":
+            # Remove the first 35 samples
+            if len(samples) >= 35:
+                samples = samples[35:]
+            else:
+                samples = []
+            print(f"Removed {min(35, len(data.get('samples', [])))} first samples from {filename}")
+                
+        elif filename == "green_depression_2.json":
+            # Remove the last 57 samples
+            if len(samples) >= 57:
+                samples = samples[:-57]
+            print(f"Removed {min(57, len(data.get('samples', [])))} last samples from {filename}")
+        
+        all_modified_samples.extend(samples)
+    
+    # Now we have all_modified_samples which has all the specific edits from original merge_selection12_samples
+    
+    # Load selection12 merged data (which will be replaced by our specifically edited version)
     print(f"Loading samples from {selection12_path}...")
     data12 = load_population(selection12_path)
-    samples12 = data12.get("samples", [])
     
-    # Count samples by category in selection12
-    categories12 = Counter([s["category"] for s in samples12])
-    print(f"Selection12 samples: {len(samples12)} total")
-    print(f"Selection12 distribution by category: {categories12}")
+    # Exclude pop8_filtered.json samples from our manually edited samples
+    pop8_filtered_path = "data/samples/selection12/pop8_filtered.json"
+    pop8_filtered_data = load_population(pop8_filtered_path)
+    pop8_filtered_samples = pop8_filtered_data.get("samples", [])
+    
+    # Create a set of (x,y) coordinates from pop8_filtered to identify and remove them
+    pop8_coords = {(s.get("x", None), s.get("y", None)) for s in pop8_filtered_samples}
+    
+    # Filter out samples from modified selection12 that have the same coordinates as in pop8_filtered
+    filtered_samples12 = []
+    for sample in all_modified_samples:
+        if (sample.get("x", None), sample.get("y", None)) not in pop8_coords:
+            filtered_samples12.append(sample)
+    
+    print(f"Selection12: {len(all_modified_samples)} modified samples, {len(filtered_samples12)} after excluding pop8_filtered")
+    
+    # Count samples by category in filtered selection12
+    categories12 = Counter([s["category"] for s in filtered_samples12])
+    print(f"Filtered selection12 distribution by category: {categories12}")
     
     # Find all JSON files in selection13
     json_files = glob.glob(os.path.join(selection13_dir, "*.json"))
@@ -536,10 +593,19 @@ def merge_selection12_and_13(balance_max=None):
     for path in json_files:
         data = load_population(path)
         samples = data.get("samples", [])
+        filename = os.path.basename(path)
+        
+        # Apply special filtering for sphaignes_1.json
+        if filename == "sphaignes_1.json":
+            if len(samples) > 64:  # Make sure we have enough samples
+                # Remove samples between positions 16 and 64
+                excluded_samples = samples[16:65]  # Python indexing (16 to 64 inclusive)
+                samples = samples[:16] + samples[65:]
+                print(f"Removed {len(excluded_samples)} samples (positions 16-64) from {filename}")
+        
         all_samples13.extend(samples)
         
         # Print details for each file
-        filename = os.path.basename(path)
         file_categories = Counter([s["category"] for s in samples])
         print(f"{filename}: {len(samples)} samples - {dict(file_categories)}")
     
@@ -548,8 +614,8 @@ def merge_selection12_and_13(balance_max=None):
     print(f"\nSelection13 samples: {len(all_samples13)} total")
     print(f"Selection13 distribution by category: {categories13}")
     
-    # Merge samples from both selections
-    merged_samples = samples12 + all_samples13
+    # Merge samples from filtered selection12 and selection13
+    merged_samples = filtered_samples12 + all_samples13
     
     # Count merged samples by category
     merged_categories = Counter([s["category"] for s in merged_samples])
@@ -558,54 +624,50 @@ def merge_selection12_and_13(balance_max=None):
     for category, count in sorted(merged_categories.items()):
         print(f"  - {category}: {count} samples")
     
-    # Balance categories if requested
-    if balance_max is not None:
-        # Group samples by category
-        samples_by_category = {}
-        for s in merged_samples:
-            category = s["category"]
-            if category not in samples_by_category:
-                samples_by_category[category] = []
-            samples_by_category[category].append(s)
-        
-        # Limit each category to balance_max samples
-        balanced_samples = []
-        for category, samples in samples_by_category.items():
-            if len(samples) > balance_max:
-                # Random selection to limit to balance_max
-                selected = random.sample(samples, balance_max)
-                print(f"Category '{category}': {len(samples)} → {len(selected)} samples (randomly selected)")
-            else:
-                selected = samples
-                print(f"Category '{category}': {len(samples)} samples (unchanged)")
-            balanced_samples.extend(selected)
-        
-        merged_samples = balanced_samples
-        
-        # Count after balancing
-        balanced_categories = Counter([s["category"] for s in merged_samples])
-        print(f"\nAfter balancing: {len(merged_samples)} total")
-        print(f"Distribution by category after balancing:")
-        for category, count in sorted(balanced_categories.items()):
-            print(f"  - {category}: {count} samples")
+    # Balance categories to balance_max samples per category
+    # Group samples by category
+    samples_by_category = {}
+    for s in merged_samples:
+        category = s["category"]
+        if category not in samples_by_category:
+            samples_by_category[category] = []
+        samples_by_category[category].append(s)
+    
+    # Limit each category to balance_max samples
+    balanced_samples = []
+    for category, samples in samples_by_category.items():
+        if len(samples) > balance_max:
+            # Random selection to limit to balance_max
+            selected = random.sample(samples, balance_max)
+            print(f"Category '{category}': {len(samples)} → {balance_max} samples (randomly selected)")
+        else:
+            selected = samples
+            print(f"Category '{category}': {len(samples)} samples (unchanged)")
+        balanced_samples.extend(selected)
+    
+    # Count after balancing
+    balanced_categories = Counter([s["category"] for s in balanced_samples])
+    print(f"\nAfter balancing: {len(balanced_samples)} total")
+    print(f"Distribution by category after balancing:")
+    for category, count in sorted(balanced_categories.items()):
+        print(f"  - {category}: {count} samples")
     
     # Create merged data structure
     merged_data = {
         "n_samples_x": None,
         "n_samples_y": None,
-        "samples": merged_samples
+        "samples": balanced_samples
     }
     
     # Save merged data
-    balance_suffix = f"_balanced_{balance_max}" if balance_max is not None else ""
-    output_path_final = output_path.replace(".json", f"{balance_suffix}.json")
-    save_population(merged_data, output_path_final)
-    print(f"\nMerged samples saved to {output_path_final}")
+    save_population(merged_data, output_path)
+    print(f"\nMerged and balanced samples saved to {output_path}")
     
     return merged_data
 
 # Exemple d'utilisation :
 if __name__ == "__main__":
-    # Merge selection12 and selection13 samples, balanced to max 2500 samples per category
-    merge_selection12_and_13(balance_max=2500)
+    # Use the new function to merge selection12 (excluding pop8_filtered) and selection13 samples
+    # Balance to 2000 samples per category
+    merge_selection12_and_exclude_pop8(balance_max=1500)
 
