@@ -669,5 +669,5 @@ def merge_selection12_and_exclude_pop8(balance_max=2000):
 if __name__ == "__main__":
     # Use the new function to merge selection12 (excluding pop8_filtered) and selection13 samples
     # Balance to 2000 samples per category
-    merge_selection12_and_exclude_pop8(balance_max=1500)
+    merge_selection12_and_exclude_pop8(balance_max=2000)
 

@@ -1,6 +1,7 @@
 chicoutai: 374
 lichen: 1024
 sphaignes: 539
-green_depression: 152
-dry_depression: 2209
-black_depression: 2547
+green_depression: 157
+dry_depression: 2330
+black_depression: 2551
+watered_depression: 879

@@ -500,16 +500,16 @@ if __name__ == "__main__":
     size_patch = 16
     distance_large = 3
 
-    n_samples_x = 60
-    n_samples_y = 60
+    n_samples_x = 30
+    n_samples_y = 45
     samples_plot_nb = 15
     default = None
         
-    x_start = 2300
-    y_start = 4000
+    x_start = 1100
+    y_start = 4200
 
     # Chemins des rasters
-    nb = "06_04"
+    nb = "01_07"
     ds_path = f"drone_treated/WAP32_tiles/rgb/WAP32_full_transparent_mosaic_group1_{nb}.tif"
     dz_path = f"drone_treated/WAP32_tiles/dsm/WAP32_full_dsm_{nb}.tif"
     dt_path = None

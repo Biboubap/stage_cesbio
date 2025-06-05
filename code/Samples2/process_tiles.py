@@ -18,7 +18,8 @@ from evaluation5 import (
 )
 
 def process_all_tiles(rgb_folder, dsm_folder, out_folder, model_path, max_tiles=None, size_patch=16, 
-                     start_row=None, start_column=None):
+                     start_row=None, start_column=None, nb_wap=32):
+    
     """
     Process all corresponding RGB and DSM tiles in the given folders.
     
@@ -34,6 +35,7 @@ def process_all_tiles(rgb_folder, dsm_folder, out_folder, model_path, max_tiles=
     """
     start_y = start_column if start_column is not None else None
     start_x = start_row if start_row is not None else None
+    assert nb_wap in [32, 23], "nb_wap must be either '32' or '23' to match the tile naming conventions."
 
     # Create output directory if it doesn't exist
     os.makedirs(out_folder, exist_ok=True)
@@ -43,25 +45,33 @@ def process_all_tiles(rgb_folder, dsm_folder, out_folder, model_path, max_tiles=
     
     # Extract tile coordinates and create a mapping
     # Modified pattern to match WAP32_full_transparent_mosaic_group1_XX_YY.tif
-    rgb_pattern = re.compile(r'WAP32_full_transparent_mosaic_group1_(\d+)_(\d+)\.tif')
-    #rgb_pattern = re.compile(r'Wap23_main_transparent_mosaic_group1_(\d+)_(\d+)\.tif')
-    
+    if nb_wap == 32:
+        rgb_pattern = re.compile(r'WAP32_full_transparent_mosaic_group1_(\d+)_(\d+)\.tif')
+    elif nb_wap == 23:
+        rgb_pattern = re.compile(r'Wap23_main_transparent_mosaic_group1_(\d+)_(\d+)\.tif')
+
     tiles_info = []
-    
+
     for rgb_file in rgb_files:
         basename = os.path.basename(rgb_file)
         match = rgb_pattern.search(basename)
         if match:
             x_coord, y_coord = match.groups()
             # DSM file follows pattern WAP32_full_dsm_XX_YY.tif
-            dsm_file = os.path.join(dsm_folder, f"WAP32_full_dsm_{x_coord}_{y_coord}.tif")
+            if nb_wap == 32:
+                dsm_file = os.path.join(dsm_folder, f"WAP32_full_dsm_{x_coord}_{y_coord}.tif")
+            elif nb_wap == 23:
+                dsm_file = os.path.join(dsm_folder, f"Wap23_main_dsm_{x_coord}_{y_coord}.tif")
 
             # Check if corresponding DSM file exists
             if os.path.exists(dsm_file):
-                #out_file = os.path.join(out_folder, f"WAP32_classif_{x_coord}_{y_coord}.tif")
-                out_file = os.path.join(out_folder, f"WAP32_classif_{x_coord}_{y_coord}.tif")
+                if nb_wap == 32:
+                    out_file = os.path.join(out_folder, f"WAP32_classif_{x_coord}_{y_coord}.tif")
+                elif nb_wap == 23:
+                    out_file = os.path.join(out_folder, f"WAP23_classif_{x_coord}_{y_coord}.tif")
+
                 tiles_info.append((rgb_file, dsm_file, out_file, x_coord, y_coord))
-    
+
     # First sort tiles by coordinates
     tiles_info = sort_tiles_by_coordinates(tiles_info)
     
@@ -292,13 +302,15 @@ def sort_tiles_by_coordinates(tiles_info):
 
 if __name__ == "__main__":
     # Example usage:
+    wap = 32
     process_all_tiles(
-        rgb_folder="drone_treated/WAP32_tiles/rgb",
-        dsm_folder="drone_treated/WAP32_tiles/dsm",
-        out_folder="drone_treated/WAP32_tiles/classification_16_wap32",
-        model_path="data/samples/selection12/pop_merged/model_wap_32.joblib",  # Update to use the new model
-        max_tiles=None,  # Process all tiles, or specify a number to limit
+        rgb_folder=f"drone_treated/WAP{wap}_tiles/rgb",
+        dsm_folder=f"drone_treated/WAP{wap}_tiles/dsm",
+        out_folder=f"drone_treated/WAP{wap}_tiles/classification_wap32_5_better_wd",
+        model_path="data/samples/selection13/merged/model_wap_32_5.joblib",  # Update to use the new model
+        max_tiles=30,  # Process all tiles, or specify a number to limit
         size_patch=16,
         # start_column="00", 
         # start_row="00"   
+        nb_wap = wap
     )
