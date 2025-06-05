@@ -35,7 +35,7 @@ def process_all_tiles(rgb_folder, dsm_folder, out_folder, model_path, max_tiles=
     """
     start_y = start_column if start_column is not None else None
     start_x = start_row if start_row is not None else None
-    assert nb_wap in [32, 23], "nb_wap must be either '32' or '23' to match the tile naming conventions."
+    assert nb_wap in [32, 23, 12, 99], "nb_wap must be either '32' or '23' to match the tile naming conventions."
 
     # Create output directory if it doesn't exist
     os.makedirs(out_folder, exist_ok=True)
@@ -49,7 +49,10 @@ def process_all_tiles(rgb_folder, dsm_folder, out_folder, model_path, max_tiles=
         rgb_pattern = re.compile(r'WAP32_full_transparent_mosaic_group1_(\d+)_(\d+)\.tif')
     elif nb_wap == 23:
         rgb_pattern = re.compile(r'Wap23_main_transparent_mosaic_group1_(\d+)_(\d+)\.tif')
-
+    elif nb_wap == 12:
+        rgb_pattern = re.compile(r'Wap12_Main_transparent_mosaic_group1_(\d+)_(\d+)\.tif')
+    elif nb_wap == 99:
+        rgb_pattern = re.compile(r'twin_lake_mosaïc_(\d+)_(\d+)\.tif')
     tiles_info = []
 
     for rgb_file in rgb_files:
@@ -62,6 +65,10 @@ def process_all_tiles(rgb_folder, dsm_folder, out_folder, model_path, max_tiles=
                 dsm_file = os.path.join(dsm_folder, f"WAP32_full_dsm_{x_coord}_{y_coord}.tif")
             elif nb_wap == 23:
                 dsm_file = os.path.join(dsm_folder, f"Wap23_main_dsm_{x_coord}_{y_coord}.tif")
+            elif nb_wap == 12:
+                dsm_file = os.path.join(dsm_folder, f"Wap12_Main_dsm_{x_coord}_{y_coord}.tif")
+            elif nb_wap == 99:
+                dsm_file = os.path.join(dsm_folder, f"twin_lake_dsm_{x_coord}_{y_coord}.tif")
 
             # Check if corresponding DSM file exists
             if os.path.exists(dsm_file):
@@ -69,6 +76,10 @@ def process_all_tiles(rgb_folder, dsm_folder, out_folder, model_path, max_tiles=
                     out_file = os.path.join(out_folder, f"WAP32_classif_{x_coord}_{y_coord}.tif")
                 elif nb_wap == 23:
                     out_file = os.path.join(out_folder, f"WAP23_classif_{x_coord}_{y_coord}.tif")
+                elif nb_wap == 12:
+                    out_file = os.path.join(out_folder, f"WAP12_classif_{x_coord}_{y_coord}.tif")
+                elif nb_wap == 99:
+                    out_file = os.path.join(out_folder, f"twin_lake_classif_{x_coord}_{y_coord}.tif")
 
                 tiles_info.append((rgb_file, dsm_file, out_file, x_coord, y_coord))
 
@@ -220,7 +231,8 @@ def process_single_tile(rgb_path, dsm_path, out_path, clf, feature_names_model,
         pred_map_filtered,  # Use the filtered map
         ref_tif_path=rgb_path,
         out_tif_path=out_path,
-        size_patch=size_patch
+        size_patch=size_patch,
+        create_qml=False
     )
 
 def identify_nan_samples(samples_set, n_samples_x, n_samples_y):
@@ -301,16 +313,59 @@ def sort_tiles_by_coordinates(tiles_info):
     return sorted(tiles_info, key=get_sort_key)
 
 if __name__ == "__main__":
-    # Example usage:
+    model = "model_wap_32_5"
+
     wap = 32
     process_all_tiles(
         rgb_folder=f"drone_treated/WAP{wap}_tiles/rgb",
         dsm_folder=f"drone_treated/WAP{wap}_tiles/dsm",
-        out_folder=f"drone_treated/WAP{wap}_tiles/classification_wap32_5_better_wd",
-        model_path="data/samples/selection13/merged/model_wap_32_5.joblib",  # Update to use the new model
-        max_tiles=30,  # Process all tiles, or specify a number to limit
+        out_folder=f"drone_treated/WAP{wap}_tiles/classification_wap32_5wd",
+        model_path=f"data/samples/selection13/merged/{model}.joblib",  # Update to use the new model
+        max_tiles=None,  # Process all tiles, or specify a number to limit
         size_patch=16,
         # start_column="00", 
         # start_row="00"   
         nb_wap = wap
     )
+
+    wap = 23
+    process_all_tiles(
+        rgb_folder=f"drone_treated/WAP{wap}_tiles/rgb",
+        dsm_folder=f"drone_treated/WAP{wap}_tiles/dsm",
+        out_folder=f"drone_treated/WAP{wap}_tiles/classification_wap32_5wd",
+        model_path=f"data/samples/selection13/merged/{model}.joblib",  # Update to use the new model
+        max_tiles=None,  # Process all tiles, or specify a number to limit
+        size_patch=16,
+        # start_column="00", 
+        # start_row="00"   
+        nb_wap = wap
+    )
+
+    wap = 12
+    process_all_tiles(
+        rgb_folder=f"drone_treated/WAP{wap}_tiles/rgb",
+        dsm_folder=f"drone_treated/WAP{wap}_tiles/dsm",
+        out_folder=f"drone_treated/WAP{wap}_tiles/classification_wap32_5wd",
+            model_path="data/samples/selection13/merged/model_wap_32_5.joblib",  # Update to use the new model
+        max_tiles=None,  # Process all tiles, or specify a number to limit
+        size_patch=16,
+        # start_column="00", 
+        # start_row="00"   
+        nb_wap = wap
+    )
+
+    wap = 99
+    process_all_tiles(
+        rgb_folder=f"drone_treated/WAP{wap}_tiles/rgb",
+        dsm_folder=f"drone_treated/WAP{wap}_tiles/dsm",
+        out_folder=f"drone_treated/WAP{wap}_tiles/classification_wap32_5wd",
+            model_path="data/samples/selection13/merged/model_wap_32_5.joblib",  # Update to use the new model
+        max_tiles=None,  # Process all tiles, or specify a number to limit
+        size_patch=16,
+        # start_column="00", 
+        # start_row="00"   
+        nb_wap = wap
+    )
+
+
+    

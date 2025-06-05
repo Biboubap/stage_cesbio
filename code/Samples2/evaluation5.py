@@ -364,7 +364,7 @@ def save_classification_to_tif(pred_map, ref_tif_path, out_tif_path, size_patch=
         ref_tif_path: Chemin vers le raster de référence pour la géoréférence
         out_tif_path: Chemin de sortie pour sauvegarder le raster de classification
         size_patch: Taille du patch (par défaut: 32)
-        create_qml: Si True, crée un fichier QML pour QGIS avec la même palette de couleurs
+        create_qml: Si True, crée un fichier QML pour QGIS avec la même palette de couleurs (par défaut: True)
     """
     ds = gdal.Open(ref_tif_path)
     width = ds.RasterXSize
@@ -386,10 +386,12 @@ def save_classification_to_tif(pred_map, ref_tif_path, out_tif_path, size_patch=
     out_ds = None
     print(f"Carte de classification sauvegardée dans {out_tif_path}")
     
-    # Create QML file if requested
+    # Create QML file only if requested
     if create_qml:
         qml_path = out_tif_path.replace('.tif', '.qml')
         create_qgis_colormap(qml_path)
+    else:
+        print("Création du fichier QML ignorée (create_qml=False)")
 
 def filter_features(features, all_feature_names, needed_feature_names):
     """
