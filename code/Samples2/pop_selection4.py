@@ -80,6 +80,7 @@ def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_p
     
     # Keep track of current active category
     current_category_key = None
+    early_exit = False  # Flag for early exit from selection
     
     while True:
         class_key = input(f"Classe initiale à sélectionner : {class_dict.keys()}").strip().lower()
@@ -101,7 +102,14 @@ def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_p
         axes = np.array(axes).reshape(samples_plot_nb, samples_plot_nb)
 
         def on_key_press(event):
-            nonlocal current_category_key
+            nonlocal current_category_key, early_exit
+            
+            # Early exit with 'q' key
+            if event.key == 'q':
+                print("Early exit requested. Saving current selections...")
+                early_exit = True
+                plt.close(fig)
+                return
             
             # Switch category when space is pressed
             if event.key == ' ':
@@ -380,12 +388,20 @@ def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_p
             plot_block(block_x, block_y)
             print(f"Bloc ({block_x},{block_y}) affiché. Ferme la fenêtre pour passer au suivant.")
             print(f"Classe active: {class_dict[current_category_key]} (key: {current_category_key})")
+            print("Appuyer sur 'q' pour arrêter la sélection et sauvegarder")
             # print("Appuyer sur '0' pour tout sélectionner/désélectionner")
             # print("Appuyer sur Espace pour changer de classe")
             # print("Appuyer sur 1-9 pour sélectionner les régions:")
             # print("  7=haut-gauche, 8=haut-centre, 9=haut-droite")
             # print("  4=milieu-gauche, 5=centre, 6=milieu-droite")
             # print("  1=bas-gauche, 2=bas-centre, 3=bas-droite")
+
+            # Check for early exit after each block
+            if early_exit:
+                print("Arrêt anticipé de la sélection. Sauvegarde des échantillons sélectionnés...")
+                break
+        if early_exit:
+            break
 
     # Create a dictionary to organize samples by category
     samples_by_category = {}
@@ -484,21 +500,21 @@ if __name__ == "__main__":
     size_patch = 16
     distance_large = 3
 
-    n_samples_x = 150
-    n_samples_y = 150
+    n_samples_x = (4982-3950)//15
+    n_samples_y = 45
     samples_plot_nb = 15
     default = None
         
-    x_start = 150
-    y_start = 950
+    x_start = 3950
+    y_start = 700
 
     # Chemins des rasters
-    nb = "05_07"
+    nb = "05_10"
     ds_path = f"drone_treated/WAP32_tiles/rgb/WAP32_full_transparent_mosaic_group1_{nb}.tif"
     dz_path = f"drone_treated/WAP32_tiles/dsm/WAP32_full_dsm_{nb}.tif"
     dt_path = None
     
-    save_dir = "data/samples/selection12/"
+    save_dir = "data/samples/selection13/"
 
     class_dict = {
         # "pp": "peat_plateau",

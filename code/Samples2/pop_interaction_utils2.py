@@ -498,29 +498,114 @@ def merge_Wap_samples():
     
 #     return balanced_data
 
+def merge_selection12_and_13(balance_max=None):
+    """
+    Merge pop_12.json from selection12/pop_merged with all JSON files from selection13
+    and count samples by category.
+    
+    Args:
+        balance_max: If provided, limits each category to this many samples (random selection)
+    """
+    import os
+    import glob
+    from collections import Counter
+    
+    # Paths
+    selection12_path = "data/samples/selection12/pop_merged/pop_12.json"
+    selection13_dir = "data/samples/selection13"
+    output_dir = "data/samples/selection13/merged"
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, "merged_12_13.json")
+    
+    # Load samples from selection12
+    print(f"Loading samples from {selection12_path}...")
+    data12 = load_population(selection12_path)
+    samples12 = data12.get("samples", [])
+    
+    # Count samples by category in selection12
+    categories12 = Counter([s["category"] for s in samples12])
+    print(f"Selection12 samples: {len(samples12)} total")
+    print(f"Selection12 distribution by category: {categories12}")
+    
+    # Find all JSON files in selection13
+    json_files = glob.glob(os.path.join(selection13_dir, "*.json"))
+    print(f"\nFound {len(json_files)} JSON files in selection13.")
+    
+    # Load samples from selection13
+    all_samples13 = []
+    for path in json_files:
+        data = load_population(path)
+        samples = data.get("samples", [])
+        all_samples13.extend(samples)
+        
+        # Print details for each file
+        filename = os.path.basename(path)
+        file_categories = Counter([s["category"] for s in samples])
+        print(f"{filename}: {len(samples)} samples - {dict(file_categories)}")
+    
+    # Count samples by category in selection13
+    categories13 = Counter([s["category"] for s in all_samples13])
+    print(f"\nSelection13 samples: {len(all_samples13)} total")
+    print(f"Selection13 distribution by category: {categories13}")
+    
+    # Merge samples from both selections
+    merged_samples = samples12 + all_samples13
+    
+    # Count merged samples by category
+    merged_categories = Counter([s["category"] for s in merged_samples])
+    print(f"\nMerged samples before balancing: {len(merged_samples)} total")
+    print(f"Distribution by category before balancing:")
+    for category, count in sorted(merged_categories.items()):
+        print(f"  - {category}: {count} samples")
+    
+    # Balance categories if requested
+    if balance_max is not None:
+        # Group samples by category
+        samples_by_category = {}
+        for s in merged_samples:
+            category = s["category"]
+            if category not in samples_by_category:
+                samples_by_category[category] = []
+            samples_by_category[category].append(s)
+        
+        # Limit each category to balance_max samples
+        balanced_samples = []
+        for category, samples in samples_by_category.items():
+            if len(samples) > balance_max:
+                # Random selection to limit to balance_max
+                selected = random.sample(samples, balance_max)
+                print(f"Category '{category}': {len(samples)} → {len(selected)} samples (randomly selected)")
+            else:
+                selected = samples
+                print(f"Category '{category}': {len(samples)} samples (unchanged)")
+            balanced_samples.extend(selected)
+        
+        merged_samples = balanced_samples
+        
+        # Count after balancing
+        balanced_categories = Counter([s["category"] for s in merged_samples])
+        print(f"\nAfter balancing: {len(merged_samples)} total")
+        print(f"Distribution by category after balancing:")
+        for category, count in sorted(balanced_categories.items()):
+            print(f"  - {category}: {count} samples")
+    
+    # Create merged data structure
+    merged_data = {
+        "n_samples_x": None,
+        "n_samples_y": None,
+        "samples": merged_samples
+    }
+    
+    # Save merged data
+    balance_suffix = f"_balanced_{balance_max}" if balance_max is not None else ""
+    output_path_final = output_path.replace(".json", f"{balance_suffix}.json")
+    save_population(merged_data, output_path_final)
+    print(f"\nMerged samples saved to {output_path_final}")
+    
+    return merged_data
+
+# Exemple d'utilisation :
 if __name__ == "__main__":
-    # Load samples from selection10/pop8_converted.json
-    input_path = "data/samples/selection10/pop8_converted.json"
-    output_path = "data/samples/selection12/pop8_filtered.json"
-    
-    print(f"Loading samples from {input_path}...")
-    samples_set = SamplesSet2.load_samples_from_json(input_path)
-    
-    # Count initial samples by category
-    initial_counts = Counter([s.category for s in samples_set.samples.values()])
-    print(f"Initial samples: {len(samples_set.samples)} total")
-    print(f"Initial distribution by category: {initial_counts}")
-    
-    # Filter out "crevasse" category, keeping "lichen", "sphaignes", "chicoutai"
-    categories_to_keep = ["lichen", "sphaignes", "chicoutai"]
-    filtered_set = filter_samples_by_category(samples_set, categories_to_keep)
-    
-    # Count filtered samples by category
-    filtered_counts = Counter([s.category for s in filtered_set.samples.values()])
-    print(f"\nAfter filtering: {len(filtered_set.samples)} samples total")
-    print(f"Distribution by category: {filtered_counts}")
-    
-    # Save filtered samples
-    filtered_set.save_samples_to_json(output_path)
-    print(f"Filtered samples saved to {output_path}")
+    # Merge selection12 and selection13 samples, balanced to max 2500 samples per category
+    merge_selection12_and_13(balance_max=2500)
 

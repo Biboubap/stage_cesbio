@@ -67,7 +67,7 @@ def train_random_forest(features, labels, feature_names, test_size=0.2, random_s
     )
     clf = RandomForestClassifier(
         n_estimators=300,
-        max_depth=20,
+        max_depth=200,
         class_weight="balanced",
         random_state=42,
         n_jobs=-1,
@@ -85,13 +85,13 @@ def train_random_forest(features, labels, feature_names, test_size=0.2, random_s
     return clf, X_test, y_test, feature_names
 
 if __name__ == "__main__":
-    features, labels, feature_names = load_samples("data/samples/selection12/pop_merged/pop_12_balanced.json", exclude_temp=True)
+    features, labels, feature_names = load_samples("data/samples/selection13/merged/merged_12_13_balanced_2500.json", exclude_temp=True)
     clf, X_test, y_test, feature_names = train_random_forest(features, labels, feature_names)
     # Sauvegarde du modèle
     import joblib
-    joblib.dump({"model": clf, "feature_names": feature_names}, "data/samples/selection12/pop_merged/random_forest_model.joblib")
+    joblib.dump({"model": clf, "feature_names": feature_names}, "data/samples/selection13/merged/model_wap32_2.joblib")
 
-    
+
 def grid_search_rf(features, labels, feature_names, test_size=0.3, random_state=42):
     X_train, X_test, y_train, y_test = train_test_split(
         features, labels, test_size=test_size, random_state=random_state, stratify=labels
