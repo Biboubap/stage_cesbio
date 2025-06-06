@@ -2,6 +2,7 @@
 !/data/samples/
 /data/samples/**/*.png
 /data/samples/**/*.json
+/data/samples/**/regression*/**/*.joblib
 
 !/data/sentinel2/
 /data/sentinel2/**/*.tif
@@ -25,4 +26,3 @@
 
 !/data/rendus/
 /data/rendus/**/*.tif
-

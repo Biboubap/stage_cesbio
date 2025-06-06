@@ -137,6 +137,19 @@ def compute_class_proportions(classification_path, sentinel_path, output_csv, cl
                 count = np.sum(subclass == class_val)
                 prop = count / valid_pixels if valid_pixels > 0 else 0
                 class_proportions[class_name] = prop
+                
+                # Calculate square root for specific classes
+                if class_name in ["dry_depression", "sphaignes", "black_depression"]:
+                    class_proportions[f"sqrt_{class_name}"] = np.sqrt(prop) if prop > 0 else 0
+            
+            # Calculate through_proportion (sum of sphaignes, dry_depression, black_depression)
+            through_proportion = (
+                class_proportions.get("sphaignes", 0) + 
+                class_proportions.get("dry_depression", 0) + 
+                class_proportions.get("black_depression", 0)
+            )
+            class_proportions["through_proportion"] = through_proportion
+            class_proportions["sqrt_through_proportion"] = np.sqrt(through_proportion) if through_proportion > 0 else 0
             
             # Add result for this pixel
             result = {
@@ -248,24 +261,36 @@ def extract_sentinel_values(sentinel_bands_dir, sentinel_indices_dir, proportion
 def filter_by_valid_proportion(input_csv, output_csv, min_valid_proportion=0.5):
     """
     Filter the CSV to keep only pixels with at least the specified proportion of valid data.
+    A pixel is considered valid if its 'none' proportion is below (1 - min_valid_proportion).
     
     Args:
         input_csv: Path to the input CSV
         output_csv: Path to save the filtered CSV
-        min_valid_proportion: Minimum proportion of valid pixels required
+        min_valid_proportion: Minimum proportion of valid (non-"none") pixels required
     """
     df = pd.read_csv(input_csv)
     total_rows = len(df)
     
-    # Filter by valid pixel proportion
-    df_filtered = df[df['valid_proportion'] >= min_valid_proportion]
-    kept_rows = len(df_filtered)
+    # Check if 'none' is in the columns
+    if 'none' in df.columns:
+        # Filter by the inverse of 'none' proportion (i.e., keep pixels where 'none' is small)
+        # A pixel should have at most (1 - min_valid_proportion) classified as 'none'
+        max_none_proportion = 1 - min_valid_proportion
+        df_filtered = df[df['none'] <= max_none_proportion]
+        kept_rows = len(df_filtered)
+        
+        print(f"Filtered from {total_rows} to {kept_rows} pixels " +
+              f"({kept_rows/total_rows*100:.1f}%) having at most {max_none_proportion*100:.0f}% 'none' class")
+    else:
+        # If 'none' column doesn't exist, fall back to the valid_proportion column
+        df_filtered = df[df['valid_proportion'] >= min_valid_proportion]
+        kept_rows = len(df_filtered)
+        
+        print(f"Filtered from {total_rows} to {kept_rows} pixels " +
+              f"({kept_rows/total_rows*100:.1f}%) having at least {min_valid_proportion*100:.0f}% valid pixels")
     
     # Save filtered data
     df_filtered.to_csv(output_csv, index=False)
-    
-    print(f"Filtered from {total_rows} to {kept_rows} pixels " +
-          f"({kept_rows/total_rows*100:.1f}%) having at least {min_valid_proportion*100:.0f}% valid pixels")
     
     return df_filtered
 
@@ -289,8 +314,8 @@ def plot_class_proportions(csv_path, output_dir, purcent_exclusion=0.05):
     os.makedirs(output_dir, exist_ok=True)
     
     # Find class columns (excluding metadata columns)
-    class_columns = [col for col in df.columns if col not in 
-                    ['col_s', 'row_s', 'valid_pixels', 'total_pixels', 'valid_proportion']]
+    metadata_cols = ['col_s', 'row_s', 'valid_pixels', 'total_pixels', 'valid_proportion']
+    class_columns = [col for col in df.columns if col not in metadata_cols]
     
     # Plot histograms for each class
     for i, col in enumerate(class_columns):
@@ -306,7 +331,13 @@ def plot_class_proportions(csv_path, output_dir, purcent_exclusion=0.05):
         # Create histogram with filtered data
         filtered_data.hist(bins=20)
         
-        plt.title(f'Distribution of {col} proportion')
+        # Set y-axis to log scale for sqrt columns to better visualize the distribution
+        if col.startswith('sqrt_'):
+            plt.yscale('log')
+            plt.title(f'Distribution of sqrt({col[5:]}) proportion')
+        else:
+            plt.title(f'Distribution of {col} proportion')
+            
         plt.xlabel('Proportion')
         plt.ylabel('Number of pixels')
         plt.figtext(0.5, 0.01, f'Note: {low_count} samples with proportions ≤ {purcent_exclusion*100:.0f}% excluded', 
@@ -315,15 +346,16 @@ def plot_class_proportions(csv_path, output_dir, purcent_exclusion=0.05):
         plt.savefig(os.path.join(output_dir, f'histogram_{col}.png'))
         plt.close()
     
-    # Create a summary figure with all classes
+    # Create a summary figure with all classes (original only, not sqrt versions)
+    original_class_columns = [col for col in class_columns if not col.startswith('sqrt_')]
     plt.figure(figsize=(15, 10))
     
     # Calculate number of rows and columns for subplots
-    n_classes = len(class_columns)
+    n_classes = len(original_class_columns)
     n_cols = min(3, n_classes)
     n_rows = (n_classes + n_cols - 1) // n_cols
     
-    for i, col in enumerate(class_columns):
+    for i, col in enumerate(original_class_columns):
         plt.subplot(n_rows, n_cols, i+1)
         
         # Count samples with values less than or equal to purcent_exclusion
@@ -343,6 +375,37 @@ def plot_class_proportions(csv_path, output_dir, purcent_exclusion=0.05):
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, 'all_classes_histograms.png'))
     plt.close()
+    
+    # Create another summary figure for sqrt classes
+    sqrt_class_columns = [col for col in class_columns if col.startswith('sqrt_')]
+    if sqrt_class_columns:
+        plt.figure(figsize=(15, 6))
+        
+        # Calculate number of rows and columns for subplots
+        n_sqrt_classes = len(sqrt_class_columns)
+        n_cols_sqrt = min(3, n_sqrt_classes)
+        n_rows_sqrt = (n_sqrt_classes + n_cols_sqrt - 1) // n_cols_sqrt
+        
+        for i, col in enumerate(sqrt_class_columns):
+            plt.subplot(n_rows_sqrt, n_cols_sqrt, i+1)
+            
+            # Count samples with values less than or equal to purcent_exclusion
+            low_count = (df[col] <= purcent_exclusion).sum()
+            
+            # Filter out samples with proportions less than or equal to purcent_exclusion% for visualization
+            filtered_data = df[df[col] > purcent_exclusion][col]
+            
+            # Create histogram with filtered data
+            filtered_data.hist(bins=20)
+            
+            plt.title(f"{col}\n({low_count} samples ≤ {purcent_exclusion*100:.0f}% excluded)")
+            plt.xlabel('Sqrt Proportion')
+            plt.ylabel('Count')
+            plt.grid(alpha=0.3)
+        
+        plt.tight_layout()
+        plt.savefig(os.path.join(output_dir, 'sqrt_classes_histograms.png'))
+        plt.close()
     
     print(f"Class proportion histograms saved in {output_dir}")
 
@@ -410,6 +473,6 @@ def process_wap_data(wap_number, classification_path, output_dir=None):
 
 if __name__ == "__main__":
     wap = 32
-    classification_path = f"drone_treated/WAP32_tiles/WAP32_classif_16_wap32.tif"
+    classification_path = f"drone_treated/WAP32_tiles/WAP32_classif_5wd.tif"
     print(f"Processing WAP{wap} data...")
-    process_wap_data(wap, classification_path=classification_path, output_dir=f"data/samples/selection13/regression_wap{wap}")
+    process_wap_data(wap, classification_path=classification_path, output_dir=f"data/samples/selection13/regression_wap{wap}_5wd_sqrt")
