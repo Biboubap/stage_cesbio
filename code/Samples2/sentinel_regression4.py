@@ -331,9 +331,9 @@ def train_multioutput_rf(X, y_dict, class_names, test_size=0.3, random_state=42)
     # which can handle multivariate outputs natively
     model = RandomForestRegressor(
         n_estimators=300,
-        min_samples_leaf=1,
+        min_samples_leaf=4,
         random_state=random_state,
-        max_depth=None,
+        max_depth=30,
         max_features="sqrt",
         n_jobs=-1  # Use all available cores for faster training
     )
@@ -1015,11 +1015,11 @@ def evaluate_multioutput_rf(model, X_test, y_test, y_test_dict, class_names, out
 if __name__ == "__main__":
     # Run the full workflow for WAP32
     wap = 32
-    data_dir = f"data/samples/selection13/regression_wap{wap}_5wd_sqrt"  # Updated to use directory with sqrt data
-    output_dir = f"data/samples/selection13/regression_wap{wap}_5wd_sqrt/results_sqrt"
+    data_dir = f"data/samples/selection13/regression_wap{wap}_5wd"  # Updated to use directory with sqrt data
+    output_dir = f"data/samples/selection13/regression_wap{wap}_5wd/results2"
     
     run_multivariate_regression(data_dir, output_dir, wap_number=wap, use_sqrt=True)
     
-    # Optionally, also run without sqrt transformation for comparison
-    output_dir_no_sqrt = f"data/samples/selection13/regression_wap{wap}_5wd_sqrt/results_no_sqrt"
-    run_multivariate_regression(data_dir, output_dir_no_sqrt, wap_number=wap, use_sqrt=False)
+    # # Optionally, also run without sqrt transformation for comparison
+    # output_dir_no_sqrt = f"data/samples/selection13/regression_wap{wap}_5wd_sqrt/results_no_sqrt"
+    # run_multivariate_regression(data_dir, output_dir_no_sqrt, wap_number=wap, use_sqrt=False)

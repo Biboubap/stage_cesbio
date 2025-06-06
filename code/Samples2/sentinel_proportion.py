@@ -359,6 +359,7 @@ def plot_class_proportions(csv_path, output_dir, purcent_exclusion=0.05):
         plt.subplot(n_rows, n_cols, i+1)
         
         # Count samples with values less than or equal to purcent_exclusion
+        # This includes both zeros and near-zero values
         low_count = (df[col] <= purcent_exclusion).sum()
         
         # Filter out samples with proportions less than or equal to purcent_exclusion% for visualization
@@ -409,13 +410,15 @@ def plot_class_proportions(csv_path, output_dir, purcent_exclusion=0.05):
     
     print(f"Class proportion histograms saved in {output_dir}")
 
-def process_wap_data(wap_number, classification_path, output_dir=None):
+def process_wap_data(wap_number, classification_path, output_dir=None, use_peat=True):
     """
     Process data for a specific WAP site.
     
     Args:
         wap_number: WAP site number (e.g., 23 or 32)
+        classification_path: Path to the classification raster
         output_dir: Directory to save outputs (default is data/sentinel_proportions/WAP{wap_number})
+        use_peat: Whether to use the peat dataset paths (with "_peat" suffix)
     """
     # Set up paths
     if output_dir is None:
@@ -423,11 +426,12 @@ def process_wap_data(wap_number, classification_path, output_dir=None):
     
     os.makedirs(output_dir, exist_ok=True)
     
-    # Paths to data
+    # Paths to data, with conditional _peat suffix
+    peat_suffix = "_peat" if use_peat else ""
     
-    sentinel_path = f"DataCubeS2/BandsS22023_WAP{wap_number}/mediane/mediane_clipped_STACK_2023_BandB2_WAP{wap_number}_deflate.tif"
-    sentinel_bands_dir = f"DataCubeS2/BandsS22023_WAP{wap_number}/mediane"
-    sentinel_indices_dir = f"DataCubeS2/IndicesS22023_WAP{wap_number}/mediane"
+    sentinel_path = f"DataCubeS2/BandsS22023_WAP{wap_number}{peat_suffix}/mediane/mediane_clipped_STACK_2023_BandB2_WAP{wap_number}_deflate.tif"
+    sentinel_bands_dir = f"DataCubeS2/BandsS22023_WAP{wap_number}{peat_suffix}/mediane"
+    sentinel_indices_dir = f"DataCubeS2/IndicesS22023_WAP{wap_number}{peat_suffix}/mediane"
     
     # Output paths
     proportions_csv = os.path.join(output_dir, f"class_proportions_WAP{wap_number}.csv")
@@ -473,6 +477,10 @@ def process_wap_data(wap_number, classification_path, output_dir=None):
 
 if __name__ == "__main__":
     wap = 32
-    classification_path = f"drone_treated/WAP32_tiles/WAP32_classif_5wd.tif"
-    print(f"Processing WAP{wap} data...")
-    process_wap_data(wap, classification_path=classification_path, output_dir=f"data/samples/selection13/regression_wap{wap}_5wd_sqrt")
+    use_peat = False
+    peat_suffix = "_peat" if use_peat else ""
+    classification_path = f"drone_treated/WAP32_tiles/WAP32_classif_5wd{peat_suffix}.tif"
+    output_dir = f"data/samples/selection13/regression_wap{wap}_5wd{peat_suffix}"
+    
+    print(f"Processing WAP{wap} data with {'peat' if use_peat else 'standard'} dataset...")
+    process_wap_data(wap, classification_path=classification_path, output_dir=output_dir, use_peat=use_peat)
