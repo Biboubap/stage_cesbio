@@ -1008,10 +1008,10 @@ def evaluate_multioutput_rf(model, X_test, y_test, y_test_dict, class_names, out
 if __name__ == "__main__":
     # Run the full workflow for WAP32
     wap = 32
-    use_peat = True
+    use_peat = False
     peat_suffix = "_peat" if use_peat else ""
-    data_dir = f"data/samples/selection13/regression_wap{wap}_5wd{peat_suffix}"  # Updated to use directory with sqrt data
-    output_dir = f"data/samples/selection13/regression_wap{wap}_5wd{peat_suffix}/results"
+    data_dir = f"data/samples/selection14/regression_wap{wap}_no_chicoutai{peat_suffix}"  # Updated to use directory with sqrt data
+    output_dir = f"data/samples/selection14/regression_wap{wap}_no_chicoutai{peat_suffix}/results"
 
     run_multivariate_regression(data_dir, output_dir, wap_number=wap, use_sqrt=True, use_peat=use_peat)
     

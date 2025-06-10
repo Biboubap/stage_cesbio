@@ -313,14 +313,14 @@ def sort_tiles_by_coordinates(tiles_info):
     return sorted(tiles_info, key=get_sort_key)
 
 if __name__ == "__main__":
-    model = "model_wap_32_5"
+    model = "model_wap32_no_chicoutai"
 
     wap = 32
     process_all_tiles(
         rgb_folder=f"drone_treated/WAP{wap}_tiles/rgb",
         dsm_folder=f"drone_treated/WAP{wap}_tiles/dsm",
-        out_folder=f"drone_treated/WAP{wap}_tiles/classification_wap32_5wd",
-        model_path=f"data/samples/selection13/merged/{model}.joblib",  # Update to use the new model
+        out_folder=f"drone_treated/WAP{wap}_tiles/classification_wap32_no_chicoutai",
+        model_path=f"data/samples/selection14/model_wap32_no_chicoutai.joblib",  # Update to use the new model
         max_tiles=None,  # Process all tiles, or specify a number to limit
         size_patch=16,
         # start_column="00", 
@@ -328,44 +328,44 @@ if __name__ == "__main__":
         nb_wap = wap
     )
 
-    wap = 23
-    process_all_tiles(
-        rgb_folder=f"drone_treated/WAP{wap}_tiles/rgb",
-        dsm_folder=f"drone_treated/WAP{wap}_tiles/dsm",
-        out_folder=f"drone_treated/WAP{wap}_tiles/classification_wap32_5wd",
-        model_path=f"data/samples/selection13/merged/{model}.joblib",  # Update to use the new model
-        max_tiles=None,  # Process all tiles, or specify a number to limit
-        size_patch=16,
-        # start_column="00", 
-        # start_row="00"   
-        nb_wap = wap
-    )
+    # wap = 23
+    # process_all_tiles(
+    #     rgb_folder=f"drone_treated/WAP{wap}_tiles/rgb",
+    #     dsm_folder=f"drone_treated/WAP{wap}_tiles/dsm",
+    #     out_folder=f"drone_treated/WAP{wap}_tiles/classification_wap32_5wd",
+    #     model_path=f"data/samples/selection13/merged/{model}.joblib",  # Update to use the new model
+    #     max_tiles=None,  # Process all tiles, or specify a number to limit
+    #     size_patch=16,
+    #     # start_column="00", 
+    #     # start_row="00"   
+    #     nb_wap = wap
+    # )
 
-    wap = 12
-    process_all_tiles(
-        rgb_folder=f"drone_treated/WAP{wap}_tiles/rgb",
-        dsm_folder=f"drone_treated/WAP{wap}_tiles/dsm",
-        out_folder=f"drone_treated/WAP{wap}_tiles/classification_wap32_5wd",
-            model_path="data/samples/selection13/merged/model_wap_32_5.joblib",  # Update to use the new model
-        max_tiles=None,  # Process all tiles, or specify a number to limit
-        size_patch=16,
-        # start_column="00", 
-        # start_row="00"   
-        nb_wap = wap
-    )
+    # wap = 12
+    # process_all_tiles(
+    #     rgb_folder=f"drone_treated/WAP{wap}_tiles/rgb",
+    #     dsm_folder=f"drone_treated/WAP{wap}_tiles/dsm",
+    #     out_folder=f"drone_treated/WAP{wap}_tiles/classification_wap32_5wd",
+    #         model_path="data/samples/selection13/merged/model_wap_32_5.joblib",  # Update to use the new model
+    #     max_tiles=None,  # Process all tiles, or specify a number to limit
+    #     size_patch=16,
+    #     # start_column="00", 
+    #     # start_row="00"   
+    #     nb_wap = wap
+    # )
 
-    wap = 99
-    process_all_tiles(
-        rgb_folder=f"drone_treated/WAP{wap}_tiles/rgb",
-        dsm_folder=f"drone_treated/WAP{wap}_tiles/dsm",
-        out_folder=f"drone_treated/WAP{wap}_tiles/classification_wap32_5wd",
-            model_path="data/samples/selection13/merged/model_wap_32_5.joblib",  # Update to use the new model
-        max_tiles=None,  # Process all tiles, or specify a number to limit
-        size_patch=16,
-        # start_column="00", 
-        # start_row="00"   
-        nb_wap = wap
-    )
+    # wap = 99
+    # process_all_tiles(
+    #     rgb_folder=f"drone_treated/WAP{wap}_tiles/rgb",
+    #     dsm_folder=f"drone_treated/WAP{wap}_tiles/dsm",
+    #     out_folder=f"drone_treated/WAP{wap}_tiles/classification_wap32_5wd",
+    #         model_path="data/samples/selection13/merged/model_wap_32_5.joblib",  # Update to use the new model
+    #     max_tiles=None,  # Process all tiles, or specify a number to limit
+    #     size_patch=16,
+    #     # start_column="00", 
+    #     # start_row="00"   
+    #     nb_wap = wap
+    # )
 
 
     

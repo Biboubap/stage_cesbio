@@ -628,7 +628,7 @@ def merge_selection12_and_exclude_pop8(balance_max=2000):
     # Group samples by category
     samples_by_category = {}
     for s in merged_samples:
-        category = s["category"]
+        category = s.category
         if category not in samples_by_category:
             samples_by_category[category] = []
         samples_by_category[category].append(s)
@@ -665,9 +665,71 @@ def merge_selection12_and_exclude_pop8(balance_max=2000):
     
     return merged_data
 
+def remove_category_from_population(input_json, output_json, category_to_remove):
+    """
+    Remove all samples of a specific category from a population file
+    and save the result to a new JSON file.
+    
+    Args:
+        input_json: Path to the input JSON population file
+        output_json: Path to save the filtered population
+        category_to_remove: Category name to remove from the population
+    
+    Returns:
+        The filtered data as a dictionary
+    """
+    # Create output directory if it doesn't exist
+    output_dir = os.path.dirname(output_json)
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Load the population
+    print(f"Loading population from {input_json}...")
+    data = load_population(input_json)
+    samples = data.get("samples", [])
+    
+    # Count initial distribution
+    initial_counts = Counter([s["category"] for s in samples])
+    print(f"Initial population: {len(samples)} samples total")
+    print(f"Initial distribution by category:")
+    for cat, count in sorted(initial_counts.items()):
+        print(f"  - {cat}: {count} samples")
+    
+    # Filter out the specified category
+    filtered_samples = [s for s in samples if s["category"] != category_to_remove]
+    
+    # Count filtered distribution
+    filtered_counts = Counter([s["category"] for s in filtered_samples])
+    print(f"\nAfter removing '{category_to_remove}':")
+    print(f"Filtered population: {len(filtered_samples)} samples total")
+    print(f"Filtered distribution by category:")
+    for cat, count in sorted(filtered_counts.items()):
+        print(f"  - {cat}: {count} samples")
+    
+    # Create filtered data structure
+    filtered_data = {
+        "n_samples_x": None,
+        "n_samples_y": None,
+        "samples": filtered_samples
+    }
+    
+    # Save filtered data
+    save_population(filtered_data, output_json)
+    print(f"\nFiltered population saved to {output_json}")
+    
+    return filtered_data
+
 # Exemple d'utilisation :
 if __name__ == "__main__":
-    # Use the new function to merge selection12 (excluding pop8_filtered) and selection13 samples
-    # Balance to 2000 samples per category
-    merge_selection12_and_exclude_pop8(balance_max=2000)
+    # Original function call (commented out)
+    # merge_selection12_and_exclude_pop8(balance_max=2000)
+    
+    # New function to remove chicoutai and save to selection14
+    input_file = "data/samples/selection13/merged/merged_5.json"
+    output_file = "data/samples/selection14/merged_no_chicoutai.json"
+    
+    remove_category_from_population(
+        input_json=input_file,
+        output_json=output_file,
+        category_to_remove="chicoutai"
+    )
 

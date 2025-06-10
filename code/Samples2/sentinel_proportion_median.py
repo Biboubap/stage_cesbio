@@ -326,12 +326,12 @@ def visualize_bins(input_csv, target_col, output_path, n_bins=10):
 
 if __name__ == "__main__":
     wap = 32
-    use_peat = True
+    use_peat = False
     peat_suffix = "_peat" if use_peat else ""
     
     # Input/output paths
-    filtered_csv = f"data/samples/selection13/regression_wap{wap}_5wd{peat_suffix}/class_proportions_WAP{wap}_filtered.csv"
-    output_dir = f"data/samples/selection13/regression_wap{wap}_5wd{peat_suffix}/balanced"
+    filtered_csv = f"data/samples/selection14/regression_wap{wap}_no_chicoutai{peat_suffix}/class_proportions_WAP{wap}_filtered.csv"
+    output_dir = f"data/samples/selection14/regression_wap{wap}_no_chicoutai{peat_suffix}/balanced"
     
     # Process data to create balanced datasets
     process_wap_data(filtered_csv, output_dir)

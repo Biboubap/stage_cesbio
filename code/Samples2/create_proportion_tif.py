@@ -189,8 +189,8 @@ def create_color_interpretation_file(tiff_path, classes):
     print("NOTE: In QGIS, use the 'Select Band' option in layer properties to view each class proportion")
 
 if __name__ == "__main__":
-    input_csv = "data/samples/selection13/regression_wap32_5wd/class_proportions_WAP32.csv"# Replace with your input CSV path
+    input_csv = "data/samples/selection14/regression_wap32_no_chicoutai/class_proportions_WAP32.csv"# Replace with your input CSV path
     sentinel_path = f"DataCubeS2/BandsS22023_WAP32/mediane/mediane_clipped_STACK_2023_BandB2_WAP32_deflate.tif"
-    output_path = "data/samples/selection13/regression_wap32_5wd/proportions_WAP32.tif"  # Replace with desired output path
+    output_path = "data/samples/selection14/regression_wap32_no_chicoutai/proportions_WAP32.tif"  # Replace with desired output path
     create_proportion_tiff(input_csv, sentinel_path, output_path)
     

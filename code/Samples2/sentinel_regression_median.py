@@ -858,10 +858,10 @@ def create_performance_summary(all_metrics, output_dir):
 if __name__ == "__main__":
     # Parameters
     wap = 32
-    use_peat = True
+    use_peat = False
     peat_suffix = "_peat" if use_peat else ""
-    data_dir = f"data/samples/selection13/regression_wap{wap}_5wd{peat_suffix}/balanced"
-    output_dir = f"data/samples/selection13/regression_wap{wap}_5wd{peat_suffix}/regression_results"
+    data_dir = f"data/samples/selection14/regression_wap{wap}_no_chicoutai{peat_suffix}/balanced"
+    output_dir = f"data/samples/selection14/regression_wap{wap}_no_chicoutai{peat_suffix}/regression_results"
     
     # Run all regressions and create consolidated output
     run_all_regressions(

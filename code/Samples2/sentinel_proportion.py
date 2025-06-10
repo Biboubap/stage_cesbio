@@ -477,10 +477,10 @@ def process_wap_data(wap_number, classification_path, output_dir=None, use_peat=
 
 if __name__ == "__main__":
     wap = 32
-    use_peat = True
+    use_peat = False
     peat_suffix = "_peat" if use_peat else ""
-    classification_path = f"drone_treated/WAP32_tiles/WAP32_classif_5wd{peat_suffix}.tif"
-    output_dir = f"data/samples/selection13/regression_wap{wap}_5wd{peat_suffix}"
+    classification_path = f"drone_treated/WAP32_tiles/WAP32_classif_no_chicoutai{peat_suffix}.tif"
+    output_dir = f"data/samples/selection14/regression_wap{wap}_no_chicoutai{peat_suffix}"
     
     print(f"Processing WAP{wap} data with {'peat' if use_peat else 'standard'} dataset...")
     process_wap_data(wap, classification_path=classification_path, output_dir=output_dir, use_peat=use_peat)
