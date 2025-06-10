@@ -8,9 +8,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-def create_balanced_dataset(input_csv, output_dir, target_col, n_bins=10, keep_zero=False):
+def create_balanced_dataset(input_csv, output_dir, target_col, n_bins=10, keep_zero=False, quantile=0.5):
     """
-    Create a balanced dataset by dividing the values of target_col into n_bins bins
+    Create a balanced dataset by dividing the values of target_col into n_bins bins of equal size
     and sampling to ensure each bin has approximately the same number of samples.
     
     Args:
@@ -49,9 +49,13 @@ def create_balanced_dataset(input_csv, output_dir, target_col, n_bins=10, keep_z
     n_samples = len(df_clean)
     print(f"Original dataset: {n_samples} samples")
     
-    # Create bins based on percentiles of target_col
-    bin_edges = np.linspace(0, 100, n_bins + 1)
-    percentiles = np.percentile(df_clean[target_col], bin_edges)
+    # Determine the min and max values to create fixed-size bins
+    min_val = 0
+    max_val = 1
+    bin_width = (max_val - min_val) / n_bins
+    
+    # Create bins of equal size
+    bin_edges = [min_val + i * bin_width for i in range(n_bins + 1)]
     
     # Plot histogram of original data
     plt.figure(figsize=(12, 6))
@@ -64,10 +68,10 @@ def create_balanced_dataset(input_csv, output_dir, target_col, n_bins=10, keep_z
     # Create balanced dataset
     balanced_dfs = []
     
-    print(f"Creating {n_bins} bins based on percentiles of {target_col}...")
+    print(f"Creating {n_bins} bins of equal size from {min_val:.4f} to {max_val:.4f}...")
     for i in range(n_bins):
-        lower = percentiles[i]
-        upper = percentiles[i + 1]
+        lower = bin_edges[i]
+        upper = bin_edges[i + 1]
         
         # Get samples in this bin
         if i == n_bins - 1:  # Include upper bound in the last bin
@@ -82,18 +86,18 @@ def create_balanced_dataset(input_csv, output_dir, target_col, n_bins=10, keep_z
     
     # Calculate median number of samples per bin (excluding empty bins)
     non_empty_counts = [len(df) for df in balanced_dfs if len(df) > 0]
-    median_count = int(np.median(non_empty_counts))
-    print(f"Median number of samples per bin: {median_count}")
+    quantile_count = int(np.quantile(non_empty_counts, quantile))
+    print(f"Median number of samples per bin: {quantile_count}")
     
-    # Sample each bin to have at most median_count samples
+    # Sample each bin to have at most quantile_count samples
     final_dfs = []
     for i, bin_df in enumerate(balanced_dfs):
         if len(bin_df) == 0:
             continue
             
-        if len(bin_df) > median_count:
+        if len(bin_df) > quantile_count:
             # Random sample without replacement
-            sampled_df = bin_df.sample(n=median_count, random_state=42)
+            sampled_df = bin_df.sample(n=quantile_count, random_state=42)
             print(f"Bin {i+1}: Sampled from {len(bin_df)} to {len(sampled_df)} samples")
             final_dfs.append(sampled_df)
         else:
@@ -127,7 +131,7 @@ def process_wap_data(filtered_csv, output_dir):
     Process filtered data from sentinel_proportion.py to create three balanced datasets:
     1. Lichen
     2. Chicoutai and Green Depression combined
-    3. Through proportion sqrt (dry_depression + sphaignes + black_depression)
+    3. Through proportion sqrt (dry_depression + sphaignes + black_depression + watered_depression)
     
     Args:
         filtered_csv: Path to filtered CSV from sentinel_proportion.py
@@ -135,28 +139,33 @@ def process_wap_data(filtered_csv, output_dir):
     """
     # Create output directory
     os.makedirs(output_dir, exist_ok=True)
+
+     # Process combined chicoutai and green_depression
+    # First, add a new column to the original data
+    df = pd.read_csv(filtered_csv)
+    df['chicoutai_green'] = df['chicoutai'] + df['green_depression']
+    df.to_csv(filtered_csv, index=False)  # Save back to add the new column
+
+    n_bins = 25
     
     # Process lichen class
     lichen_df = create_balanced_dataset(
         input_csv=filtered_csv,
         output_dir=output_dir,
         target_col='lichen',
-        n_bins=10,
-        keep_zero=False
+        n_bins=n_bins,
+        keep_zero=True,
+        quantile=0.6
     )
     
-    # Process combined chicoutai and green_depression
-    # First, add a new column to the original data
-    df = pd.read_csv(filtered_csv)
-    df['chicoutai_green'] = df['chicoutai'] + df['green_depression']
-    df.to_csv(filtered_csv, index=False)  # Save back to add the new column
-    
+
     chicoutai_green_df = create_balanced_dataset(
         input_csv=filtered_csv,
         output_dir=output_dir,
         target_col='chicoutai_green',
-        n_bins=10,
-        keep_zero=False
+        n_bins=n_bins,
+        keep_zero=True, 
+        quantile=0.5
     )
     
     # Process through_proportion (sqrt transformed)
@@ -164,27 +173,28 @@ def process_wap_data(filtered_csv, output_dir):
         input_csv=filtered_csv, 
         output_dir=output_dir,
         target_col='sqrt_through_proportion',
-        n_bins=10, 
-        keep_zero=False
+        n_bins=n_bins,
+        keep_zero=True,
+        quantile=0.6
     )
     
     # Create summary plot with all three distributions
     plt.figure(figsize=(15, 5))
     
     plt.subplot(1, 3, 1)
-    lichen_df['lichen'].hist(bins=20)
+    lichen_df['lichen'].hist(bins=n_bins)
     plt.title('Balanced Lichen')
     plt.xlabel('Proportion')
     plt.ylabel('Count')
     
     plt.subplot(1, 3, 2)
-    chicoutai_green_df['chicoutai_green'].hist(bins=20)
+    chicoutai_green_df['chicoutai_green'].hist(bins=n_bins)
     plt.title('Balanced Chicoutai+Green')
     plt.xlabel('Proportion')
     plt.ylabel('Count')
     
     plt.subplot(1, 3, 3)
-    through_sqrt_df['sqrt_through_proportion'].hist(bins=20)
+    through_sqrt_df['sqrt_through_proportion'].hist(bins=n_bins)
     plt.title('Balanced sqrt(Through Proportion)')
     plt.xlabel('Sqrt Proportion')
     plt.ylabel('Count')
@@ -231,6 +241,38 @@ def process_wap_data(filtered_csv, output_dir):
     summary_df = pd.DataFrame(summary)
     summary_df.to_csv(os.path.join(output_dir, 'balanced_datasets_summary.csv'), index=False)
     print(f"Summary of balanced datasets saved to {os.path.join(output_dir, 'balanced_datasets_summary.csv')}")
+    
+    # Create a combined dataset containing all balanced samples
+    print("Creating combined dataset from all balanced samples...")
+    
+    # Merge all balanced datasets
+    combined_df = pd.concat([lichen_df, chicoutai_green_df, through_sqrt_df], axis=0)
+    
+    # Remove duplicates (samples that appear in multiple datasets)
+    combined_df = combined_df.drop_duplicates(subset=['col_s', 'row_s'])
+    
+    # Save the combined dataset
+    combined_csv_path = os.path.join(output_dir, 'balanced_combined.csv')
+    combined_df.to_csv(combined_csv_path, index=False)
+    
+    print(f"Combined balanced dataset saved to {combined_csv_path} ({len(combined_df)} samples)")
+    print(f"- Lichen samples: {len(lichen_df)}")
+    print(f"- Chicoutai+Green samples: {len(chicoutai_green_df)}")
+    print(f"- sqrt(Through) samples: {len(through_sqrt_df)}")
+    print(f"- Combined unique samples: {len(combined_df)} (after removing duplicates)")
+    
+    # Add combined dataset to summary
+    summary['Category'].append('Combined (Unique)')
+    summary['Original Samples'].append(len(pd.read_csv(filtered_csv)))
+    summary['Balanced Samples'].append(len(combined_df))
+    summary['Min Value'].append(None)  # Not applicable
+    summary['Max Value'].append(None)  # Not applicable
+    summary['Mean'].append(None)       # Not applicable
+    summary['Median'].append(None)     # Not applicable
+    
+    # Update summary CSV
+    summary_df = pd.DataFrame(summary)
+    summary_df.to_csv(os.path.join(output_dir, 'balanced_datasets_summary.csv'), index=False)
 
 def visualize_bins(input_csv, target_col, output_path, n_bins=10):
     """
@@ -248,9 +290,10 @@ def visualize_bins(input_csv, target_col, output_path, n_bins=10):
     # Filter non-zero values
     df_nonzero = df[df[target_col] > 0]
     
-    # Calculate bin edges based on percentiles
-    bin_edges = np.linspace(0, 100, n_bins + 1)
-    percentiles = np.percentile(df_nonzero[target_col], bin_edges)
+    # Determine min and max values for equal-sized bins
+    min_val = df_nonzero[target_col].min()
+    max_val = df_nonzero[target_col].max()
+    bin_width = (max_val - min_val) / n_bins
     
     # Create figure
     plt.figure(figsize=(12, 8))
@@ -259,8 +302,8 @@ def visualize_bins(input_csv, target_col, output_path, n_bins=10):
     counts = []
     bin_labels = []
     for i in range(n_bins):
-        lower = percentiles[i]
-        upper = percentiles[i + 1]
+        lower = min_val + i * bin_width
+        upper = min_val + (i + 1) * bin_width
         
         if i == n_bins - 1:  # Include upper bound in the last bin
             bin_samples = df_nonzero[(df_nonzero[target_col] >= lower) & (df_nonzero[target_col] <= upper)]
@@ -273,8 +316,8 @@ def visualize_bins(input_csv, target_col, output_path, n_bins=10):
     # Plot
     plt.bar(range(n_bins), counts)
     plt.xticks(range(n_bins), bin_labels, rotation=45, ha='right')
-    plt.title(f'Sample Distribution Across {n_bins} Percentile Bins for {target_col}')
-    plt.xlabel('Bins (Percentile-based)')
+    plt.title(f'Sample Distribution Across {n_bins} Equal-Width Bins for {target_col}')
+    plt.xlabel('Bins (Equal Width)')
     plt.ylabel('Number of Samples')
     plt.grid(axis='y', alpha=0.3)
     plt.tight_layout()
@@ -283,7 +326,7 @@ def visualize_bins(input_csv, target_col, output_path, n_bins=10):
 
 if __name__ == "__main__":
     wap = 32
-    use_peat = False
+    use_peat = True
     peat_suffix = "_peat" if use_peat else ""
     
     # Input/output paths

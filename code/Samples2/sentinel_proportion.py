@@ -137,16 +137,16 @@ def compute_class_proportions(classification_path, sentinel_path, output_csv, cl
                 count = np.sum(subclass == class_val)
                 prop = count / valid_pixels if valid_pixels > 0 else 0
                 class_proportions[class_name] = prop
-                
                 # Calculate square root for specific classes
-                if class_name in ["dry_depression", "sphaignes", "black_depression"]:
+                if class_name in ["dry_depression", "sphaignes", "black_depression", "watered_depression"]:
                     class_proportions[f"sqrt_{class_name}"] = np.sqrt(prop) if prop > 0 else 0
-            
+
             # Calculate through_proportion (sum of sphaignes, dry_depression, black_depression)
             through_proportion = (
                 class_proportions.get("sphaignes", 0) + 
                 class_proportions.get("dry_depression", 0) + 
-                class_proportions.get("black_depression", 0)
+                class_proportions.get("black_depression", 0) +
+                class_proportions.get("watered_depression", 0)
             )
             class_proportions["through_proportion"] = through_proportion
             class_proportions["sqrt_through_proportion"] = np.sqrt(through_proportion) if through_proportion > 0 else 0
@@ -477,7 +477,7 @@ def process_wap_data(wap_number, classification_path, output_dir=None, use_peat=
 
 if __name__ == "__main__":
     wap = 32
-    use_peat = False
+    use_peat = True
     peat_suffix = "_peat" if use_peat else ""
     classification_path = f"drone_treated/WAP32_tiles/WAP32_classif_5wd{peat_suffix}.tif"
     output_dir = f"data/samples/selection13/regression_wap{wap}_5wd{peat_suffix}"

@@ -667,7 +667,7 @@ def predict_proportions_from_rasters(sentinel_bands_dir, sentinel_indices_dir, m
         
         print(f"Proportion prediction for {class_name} saved to {output_path}")
 
-def run_multivariate_regression(data_dir, output_dir, wap_number=32, use_sqrt=True):
+def run_multivariate_regression(data_dir, output_dir, wap_number=32, use_sqrt=True, use_peat=False):
     """
     Run the full multivariate regression workflow
     
@@ -676,6 +676,7 @@ def run_multivariate_regression(data_dir, output_dir, wap_number=32, use_sqrt=Tr
         output_dir: Directory to save the output
         wap_number: WAP site number
         use_sqrt: Whether to use sqrt-transformed values for certain classes
+        use_peat: Whether to include peat data in the analysis
     """
     print("Starting multivariate regression analysis...")
     print(f"Using sqrt transformation for certain classes: {use_sqrt}")
@@ -684,8 +685,10 @@ def run_multivariate_regression(data_dir, output_dir, wap_number=32, use_sqrt=Tr
     os.makedirs(output_dir, exist_ok=True)
     
     # Paths
-    sentinel_bands_dir = f"DataCubeS2/BandsS22023_WAP{wap_number}/mediane"
-    sentinel_indices_dir = f"DataCubeS2/IndicesS22023_WAP{wap_number}/mediane"
+    peat_suffix = "_peat" if use_peat else ""
+    
+    sentinel_bands_dir = f"DataCubeS2/BandsS22023_WAP{wap_number}{peat_suffix}/mediane"
+    sentinel_indices_dir = f"DataCubeS2/IndicesS22023_WAP{wap_number}{peat_suffix}/mediane"
     csv_path = os.path.join(data_dir, f"class_proportions_WAP{wap_number}_filtered.csv")
     
     # If not using sqrt but comparing, make output filenames reflect this
@@ -853,17 +856,7 @@ def run_multivariate_regression(data_dir, output_dir, wap_number=32, use_sqrt=Tr
             'pearson': [class_metrics['pearson']]
         })])
     
-    # Add multi-output HistGB model metrics
-    for class_name, class_metrics in histgb_mo_metrics.items():
-        metrics_df = pd.concat([metrics_df, pd.DataFrame({
-            'method': ['multioutput_histgb'],
-            'class': [class_name],
-            'r2': [class_metrics['r2']],
-            'rmse': [class_metrics['rmse']],
-            'pearson': [class_metrics['pearson']]
-        })])
-    
-    # Add grouped individual RF model metrics
+    # Add multi-output HistGB model metricsdata
     for group_name, group_metrics in grouped_rf_metrics.items():
         metrics_df = pd.concat([metrics_df, pd.DataFrame({
             'method': ['individual_rf_grouped'],
@@ -1015,10 +1008,12 @@ def evaluate_multioutput_rf(model, X_test, y_test, y_test_dict, class_names, out
 if __name__ == "__main__":
     # Run the full workflow for WAP32
     wap = 32
-    data_dir = f"data/samples/selection13/regression_wap{wap}_5wd"  # Updated to use directory with sqrt data
-    output_dir = f"data/samples/selection13/regression_wap{wap}_5wd/results2"
-    
-    run_multivariate_regression(data_dir, output_dir, wap_number=wap, use_sqrt=True)
+    use_peat = True
+    peat_suffix = "_peat" if use_peat else ""
+    data_dir = f"data/samples/selection13/regression_wap{wap}_5wd{peat_suffix}"  # Updated to use directory with sqrt data
+    output_dir = f"data/samples/selection13/regression_wap{wap}_5wd{peat_suffix}/results"
+
+    run_multivariate_regression(data_dir, output_dir, wap_number=wap, use_sqrt=True, use_peat=use_peat)
     
     # # Optionally, also run without sqrt transformation for comparison
     # output_dir_no_sqrt = f"data/samples/selection13/regression_wap{wap}_5wd_sqrt/results_no_sqrt"
