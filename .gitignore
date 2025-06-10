@@ -21,6 +21,7 @@
 /**/*.pkl
 /**/*.npy
 /**/*.pyc 
+/**/*.pdf 
 
 /drone_treated/
 
