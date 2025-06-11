@@ -103,7 +103,7 @@ def load_sentinel_features(bands_dir, indices_dir):
     features = np.stack(bands, axis=0)  # (n_features, rows, cols)
     return features, band_names, geo_transform, projection
 
-def create_regression_tiff(model_paths, bands_dir, indices_dir, output_path, sqrt_transform=False):
+def create_regression_tiff(model_paths, bands_dir, indices_dir, output_path, sqrt_transform=False, normalise=True):
     """
     Create a multi-band TIFF with regression predictions for each target class
     
@@ -114,6 +114,7 @@ def create_regression_tiff(model_paths, bands_dir, indices_dir, output_path, sqr
         indices_dir: Directory containing Sentinel index TIFs
         output_path: Path to save the output TIFF
         sqrt_transform: Whether to apply inverse sqrt transform to through_proportion predictions
+        normalise: Whether to normalise predictions so that their sum is 100% for each pixel
     """
     # Get target classes from model_paths
     target_classes = list(model_paths.keys())
@@ -168,34 +169,52 @@ def create_regression_tiff(model_paths, bands_dir, indices_dir, output_path, sqr
             if target_class == 'through_proportion' and sqrt_transform:
                 # Apply inverse sqrt transform for through_proportion predictions
                 raw_predictions = model.predict(X)
-                predictions = (raw_predictions / 10) ** 2  # Convert back from sqrt space
+                predictions = raw_predictions ** 2  # Convert back from sqrt space
             else:
                 predictions = model.predict(X)
             
             prediction_arrays[target_class][row, :] = predictions
     
-    # Normalize predictions to sum to 1 (100%)
-    print("Normalizing predictions...")
-    sum_array = np.zeros((height, width), dtype=np.float32)
-    for target_class in target_classes:
-        prediction_arrays[target_class] = np.maximum(0, prediction_arrays[target_class])  # Clip negative values
-        sum_array += prediction_arrays[target_class]
-    
-    # Avoid division by zero
-    sum_array = np.where(sum_array > 0, sum_array, 1)
-    
-    # Scale to 0-100% range as integers
-    for i, target_class in enumerate(target_classes):
-        normalized = np.divide(prediction_arrays[target_class], sum_array) * 100
-        normalized_int = np.clip(normalized, 0, 100).astype(np.int16)
+    if normalise:
+        # Normalize predictions to sum to 1 (100%)
+        print("Normalizing predictions...")
+        sum_array = np.zeros((height, width), dtype=np.float32)
+        for target_class in target_classes:
+            prediction_arrays[target_class] = np.maximum(0, prediction_arrays[target_class])  # Clip negative values
+            sum_array += prediction_arrays[target_class]
         
-        # Write to band
-        band = out_ds.GetRasterBand(i + 1)
-        band.WriteArray(normalized_int)
-        band.SetDescription(target_class)
-        band.SetNoDataValue(-1)
-        band.FlushCache()
-    
+        # Avoid division by zero
+        sum_array = np.where(sum_array > 0, sum_array, 1)
+        
+        # Scale to 0-100% range as integers
+        for i, target_class in enumerate(target_classes):
+            normalized = np.divide(prediction_arrays[target_class], sum_array) * 100
+            normalized_int = np.clip(normalized, 0, 100).astype(np.int16)
+            
+            # Write to band
+            band = out_ds.GetRasterBand(i + 1)
+            band.WriteArray(normalized_int)
+            band.SetDescription(target_class)
+            band.SetNoDataValue(-1)
+            band.FlushCache()
+    else:
+        # No normalization: just clip to 0-100 and write as integer percentages
+        print("Writing predictions without normalization...")
+        for i, target_class in enumerate(target_classes):
+            # Assurons-nous que les valeurs sont positives
+            prediction_arrays[target_class] = np.maximum(0, prediction_arrays[target_class])
+            
+            # Convertir les proportions (0-1) en pourcentages (0-100)
+            scaled = prediction_arrays[target_class] * 100
+            clipped = np.clip(scaled, 0, 100).astype(np.int16)
+            
+            # Write to band
+            band = out_ds.GetRasterBand(i + 1)
+            band.WriteArray(clipped)
+            band.SetDescription(target_class)
+            band.SetNoDataValue(-1)
+            band.FlushCache()
+
     # Add band descriptions
     out_ds.SetMetadata({f"BAND_{i+1}_NAME": target_class for i, target_class in enumerate(target_classes)})
     out_ds = None
@@ -369,13 +388,20 @@ def main():
         return
     
     # Create regression TIFF
+    normalise = True  # Flag pour activer/désactiver la normalisation
+    
+    # Ajout du suffixe '_normalised' au nom de fichier si normalisation active
+    if normalise:
+        output_path = output_path.replace('.tif', '_normalised.tif')
+    
     print(f"Creating regression TIFF using models from {regression_dir}")
     create_regression_tiff(
         model_paths=model_paths,
         bands_dir=bands_dir,
         indices_dir=indices_dir,
         output_path=output_path,
-        sqrt_transform=True  # Apply inverse sqrt transform for through_proportion
+        sqrt_transform=True,  # Apply inverse sqrt transform for through_proportion
+        normalise=normalise   # Active ou désactive la normalisation des proportions
     )
     
     print(f"Regression TIFF created at {output_path}")
