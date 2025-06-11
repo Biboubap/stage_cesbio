@@ -65,7 +65,7 @@ def load_all_sentinel_features(indices_dir, bands_dir):
     features = np.stack(bands, axis=0)  # (n_features, rows, cols)
     return features, band_names
 
-def prepare_data_for_regression(csv_path, sentinel_features, feature_names):
+def prepare_data_for_regression(csv_path, sentinel_features, feature_names, use_sqrt=True):
     """
     Prepare data for regression by extracting features and targets from the CSV
     
@@ -73,6 +73,7 @@ def prepare_data_for_regression(csv_path, sentinel_features, feature_names):
         csv_path: Path to the CSV file with class proportions
         sentinel_features: NumPy array of shape (n_features, rows, cols)
         feature_names: List of feature names
+        use_sqrt: Whether to prioritize sqrt_through_proportion over through_proportion
     
     Returns:
         X: Array of features for each sample
@@ -83,7 +84,25 @@ def prepare_data_for_regression(csv_path, sentinel_features, feature_names):
     df = pd.read_csv(csv_path)
     
     # Define group columns to predict
-    group_cols = ['lichen', 'chicoutai_green', 'sqrt_through_proportion']
+    basic_groups = ['lichen', 'chicoutai_green']
+    
+    # Determine which through_proportion to use based on what's available
+    if use_sqrt and 'sqrt_through_proportion' in df.columns:
+        through_col = 'sqrt_through_proportion'
+    elif 'through_proportion' in df.columns:
+        through_col = 'through_proportion'
+    elif 'sqrt_through_proportion' in df.columns:
+        # Fallback to sqrt version if raw not available
+        through_col = 'sqrt_through_proportion'
+        print(f"Warning: through_proportion not found, using sqrt_through_proportion instead")
+    else:
+        through_col = None
+        print(f"Warning: Neither through_proportion nor sqrt_through_proportion found in dataset")
+    
+    # Create target groups list
+    group_cols = basic_groups.copy()
+    if through_col:
+        group_cols.append(through_col)
     
     # Check which columns are present in the dataframe
     available_groups = [col for col in group_cols if col in df.columns]
@@ -193,7 +212,7 @@ def train_multioutput_rf(X, y_dict, target_names, test_size=0.3, random_state=42
     # Create and train multi-output model directly using RandomForestRegressor
     # which can handle multivariate outputs natively
     model = RandomForestRegressor(
-        n_estimators=300,
+        n_estimators=150,
         min_samples_leaf=4,
         random_state=random_state,
         max_depth=None,
@@ -473,7 +492,7 @@ def save_models(models, feature_names, target_names, output_path):
     joblib.dump(model_data, output_path)
     print(f"Models saved to {output_path}")
 
-def run_all_regressions(data_dir, output_dir, wap_number=32, use_peat=False):
+def run_all_regressions(data_dir, output_dir, wap_number=32, use_peat=False, superresolution=True, use_sqrt=True):
     """
     Run all regressions (multi-output and individual) and produce consolidated output
     
@@ -482,16 +501,40 @@ def run_all_regressions(data_dir, output_dir, wap_number=32, use_peat=False):
         output_dir: Directory to save the output
         wap_number: WAP site number
         use_peat: Whether to use peat-masked data
+        superresolution: Whether to use 5m (True) or 10m (False) resolution data
+        use_sqrt: Whether to use sqrt-transformed data for through proportion (True) or raw through proportion (False)
     """
     print("Starting regression analysis for all datasets...")
+    print(f"Using sqrt transformation for through proportion: {use_sqrt}")
     
     # Create output directory
     os.makedirs(output_dir, exist_ok=True)
     peat_suffix = "_peat" if use_peat else ""
     
+    # Set resolution and path modifiers based on superresolution flag
+    mediane_dir = "mediane" if superresolution else "mediane_10m"
+    file_prefix = "" if superresolution else "10m_"
+    
     # Define input paths
-    sentinel_bands_dir = f"DataCubeS2/BandsS22023_WAP{wap_number}{peat_suffix}/mediane"
-    sentinel_indices_dir = f"DataCubeS2/IndicesS22023_WAP{wap_number}{peat_suffix}/mediane"
+    sentinel_bands_dir = f"DataCubeS2/BandsS22023_WAP{wap_number}{peat_suffix}/{mediane_dir}"
+    sentinel_indices_dir = f"DataCubeS2/IndicesS22023_WAP{wap_number}{peat_suffix}/{mediane_dir}"
+    
+    # Define through_proportion file and target based on use_sqrt
+    through_file = "balanced_sqrt_through_proportion.csv" if use_sqrt else "balanced_through_proportion.csv"
+    through_target = "sqrt_through_proportion" if use_sqrt else "through_proportion"
+    
+    # Fall back to alternative if file doesn't exist
+    alternative_through_file = "balanced_through_proportion.csv" if use_sqrt else "balanced_sqrt_through_proportion.csv"
+    alternative_through_target = "through_proportion" if use_sqrt else "sqrt_through_proportion"
+    
+    through_path = os.path.join(data_dir, through_file)
+    if not os.path.exists(through_path):
+        print(f"Warning: {through_file} not found, trying {alternative_through_file} instead")
+        through_file = alternative_through_file
+        through_target = alternative_through_target
+        through_path = os.path.join(data_dir, through_file)
+        if not os.path.exists(through_path):
+            print(f"Error: Neither {through_file} nor {alternative_through_file} exist in {data_dir}")
     
     # Define datasets, their CSV paths, and corresponding target classes
     datasets = {
@@ -503,14 +546,37 @@ def run_all_regressions(data_dir, output_dir, wap_number=32, use_peat=False):
             'path': os.path.join(data_dir, "balanced_chicoutai_green.csv"),
             'target': 'chicoutai_green'
         },
-        'individual_sqrt_through': {
-            'path': os.path.join(data_dir, "balanced_sqrt_through_proportion.csv"),
-            'target': 'sqrt_through_proportion'
-        },
-        'multioutput': {
-            'path': os.path.join(data_dir, "balanced_combined.csv"),
-            'targets': ['lichen', 'chicoutai_green', 'sqrt_through_proportion']
+        'individual_through': {
+            'path': os.path.join(data_dir, through_file),
+            'target': through_target
         }
+    }
+    
+    # Choose combined file based on what's available
+    combined_file = "balanced_combined_sqrt.csv" if use_sqrt else "balanced_combined_raw.csv"
+    combined_path = os.path.join(data_dir, combined_file)
+    
+    # Fall back to alternative if file doesn't exist
+    if not os.path.exists(combined_path):
+        alternative = "balanced_combined_raw.csv" if use_sqrt else "balanced_combined_sqrt.csv"
+        alt_path = os.path.join(data_dir, alternative)
+        if os.path.exists(alt_path):
+            print(f"Warning: {combined_file} not found, using {alternative} instead")
+            combined_file = alternative
+            combined_path = alt_path
+        else:
+            # Final fallback to legacy combined.csv
+            legacy_combined = "balanced_combined.csv"
+            legacy_path = os.path.join(data_dir, legacy_combined)
+            if os.path.exists(legacy_path):
+                print(f"Warning: {combined_file} and {alternative} not found, using {legacy_combined} instead")
+                combined_file = legacy_combined
+                combined_path = legacy_path
+    
+    # Define multioutput dataset
+    datasets['multioutput'] = {
+        'path': combined_path,
+        'targets': ['lichen', 'chicoutai_green', through_target]
     }
     
     # 1. Load Sentinel features
@@ -527,16 +593,22 @@ def run_all_regressions(data_dir, output_dir, wap_number=32, use_peat=False):
     for dataset_type, dataset_info in datasets.items():
         if dataset_type == 'multioutput':
             continue  # Skip multioutput for now, process it separately
-            
+          
         print(f"\n2. Processing {dataset_type} dataset...")
         csv_path = dataset_info['path']
         target_class = dataset_info['target']
+        
+        # Skip if file doesn't exist
+        if not os.path.exists(csv_path):
+            print(f"Warning: File {csv_path} does not exist, skipping {dataset_type}")
+            continue
         
         # Prepare data for regression
         X, y_dict, available_groups = prepare_data_for_regression(
             csv_path=csv_path,
             sentinel_features=sentinel_features,
-            feature_names=feature_names
+            feature_names=feature_names,
+            use_sqrt=use_sqrt
         )
         
         # Ensure the target class is available
@@ -650,32 +722,33 @@ def run_all_regressions(data_dir, output_dir, wap_number=32, use_peat=False):
     
     # 4. Create a consolidated visualization
     print("\n4. Creating consolidated visualization...")
-    create_consolidated_plot(all_metrics, output_dir)
+    create_consolidated_plot(all_metrics, output_dir, use_sqrt)
     
     # 5. Create summary of performance metrics
     print("\n5. Creating performance summary...")
     create_performance_summary(all_metrics, output_dir)
 
-def create_consolidated_plot(all_metrics, output_dir):
+def create_consolidated_plot(all_metrics, output_dir, use_sqrt=True):
     """
     Create a consolidated plot showing all regression results
     
     Args:
         all_metrics: Dictionary containing metrics for all models
         output_dir: Directory to save output
+        use_sqrt: Whether sqrt transformation was used for through proportion
     """
-    # Define target names and their display order
-    target_names = ['lichen', 'chicoutai_green', 'sqrt_through_proportion']
+    # Define target names based on use_sqrt parameter
+    if use_sqrt:
+        target_names = ['lichen', 'chicoutai_green', 'sqrt_through_proportion']
+        dataset_types = ['individual_lichen', 'individual_chicoutai_green', 'individual_through']
+    else:
+        target_names = ['lichen', 'chicoutai_green', 'through_proportion']
+        dataset_types = ['individual_lichen', 'individual_chicoutai_green', 'individual_through']
     
     # Create a 2x3 grid (2 rows, 3 columns)
     fig, axes = plt.subplots(2, 3, figsize=(18, 12))
     
-    # Row 0: Individual models for each target class
-    # Row 1: Multi-output model results for each target class
-    
     # Plot individual models (top row)
-    dataset_types = ['individual_lichen', 'individual_chicoutai_green', 'individual_sqrt_through']
-    
     for col, dataset_type in enumerate(dataset_types):
         ax = axes[0, col]
         
@@ -699,7 +772,7 @@ def create_consolidated_plot(all_metrics, output_dir):
             ax.set_title(title)
             
             # Customize labels based on target
-            if target_class == 'sqrt_through_proportion':
+            if target_class.startswith('sqrt_'):
                 ax.set_xlabel("Actual sqrt(proportion)")
                 ax.set_ylabel("Predicted sqrt(proportion)")
             else:
@@ -715,8 +788,8 @@ def create_consolidated_plot(all_metrics, output_dir):
             ax.set_xticks([])
             ax.set_yticks([])
     
-    # Plot multi-output model results (bottom row)
-    if 'multioutput' in all_metrics:
+    # Plot multi-output model results (bottom row) only if using sqrt transform
+    if use_sqrt and 'multioutput' in all_metrics:
         for col, target_class in enumerate(target_names):
             ax = axes[1, col]
             
@@ -740,7 +813,7 @@ def create_consolidated_plot(all_metrics, output_dir):
                 ax.set_title(title)
                 
                 # Customize labels based on target
-                if target_class == 'sqrt_through_proportion':
+                if target_class.startswith('sqrt_'):
                     ax.set_xlabel("Actual sqrt(proportion)")
                     ax.set_ylabel("Predicted sqrt(proportion)")
                 else:
@@ -755,6 +828,10 @@ def create_consolidated_plot(all_metrics, output_dir):
                        horizontalalignment='center', verticalalignment='center')
                 ax.set_xticks([])
                 ax.set_yticks([])
+    else:
+        # If not using sqrt transform, hide the bottom row
+        for col in range(3):
+            axes[1, col].axis('off')
     
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, "consolidated_regression_results.png"), dpi=300)
@@ -769,12 +846,12 @@ def create_performance_summary(all_metrics, output_dir):
         output_dir: Directory to save output
     """
     # Define target classes
-    target_names = ['lichen', 'chicoutai_green', 'sqrt_through_proportion']
+    target_names = ['lichen', 'chicoutai_green', 'through_proportion', 'sqrt_through_proportion']
     metrics_data = []
     
     # Collect metrics for individual models
-    dataset_types = ['individual_lichen', 'individual_chicoutai_green', 'individual_sqrt_through']
-    
+    dataset_types = ['individual_lichen', 'individual_chicoutai_green', 'individual_through', 'individual_sqrt_through']
+
     for dataset_type in dataset_types:
         if dataset_type in all_metrics:
             metrics = all_metrics[dataset_type]
@@ -859,17 +936,28 @@ if __name__ == "__main__":
     # Parameters
     wap = 32
     use_peat = False
+    superresolution = False  # Use 5m resolution (True) or 10m resolution (False)
+    use_sqrt = False          # Use sqrt-transformed through proportion (True) or raw through proportion (False)
     peat_suffix = "_peat" if use_peat else ""
-    data_dir = f"data/samples/selection14/regression_wap{wap}_no_chicoutai{peat_suffix}/balanced"
-    output_dir = f"data/samples/selection14/regression_wap{wap}_no_chicoutai{peat_suffix}/regression_results"
+    resolution_suffix = "" if superresolution else "_10m"
+    
+    
+    data_dir = f"data/samples/selection14/regression_wap{wap}_no_chicoutai{peat_suffix}{resolution_suffix}/balanced"
+    output_dir = f"data/samples/selection14/regression_wap{wap}_no_chicoutai{peat_suffix}{resolution_suffix}/regression_results"
+    
+    # Add suffix to output directory when not using sqrt transform
+    if not use_sqrt:
+        output_dir += "_raw"
     
     # Run all regressions and create consolidated output
     run_all_regressions(
         data_dir=data_dir,
         output_dir=output_dir,
         wap_number=wap,
-        use_peat=use_peat
+        use_peat=use_peat,
+        superresolution=superresolution,
+        use_sqrt=use_sqrt
     )
-    
+
     print("\nAll regression analyses completed successfully!")
     print(f"Results saved to {output_dir}")

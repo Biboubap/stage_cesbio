@@ -37,6 +37,23 @@ def load_regression_model(model_path):
             model = model_data["models"]
             feature_names = model_data.get("feature_names", None)
             return model, feature_names
+        elif "class_names" in model_data:
+            # Grouped models from sentinel_regression4.py
+            models = model_data.get("models", {})
+            feature_names = model_data.get("feature_names", None)
+            class_names = model_data.get("class_names", [])
+            
+            # Map the grouped class names to standard names
+            grouped_to_standard = {}
+            for class_name in class_names:
+                if 'lichen' in class_name:
+                    grouped_to_standard['lichen'] = models[class_name]
+                elif 'chicoutai_green' in class_name or 'group2' in class_name:
+                    grouped_to_standard['chicoutai_green'] = models[class_name]
+                elif 'through' in class_name or 'group3' in class_name:
+                    grouped_to_standard['through_proportion'] = models[class_name]
+            
+            return grouped_to_standard, feature_names
     
     # Direct model without metadata
     return model_data, None
@@ -110,25 +127,34 @@ def create_regression_tiff(model_paths, bands_dir, indices_dir, output_path, sqr
     Args:
         model_paths: Dictionary of paths to models for each target class
                      (e.g., {'lichen': 'path/to/lichen_model.joblib', ...})
+                     or {'grouped_model': 'path/to/grouped_model.joblib'} for grouped classes
         bands_dir: Directory containing Sentinel band TIFs
         indices_dir: Directory containing Sentinel index TIFs
         output_path: Path to save the output TIFF
         sqrt_transform: Whether to apply inverse sqrt transform to through_proportion predictions
         normalise: Whether to normalise predictions so that their sum is 100% for each pixel
     """
-    # Get target classes from model_paths
-    target_classes = list(model_paths.keys())
+    # Check if we're using grouped models
+    is_grouped_model = len(model_paths) == 1 and 'grouped_model' in model_paths
+    
+    # For grouped models, load the single model file and extract individual models
+    if is_grouped_model:
+        models, feature_names = load_regression_model(model_paths['grouped_model'])
+        target_classes = list(models.keys())
+    else:
+        # Get target classes from model_paths for individual models
+        target_classes = list(model_paths.keys())
+        # Load all models
+        models = {}
+        all_feature_names = None
+        for target_class, model_path in model_paths.items():
+            model, feature_names = load_regression_model(model_path)
+            models[target_class] = model
+            if all_feature_names is None:
+                all_feature_names = feature_names
+    
     print(f"Creating regression TIFF with {len(target_classes)} target classes: {target_classes}")
     
-    # Load all models
-    models = {}
-    all_feature_names = None
-    for target_class, model_path in model_paths.items():
-        model, feature_names = load_regression_model(model_path)
-        models[target_class] = model
-        if all_feature_names is None:
-            all_feature_names = feature_names
-        
     # Load Sentinel features
     features, band_names, geo_transform, projection = load_sentinel_features(bands_dir, indices_dir)
     height, width = features[0].shape
@@ -360,41 +386,59 @@ def main():
     # Default paths for models and data
     wap = 32
     use_peat = False
+    superresolution = False  # Use 5m resolution (True) or 10m resolution (False)
     peat_suffix = "_peat" if use_peat else ""
     
-    # Base directory where regression results are stored
-    base_dir = f"data/samples/selection14/regression_wap{wap}_no_chicoutai{peat_suffix}"
-    regression_dir = f"{base_dir}/regression_results"
+    # Set path modifiers based on superresolution flag
+    mediane_dir = "mediane" if superresolution else "mediane_10m"
+    file_prefix = "" if superresolution else "10m_"
+    resolution = 5 if superresolution else 10
     
-    # Input model paths
-    model_paths = {
-        'lichen': os.path.join(regression_dir, 'individual_lichen_rf.joblib'),
-        'chicoutai_green': os.path.join(regression_dir, 'individual_chicoutai_green_rf.joblib'),
-        'through_proportion': os.path.join(regression_dir, 'individual_sqrt_through_rf.joblib')
-    }
+    # Base directory where regression results are stored
+    resolution_suffix = "" if superresolution else "_10m"
+    base_dir = f"data/samples/selection14/regression_wap{wap}_no_chicoutai{peat_suffix}{resolution_suffix}"
+    regression_dir = f"{base_dir}/regression_results"
+    results_dir = f"{base_dir}/results"  # Directory for sentinel_regression4.py results
+    
+    # Choose model type - options:
+    # - 'individual': Individual models for each class (from sentinel_proportion_median.py)
+    # - 'grouped': Grouped class models (from sentinel_regression4.py)
+    model_type = 'individual' 
+    
+    # Input model paths based on model type
+    if model_type == 'individual':
+        model_paths = {
+            'lichen': os.path.join(regression_dir, 'individual_lichen_rf.joblib'),
+            'chicoutai_green': os.path.join(regression_dir, 'individual_chicoutai_green_rf.joblib'),
+            'through_proportion': os.path.join(regression_dir, 'individual_sqrt_through_rf.joblib')
+        }
+    elif model_type == 'grouped':  # 'grouped'
+        model_paths = {
+            'grouped_model': os.path.join(results_dir, 'grouped_classes_rf_models_sqrt.joblib')
+        }
     
     # Sentinel data directories
-    bands_dir = f"DataCubeS2/BandsS22023_WAP{wap}{peat_suffix}/mediane"
-    indices_dir = f"DataCubeS2/IndicesS22023_WAP{wap}{peat_suffix}/mediane"
+    bands_dir = f"DataCubeS2/BandsS22023_WAP{wap}{peat_suffix}/{mediane_dir}"
+    indices_dir = f"DataCubeS2/IndicesS22023_WAP{wap}{peat_suffix}/{mediane_dir}"
     
     # Output path
-    output_path = os.path.join(base_dir, f"regression_predictions_WAP{wap}{peat_suffix}.tif")
+    output_path = os.path.join(base_dir, f"regression_predictions_{model_type}_WAP{wap}{peat_suffix}{resolution_suffix}.tif")
     
     # Check if all model files exist
     missing_models = [path for path, file_path in model_paths.items() if not os.path.exists(file_path)]
     if missing_models:
         print(f"Warning: The following model files were not found: {missing_models}")
-        print(f"Please ensure the models have been created by running sentinel_proportion_median.py first.")
+        print(f"Please ensure the models have been created by running the appropriate scripts first.")
         return
     
     # Create regression TIFF
-    normalise = True  # Flag pour activer/désactiver la normalisation
+    normalise = False  # Flag pour activer/désactiver la normalisation
     
     # Ajout du suffixe '_normalised' au nom de fichier si normalisation active
     if normalise:
         output_path = output_path.replace('.tif', '_normalised.tif')
     
-    print(f"Creating regression TIFF using models from {regression_dir}")
+    print(f"Creating regression TIFF using models from {regression_dir if model_type == 'individual' else results_dir}")
     create_regression_tiff(
         model_paths=model_paths,
         bands_dir=bands_dir,

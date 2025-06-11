@@ -667,7 +667,7 @@ def predict_proportions_from_rasters(sentinel_bands_dir, sentinel_indices_dir, m
         
         print(f"Proportion prediction for {class_name} saved to {output_path}")
 
-def run_multivariate_regression(data_dir, output_dir, wap_number=32, use_sqrt=True, use_peat=False):
+def run_multivariate_regression(data_dir, output_dir, wap_number=32, use_sqrt=True, use_peat=False, superresolution=True):
     """
     Run the full multivariate regression workflow
     
@@ -677,9 +677,11 @@ def run_multivariate_regression(data_dir, output_dir, wap_number=32, use_sqrt=Tr
         wap_number: WAP site number
         use_sqrt: Whether to use sqrt-transformed values for certain classes
         use_peat: Whether to include peat data in the analysis
+        superresolution: Whether to use 5m (True) or 10m (False) resolution data
     """
     print("Starting multivariate regression analysis...")
     print(f"Using sqrt transformation for certain classes: {use_sqrt}")
+    print(f"Using {'5m' if superresolution else '10m'} resolution data")
     
     # Create output directory
     os.makedirs(output_dir, exist_ok=True)
@@ -687,8 +689,14 @@ def run_multivariate_regression(data_dir, output_dir, wap_number=32, use_sqrt=Tr
     # Paths
     peat_suffix = "_peat" if use_peat else ""
     
-    sentinel_bands_dir = f"DataCubeS2/BandsS22023_WAP{wap_number}{peat_suffix}/mediane"
-    sentinel_indices_dir = f"DataCubeS2/IndicesS22023_WAP{wap_number}{peat_suffix}/mediane"
+    # Set resolution and path modifiers based on superresolution flag
+    mediane_dir = "mediane" if superresolution else "mediane_10m"
+    
+    sentinel_bands_dir = f"DataCubeS2/BandsS22023_WAP{wap_number}{peat_suffix}/{mediane_dir}"
+    sentinel_indices_dir = f"DataCubeS2/IndicesS22023_WAP{wap_number}{peat_suffix}/{mediane_dir}"
+    
+    # If not using superresolution, adjust directory paths for output
+    resolution_suffix = "" if superresolution else "_10m"
     csv_path = os.path.join(data_dir, f"class_proportions_WAP{wap_number}_filtered.csv")
     
     # If not using sqrt but comparing, make output filenames reflect this
@@ -1009,12 +1017,28 @@ if __name__ == "__main__":
     # Run the full workflow for WAP32
     wap = 32
     use_peat = False
+    superresolution = True  # Use 5m resolution (True) or 10m resolution (False)
     peat_suffix = "_peat" if use_peat else ""
-    data_dir = f"data/samples/selection14/regression_wap{wap}_no_chicoutai{peat_suffix}"  # Updated to use directory with sqrt data
-    output_dir = f"data/samples/selection14/regression_wap{wap}_no_chicoutai{peat_suffix}/results"
+    resolution_suffix = "" if superresolution else "_10m"
+    
+    data_dir = f"data/samples/selection14/regression_wap{wap}_no_chicoutai{peat_suffix}{resolution_suffix}"
+    output_dir = f"data/samples/selection14/regression_wap{wap}_no_chicoutai{peat_suffix}{resolution_suffix}/results"
 
-    run_multivariate_regression(data_dir, output_dir, wap_number=wap, use_sqrt=True, use_peat=use_peat)
+    run_multivariate_regression(
+        data_dir=data_dir, 
+        output_dir=output_dir, 
+        wap_number=wap, 
+        use_sqrt=True, 
+        use_peat=use_peat,
+        superresolution=superresolution
+    )
     
     # # Optionally, also run without sqrt transformation for comparison
-    # output_dir_no_sqrt = f"data/samples/selection13/regression_wap{wap}_5wd_sqrt/results_no_sqrt"
-    # run_multivariate_regression(data_dir, output_dir_no_sqrt, wap_number=wap, use_sqrt=False)
+    # output_dir_no_sqrt = f"data/samples/selection13/regression_wap{wap}_5wd_sqrt{resolution_suffix}/results_no_sqrt"
+    # run_multivariate_regression(
+    #     data_dir=data_dir, 
+    #     output_dir=output_dir_no_sqrt, 
+    #     wap_number=wap, 
+    #     use_sqrt=False,
+    #     superresolution=superresolution
+    # )
