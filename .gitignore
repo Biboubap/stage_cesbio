@@ -22,6 +22,7 @@
 /**/*.npy
 /**/*.pyc 
 /**/*.pdf 
+/**/*.vrt
 
 /drone_treated/
 
