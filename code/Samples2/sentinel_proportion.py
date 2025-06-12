@@ -486,17 +486,17 @@ def process_wap_data(wap_number, classification_path, output_dir=None, use_peat=
     print(f"Results saved in {output_dir}")
 
 if __name__ == "__main__":
-    wap = 32
+    wap = 23
     use_peat = False
     superresolution = True  # Use 5m resolution (True) or 10m resolution (False)
     peat_suffix = "_peat" if use_peat else ""
     resolution = 5 if superresolution else 10
     
     # Base output directory without resolution suffix
-    base_output_dir = f"data/samples/selection14/regression_wap{wap}_no_chicoutai{peat_suffix}"
-    
-    classification_path = f"drone_treated/WAP32_tiles/WAP32_classif_no_chicoutai{peat_suffix}.tif"
-    
+    base_output_dir = f"data/samples/selection15/regression_wap{wap}{peat_suffix}"
+
+    classification_path = f"drone_treated/WAP23_tiles/WAP23_classif_all{peat_suffix}.tif"
+
     print(f"Processing WAP{wap} data with {'peat' if use_peat else 'standard'} dataset at {resolution}m resolution...")
     process_wap_data(wap, classification_path=classification_path, output_dir=base_output_dir, 
                    use_peat=use_peat, superresolution=superresolution)

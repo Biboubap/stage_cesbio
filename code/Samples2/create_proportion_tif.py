@@ -189,8 +189,8 @@ def create_color_interpretation_file(tiff_path, classes):
     print("NOTE: In QGIS, use the 'Select Band' option in layer properties to view each class proportion")
 
 if __name__ == "__main__":
-    wap = 32
-    superresolution = False  # Use 5m resolution (True) or 10m resolution (False)
+    wap = 23
+    superresolution = True  # Use 5m resolution (True) or 10m resolution (False)
     use_peat = False
     peat_suffix = "_peat" if use_peat else ""
     resolution_suffix = "" if superresolution else "_10m"
@@ -199,8 +199,8 @@ if __name__ == "__main__":
     mediane_dir = "mediane" if superresolution else "mediane_10m"
     file_prefix = "" if superresolution else "10m_"
     
-    input_csv = f"data/samples/selection14/regression_wap{wap}_no_chicoutai{peat_suffix}{resolution_suffix}/class_proportions_WAP{wap}.csv"
+    input_csv = f"data/samples/selection15/regression_wap{wap}{peat_suffix}{resolution_suffix}/class_proportions_WAP{wap}.csv"
     sentinel_path = f"DataCubeS2/BandsS22023_WAP{wap}{peat_suffix}/{mediane_dir}/{file_prefix}mediane_clipped_STACK_2023_BandB2_WAP{wap}_deflate.tif"
-    output_path = f"data/samples/selection14/regression_wap{wap}_no_chicoutai{peat_suffix}{resolution_suffix}/proportions_WAP{wap}.tif"
+    output_path = f"data/samples/selection15/regression_wap{wap}{peat_suffix}{resolution_suffix}/proportions_WAP{wap}.tif"
     create_proportion_tiff(input_csv, sentinel_path, output_path)
 
