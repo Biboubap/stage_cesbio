@@ -497,21 +497,23 @@ def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_p
 
 
 if __name__ == "__main__":
+    wap = 23
     size_patch = 16
     distance_large = 3
 
     n_samples_x = 30
-    n_samples_y = 45
+    n_samples_y = 30
     samples_plot_nb = 15
     default = None
         
-    x_start = 1100
-    y_start = 4200
+    x_start = 1000
+    y_start = 1000
 
     # Chemins des rasters
-    nb = "01_07"
-    ds_path = f"drone_treated/WAP32_tiles/rgb/WAP32_full_transparent_mosaic_group1_{nb}.tif"
-    dz_path = f"drone_treated/WAP32_tiles/dsm/WAP32_full_dsm_{nb}.tif"
+    nb = "08_06"
+    
+    ds_path = f"drone_treated/WAP{wap}_tiles/rgb/Wap{wap}_main_transparent_mosaic_group1_{nb}.tif"
+    dz_path = f"drone_treated/WAP{wap}_tiles/dsm/Wap{wap}_main_dsm_{nb}.tif"
     dt_path = None
     
     save_dir = "data/samples/selection13/"

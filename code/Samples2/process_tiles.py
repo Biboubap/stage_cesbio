@@ -223,7 +223,7 @@ def process_single_tile(rgb_path, dsm_path, out_path, clf, feature_names_model,
     
     # Apply filter to remove isolated samples
     print("Applying isolated samples filter...")
-    pred_map_filtered = filter_isolated_samples(pred_map)
+    pred_map_filtered = pred_map#filter_isolated_samples(pred_map)
     
     # Save classification result as TIF
     print(f"Saving classification to: {out_path}")
@@ -313,33 +313,33 @@ def sort_tiles_by_coordinates(tiles_info):
     return sorted(tiles_info, key=get_sort_key)
 
 if __name__ == "__main__":
-    model = "model_wap32_no_chicoutai"
+    model = "model_all_samples"
 
-    wap = 32
-    process_all_tiles(
-        rgb_folder=f"drone_treated/WAP{wap}_tiles/rgb",
-        dsm_folder=f"drone_treated/WAP{wap}_tiles/dsm",
-        out_folder=f"drone_treated/WAP{wap}_tiles/classification_wap32_no_chicoutai",
-        model_path=f"data/samples/selection14/model_wap32_no_chicoutai.joblib",  # Update to use the new model
-        max_tiles=None,  # Process all tiles, or specify a number to limit
-        size_patch=16,
-        # start_column="00", 
-        # start_row="00"   
-        nb_wap = wap
-    )
-
-    # wap = 23
+    # wap = 32
     # process_all_tiles(
     #     rgb_folder=f"drone_treated/WAP{wap}_tiles/rgb",
     #     dsm_folder=f"drone_treated/WAP{wap}_tiles/dsm",
-    #     out_folder=f"drone_treated/WAP{wap}_tiles/classification_wap32_5wd",
-    #     model_path=f"data/samples/selection13/merged/{model}.joblib",  # Update to use the new model
+    #     out_folder=f"drone_treated/WAP{wap}_tiles/classification_wap32_no_chicoutai",
+    #     model_path=f"data/samples/selection14/model_wap32_no_chicoutai.joblib",  # Update to use the new model
     #     max_tiles=None,  # Process all tiles, or specify a number to limit
     #     size_patch=16,
     #     # start_column="00", 
     #     # start_row="00"   
     #     nb_wap = wap
     # )
+
+    wap = 23
+    process_all_tiles(
+        rgb_folder=f"drone_treated/WAP{wap}_tiles/rgb",
+        dsm_folder=f"drone_treated/WAP{wap}_tiles/dsm",
+        out_folder=f"drone_treated/WAP{wap}_tiles/classification_all",
+        model_path=f"data/samples/selection15/{model}.joblib",  # Update to use the new model
+        max_tiles=None,  # Process all tiles, or specify a number to limit
+        size_patch=16,
+        # start_column="00", 
+        # start_row="00"   
+        nb_wap = wap
+    )
 
     # wap = 12
     # process_all_tiles(

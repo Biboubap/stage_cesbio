@@ -515,9 +515,9 @@ def merge_selection12_and_exclude_pop8(balance_max=2000):
     # Paths
     selection12_path = "data/samples/selection12/pop_merged/pop_12.json"
     selection13_dir = "data/samples/selection13"
-    output_dir = "data/samples/selection13/merged"
+    output_dir = "data/samples/selection15/merged"
     os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, "merged_5.json")
+    output_path = os.path.join(output_dir, "merged_15.json")
     
     # First, apply the same edits to raw data as in the original merge_selection12_samples function
     base_dir = "data/samples/selection12"
@@ -628,7 +628,7 @@ def merge_selection12_and_exclude_pop8(balance_max=2000):
     # Group samples by category
     samples_by_category = {}
     for s in merged_samples:
-        category = s.category
+        category = s["category"]  # Changed from s.category to s["category"]
         if category not in samples_by_category:
             samples_by_category[category] = []
         samples_by_category[category].append(s)
@@ -718,18 +718,86 @@ def remove_category_from_population(input_json, output_json, category_to_remove)
     
     return filtered_data
 
+def merge_selection15(input_json, selection15_dir, output_json):
+    """
+    Merge samples from merged_5.json with all JSON files in selection15 directory
+    and print sample counts by category.
+    
+    Args:
+        input_json: Path to merged_5.json
+        selection15_dir: Path to the selection15 directory
+        output_json: Path to save the merged result
+        
+    Returns:
+        The merged data as a dictionary
+    """
+    # Create output directory if it doesn't exist
+    output_dir = os.path.dirname(output_json)
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Load merged_5.json samples
+    print(f"Loading samples from {input_json}...")
+    merged5_data = load_population(input_json)
+    merged5_samples = merged5_data.get("samples", [])
+    
+    # Count merged_5 samples by category
+    merged5_counts = Counter([s["category"] for s in merged5_samples])
+    print(f"merged_5 samples: {len(merged5_samples)} total")
+    print(f"Distribution by category:")
+    for category, count in sorted(merged5_counts.items()):
+        print(f"  - {category}: {count} samples")
+    
+    # Find all JSON files in selection15
+    json_files = glob.glob(os.path.join(selection15_dir, "*.json"))
+    print(f"\nFound {len(json_files)} JSON files in selection15:")
+    for file in json_files:
+        print(f"  - {os.path.basename(file)}")
+    
+    # Load samples from selection15
+    selection15_samples = []
+    
+    for path in json_files:
+        data = load_population(path)
+        samples = data.get("samples", [])
+        filename = os.path.basename(path)
+        
+        selection15_samples.extend(samples)
+        
+        # Print details for each file
+        file_categories = Counter([s["category"] for s in samples])
+        print(f"{filename}: {len(samples)} samples - {dict(file_categories)}")
+    
+    # Count selection15 samples by category
+    selection15_counts = Counter([s["category"] for s in selection15_samples])
+    print(f"\nSelection15 samples: {len(selection15_samples)} total")
+    print(f"Distribution by category:")
+    for category, count in sorted(selection15_counts.items()):
+        print(f"  - {category}: {count} samples")
+    
+    # Merge samples from merged_5 and selection15
+    merged_samples = merged5_samples + selection15_samples
+    
+    # Count merged samples by category
+    merged_counts = Counter([s["category"] for s in merged_samples])
+    print(f"\nMerged samples: {len(merged_samples)} total")
+    print(f"Distribution by category:")
+    for category, count in sorted(merged_counts.items()):
+        print(f"  - {category}: {count} samples")
+    
+    # Create merged data structure
+    merged_data = {
+        "n_samples_x": None,
+        "n_samples_y": None,
+        "samples": merged_samples
+    }
+    
+    # Save merged data
+    save_population(merged_data, output_json)
+    print(f"\nMerged samples saved to {output_json}")
+    
+    return merged_data
+
 # Exemple d'utilisation :
 if __name__ == "__main__":
-    # Original function call (commented out)
-    # merge_selection12_and_exclude_pop8(balance_max=2000)
-    
-    # New function to remove chicoutai and save to selection14
-    input_file = "data/samples/selection13/merged/merged_5.json"
-    output_file = "data/samples/selection14/merged_no_chicoutai.json"
-    
-    remove_category_from_population(
-        input_json=input_file,
-        output_json=output_file,
-        category_to_remove="chicoutai"
-    )
 
+    merge_selection12_and_exclude_pop8(balance_max=2500)

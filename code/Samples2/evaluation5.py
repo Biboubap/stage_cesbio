@@ -547,7 +547,7 @@ def main_prediction():
     #                       feature_names=feature_names)
 
     # # # 4. Charger le modèle
-    model_data = joblib.load("data/samples/selection14/model_wap32_no_chicoutai.joblib")
+    model_data = joblib.load("data/samples/selection15/model_all_samples.joblib")
     clf = model_data["model"]  # Extraire le modèle du dictionnaire
     feature_names_model = model_data["feature_names"]  # Récupérer aussi les noms de features
     print("Modèle RF chargé.")
@@ -577,7 +577,7 @@ def main_prediction():
     print("Prédictions effectuées.")
     
     # 8. Filtrage des samples isolés - activer le filtre
-    pred_map_filtered = filter_isolated_samples(pred_map)
+    pred_map_filtered = pred_map#filter_isolated_samples(pred_map)
     print("Samples isolés filtrés.")
 
     # 9. Créer la carte de classification
@@ -585,14 +585,14 @@ def main_prediction():
     print("Carte de classification créée.")
 
     # 10. Afficher et sauvegarder les résultats
-    plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path="data/samples/selection14/classif_WAP32_no_chicoutai.png")
+    plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path="data/samples/selection15/classif_WAP32_all_samples.png")
     print("Résultats affichés et sauvegardés.")
 
     # 11. Sauvegarder la carte de classification au format .tif with QML color map
     save_classification_to_tif(
         pred_map_filtered,
         ref_tif_path=ds_path,
-        out_tif_path="data/samples/selection14/classif_WAP32_no_chicoutai_filtered.tif",
+        out_tif_path="data/samples/selection15/classif_WAP32_all_samples_filtered.tif",
         size_patch = size_patch,
         create_qml=True
     )
@@ -600,7 +600,7 @@ def main_prediction():
     # 12. Sauvegarder les importances des features
     # When plotting feature importances, always use the feature_names from your model
     plot_feature_importances(clf, 
-                         save_path="data/samples/selection14/features_WAP32_no_chicoutai.png", 
+                         save_path="data/samples/selection15/features_WAP32_all_samples.png", 
                          feature_names=feature_names_model)
 
  

@@ -1,0 +1,57 @@
+Merged samples before balancing: 33214 total
+Distribution by category before balancing:
+  - black_depression: 3291 samples
+  - chicoutai: 1350 samples
+  - dry_depression: 15344 samples
+  - green_depression: 2278 samples
+  - lichen: 2699 samples
+  - sphaignes: 2449 samples
+  - watered_depression: 5803 samples
+Category 'dry_depression': 15344 → 2500 samples (randomly selected)
+Category 'watered_depression': 5803 → 2500 samples (randomly selected)
+Category 'green_depression': 2278 samples (unchanged)
+Category 'sphaignes': 2449 samples (unchanged)
+Category 'chicoutai': 1350 samples (unchanged)
+Category 'lichen': 2699 → 2500 samples (randomly selected)
+Category 'black_depression': 3291 → 2500 samples (randomly selected)
+
+After balancing: 16077 total
+Distribution by category after balancing:
+  - black_depression: 2500 samples
+  - chicoutai: 1350 samples
+  - dry_depression: 2500 samples
+  - green_depression: 2278 samples
+  - lichen: 2500 samples
+  - sphaignes: 2449 samples
+  - watered_depression: 2500 samples
+
+Merged and balanced samples saved to data/samples/selection15/merged/merged_15.json
+(my_env) lcousin@CEDL2212J3:~/stage_cesbio$ /home/lcousin/miniconda3/envs/my_env/bin/python /home/lcousin/stage_cesbio/code/Samples2/reconnaissance4.py
+Accuracy: 0.9051616915422885
+Confusion matrix:
+ [[487   3   9   0   0   1   0]
+ [  0 220   5  20  21   4   0]
+ [ 15   2 431  13   9  29   1]
+ [  0  42   5 401   4   4   0]
+ [  0  25   6   6 461   1   1]
+ [  1  15  26  10   8 429   1]
+ [  9   1   6   0   0   2 482]]
+Classification report:
+                     precision    recall  f1-score   support
+
+  black_depression       0.95      0.97      0.96       500
+         chicoutai       0.71      0.81      0.76       270
+    dry_depression       0.88      0.86      0.87       500
+  green_depression       0.89      0.88      0.89       456
+            lichen       0.92      0.92      0.92       500
+         sphaignes       0.91      0.88      0.89       490
+watered_depression       0.99      0.96      0.98       500
+
+          accuracy                           0.91      3216
+         macro avg       0.89      0.90      0.90      3216
+      weighted avg       0.91      0.91      0.91      3216
+
+Features utilisées : ['r_mean', 'g_mean', 'b_mean', 'r_var', 'g_var', 'b_var', 'r_n_mean', 'g_n_mean', 'b_n_mean', 'r_large_mean', 'g_large_mean', 'b_large_mean', 'z_var', 'z_moins_z_n', 'z_moins_z_large']
+[0.06929165 0.05597598 0.1090164  0.08351379 0.0798913  0.06600726
+ 0.05982445 0.04910146 0.08733491 0.07264266 0.0877351  0.08843475
+ 0.04798162 0.01660908 0.02663959]
