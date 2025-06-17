@@ -401,8 +401,8 @@ def main():
     Main function to create regression TIFFs using models saved by sentinel_proportion_median.py
     """
     # Default paths for models and data
-    wap = 23
-    use_peat = True
+    wap = 32
+    use_peat = False
     superresolution = False  # Use 5m resolution (True) or 10m resolution (False)
     peat_suffix = "_peat" if use_peat else ""
     resolution = 5 if superresolution else 10
@@ -415,7 +415,7 @@ def main():
     # Base directory where regression results are stored
     
     base_dir = f"data/samples/selection15/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}"
-    regression_dir = f"data/samples/selection15/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}/regression_results_raw"
+    regression_dir = "data/samples/selection15/regression_wap23_peat_10m/regression_results_raw"
 
     results_dir = f"{regression_dir}/results"  # Directory for sentinel_regression4.py results
     

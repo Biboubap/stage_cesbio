@@ -277,8 +277,8 @@ def main(truth_path=None, pred_path=None, output_path=None, bands=None):
 if __name__ == "__main__":
     
     # Default paths
-    wap = 23
-    use_peat = True
+    wap = 32
+    use_peat = False
     superresolution = False  # Use 5m resolution (True) or 10m resolution (False)
     peat_suffix = "_peat" if use_peat else ""
     resolution = 5 if superresolution else 10
