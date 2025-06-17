@@ -101,17 +101,19 @@ def create_proportion_tiff(input_csv, sentinel_path, output_path):
 
 if __name__ == "__main__":
     wap = 23
-    superresolution = True  # Use 5m resolution (True) or 10m resolution (False)
     use_peat = True
+    superresolution = False  # Use 5m resolution (True) or 10m resolution (False)
     peat_suffix = "_peat" if use_peat else ""
-    resolution_suffix = "" if superresolution else "_10m"
+    resolution = 5 if superresolution else 10
+    resolution_suffix = "_5m" if superresolution else "_10m"
+    moy5m = False
+    moy5m_suffix = "_moy5m" if moy5m else ""
+    mediane_dir = "mediane" if not moy5m else "mediane_10m"
+    file_prefix = "" if not moy5m else "10m_"
     
-    # Set path modifiers based on superresolution flag
-    mediane_dir = "mediane" if superresolution else "mediane_10m"
-    file_prefix = "" if superresolution else "10m_"
-    
-    input_csv = f"data/samples/selection15/regression_wap{wap}{peat_suffix}{resolution_suffix}/class_proportions_WAP{wap}_filtered.csv"
-    sentinel_path = f"DataCubeS2/BandsS22023_WAP{wap}{peat_suffix}/{mediane_dir}/{file_prefix}mediane_clipped_STACK_2023_BandB2_WAP{wap}_deflate.tif"
-    output_path = f"data/samples/selection15/regression_wap{wap}{peat_suffix}{resolution_suffix}/proportions_WAP{wap}.tif"
+   
+    input_csv = f"data/samples/selection15/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}/class_proportions_WAP{wap}_filtered.csv"
+    sentinel_path = f"DataCubeS2/BandsS22023_WAP{wap}{peat_suffix}{resolution_suffix}/{mediane_dir}/{file_prefix}mediane_clipped_STACK_2023_BandB2_WAP{wap}_deflate.tif"
+    output_path = f"data/samples/selection15/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}/proportions_WAP{wap}.tif"
     create_proportion_tiff(input_csv, sentinel_path, output_path)
 

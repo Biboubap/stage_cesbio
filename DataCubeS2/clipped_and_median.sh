@@ -59,7 +59,7 @@ echo "Converting mask to polygon contour..."
 gdal_polygonize.py drone_treated/WAP23_tiles/mask_WAP23_peat.tif -f GeoJSON drone_treated/WAP23_tiles/WAP23_contour_peat.json
 
 # Create directories for clipped bands and indices
-mkdir -p DataCubeS2/BandsS22023_WAP23_peat/clipped
+_
 mkdir -p DataCubeS2/IndicesS22023_WAP23_peat/clipped
 
 # Clip Sentinel-2 bands using the WAP23 contour
@@ -152,3 +152,19 @@ done
 
 echo "All WAP sites processing completed."
 
+
+mkdir -p DataCubeS2/IndicesS22023_WAP23_peat_10m/clipped
+echo "Clipping Sentinel-2 bands with WAP23 contour..."
+for f in DataCubeS2/BandsS22023_10m/*WAP23_deflate.tif; do
+    base_filename=$(basename "$f")
+    gdalwarp -overwrite -of GTiff -tr 10.0 -10.0 -tap -cutline drone_treated/WAP23_tiles/WAP23_contour_peat.json -crop_to_cutline "$f" "DataCubeS2/BandsS22023_WAP23_peat_10m/clipped/clipped_${base_filename}"
+    echo "Clipped $base_filename"
+done
+mkdir -p DataCubeS2/BandsS22023_WAP23_peat_10m/mediane
+# Compute median for clipped bands
+echo "Computing median for clipped Sentinel-2 bands..."
+for f in DataCubeS2/BandsS22023_WAP23_peat_10m/clipped/clipped_*.tif; do
+    base_filename=$(basename "$f")
+    python /home/lcousin/stage_cesbio/DataCubeS2/TwinLakeCubeIndex/compute_median.py "$f" "DataCubeS2/BandsS22023_WAP23_peat_10m/mediane/mediane_${base_filename}"
+    echo "Computed median for $base_filename"
+done

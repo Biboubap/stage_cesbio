@@ -403,18 +403,19 @@ def main():
     # Default paths for models and data
     wap = 23
     use_peat = True
-    superresolution = True  # Use 5m resolution (True) or 10m resolution (False)
+    superresolution = False  # Use 5m resolution (True) or 10m resolution (False)
     peat_suffix = "_peat" if use_peat else ""
-    
-    # Set path modifiers based on superresolution flag
-    mediane_dir = "mediane" if superresolution else "mediane_10m"
-    file_prefix = "" if superresolution else "10m_"
     resolution = 5 if superresolution else 10
+    resolution_suffix = "_5m" if superresolution else "_10m"
+    moy5m = False
+    moy5m_suffix = "_moy5m" if moy5m else ""
+    mediane_dir = "mediane" if not moy5m else "mediane_10m"
+    file_prefix = "" if not moy5m else "10m_"
     
     # Base directory where regression results are stored
-    resolution_suffix = "" if superresolution else "_10m"
-    base_dir = f"data/samples/selection15/regression_wap{wap}{peat_suffix}{resolution_suffix}"
-    regression_dir = f"data/samples/selection14/regression_wap{32}_no_chicoutai/regression_results"
+    
+    base_dir = f"data/samples/selection15/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}"
+    regression_dir = "data/samples/selection14/regression_wap32_10m/regression_results_raw"
     results_dir = f"{regression_dir}/results"  # Directory for sentinel_regression4.py results
     
     # Choose model type - options:
@@ -422,12 +423,13 @@ def main():
     # - 'grouped': Grouped class models (from sentinel_regression4.py)
     model_type = 'individual' 
     
+    
     # Input model paths based on model type
     if model_type == 'individual':
         model_paths = {
             'lichen': os.path.join(regression_dir, 'individual_lichen_rf.joblib'),
             'chicoutai_green': os.path.join(regression_dir, 'individual_chicoutai_green_rf.joblib'),
-            'through_proportion': os.path.join(regression_dir, 'individual_sqrt_through_rf.joblib')
+            'through_proportion': os.path.join(regression_dir, 'individual_through_rf.joblib')
         }
     elif model_type == 'grouped':  # 'grouped'
         model_paths = {
@@ -435,8 +437,8 @@ def main():
         }
     
     # Sentinel data directories
-    bands_dir = f"DataCubeS2/BandsS22023_WAP{wap}{peat_suffix}/{mediane_dir}"
-    indices_dir = f"DataCubeS2/IndicesS22023_WAP{wap}{peat_suffix}/{mediane_dir}"
+    bands_dir = f"DataCubeS2/BandsS22023_WAP{wap}{peat_suffix}{resolution_suffix}/{mediane_dir}"
+    indices_dir = None #f"DataCubeS2/IndicesS22023_WAP{wap}{peat_suffix}{resolution_suffix}/{mediane_dir}"
     
     # Mask path
     mask_path = f"drone_treated/WAP{wap}_tiles/mask_WAP{wap}{peat_suffix}.tif"
@@ -465,7 +467,7 @@ def main():
         indices_dir=indices_dir,
         output_path=output_path,
         mask_path=mask_path,  # Pass the mask path to the function
-        sqrt_transform=True,  # Apply inverse sqrt transform for through_proportion
+        sqrt_transform=False,  # Apply inverse sqrt transform for through_proportion
         normalise=normalise   # Active ou désactive la normalisation des proportions
     )
     

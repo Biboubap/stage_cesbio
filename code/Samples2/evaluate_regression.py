@@ -279,18 +279,25 @@ if __name__ == "__main__":
     # Default paths
     wap = 23
     use_peat = True
-    superresolution = True
+    superresolution = False  # Use 5m resolution (True) or 10m resolution (False)
     peat_suffix = "_peat" if use_peat else ""
-    resolution_suffix = "" if superresolution else "_10m"
+    resolution = 5 if superresolution else 10
+    resolution_suffix = "_5m" if superresolution else "_10m"
+    moy5m = False
+    moy5m_suffix = "_moy5m" if moy5m else ""
+    mediane_dir = "mediane" if not moy5m else "mediane_10m"
+    file_prefix = "" if not moy5m else "10m_"
+    model_type = "individual" 
+
     
     # Truth TIF (from create_proportion_tif.py)
-    truth_tif = f"data/samples/selection15/regression_wap{wap}{peat_suffix}/proportions_WAP{wap}.tif"
+    truth_tif = f"data/samples/selection15/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}/proportions_WAP{wap}.tif"
 
     # Prediction TIF (from plot_regression_tif.py)
-    pred_tif = f"data/samples/selection15/regression_wap{wap}{peat_suffix}/regression_predictions_individual_WAP{wap}{peat_suffix}.tif"
+    pred_tif = f"data/samples/selection15/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}/regression_predictions_{model_type}_WAP{wap}{peat_suffix}{resolution_suffix}.tif"
 
     # Output path
-    output_path = f"data/samples/selection15/regression_wap{wap}{peat_suffix}/regression_evaluation.png"
+    output_path = f"data/samples/selection15/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}/regression_evaluation.png"
 
     # Default bands to compare
     bands = ['lichen', 'chicoutai_green', 'through_proportion']
