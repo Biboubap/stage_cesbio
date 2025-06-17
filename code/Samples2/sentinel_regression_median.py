@@ -591,17 +591,17 @@ def create_performance_summary(all_metrics, output_dir):
 
 if __name__ == "__main__":
     # Parameters
-    wap = 32
-    use_peat = False
-    superresolution = True  # Use 5m resolution (True) or 10m resolution (False)
-    moy5m = True
+    wap = 23
+    use_peat = True
+    superresolution = False  # Use 5m resolution (True) or 10m resolution (False)
+    moy5m = False
     use_sqrt = False          # Use sqrt-transformed through proportion (True) or raw through proportion (False)
     peat_suffix = "_peat" if use_peat else ""
     resolution_suffix = "_5m" if superresolution else "_10m"
     moy5m_suffix = "_moy5m" if moy5m else ""
 
-    data_dir = f"data/samples/selection14/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}/balanced"
-    output_dir = f"data/samples/selection14/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}/regression_results"
+    data_dir = f"data/samples/selection15/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}/balanced"
+    output_dir = f"data/samples/selection15/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}/regression_results"
 
     # Add suffix to output directory when not using sqrt transform
     if not use_sqrt:

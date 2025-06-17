@@ -415,7 +415,8 @@ def main():
     # Base directory where regression results are stored
     
     base_dir = f"data/samples/selection15/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}"
-    regression_dir = "data/samples/selection14/regression_wap32_10m/regression_results_raw"
+    regression_dir = f"data/samples/selection15/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}/regression_results_raw"
+
     results_dir = f"{regression_dir}/results"  # Directory for sentinel_regression4.py results
     
     # Choose model type - options:

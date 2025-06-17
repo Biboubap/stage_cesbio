@@ -497,7 +497,7 @@ if __name__ == "__main__":
     moy5m_suffix = "_moy5m" if moy5m else ""
     
     # Base output directory without resolution suffix
-    base_output_dir = f"data/samples/selection14/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}"
+    base_output_dir = f"data/samples/selection15/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}"
 
     classification_path = f"drone_treated/WAP23_tiles/WAP23_classif_all{peat_suffix}.tif"
 
