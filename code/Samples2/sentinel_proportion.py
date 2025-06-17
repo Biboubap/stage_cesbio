@@ -410,7 +410,7 @@ def plot_class_proportions(csv_path, output_dir, purcent_exclusion=0.05):
     
     print(f"Class proportion histograms saved in {output_dir}")
 
-def process_wap_data(wap_number, classification_path, output_dir=None, use_peat=True, superresolution=True):
+def process_wap_data(wap_number, classification_path, output_dir=None, use_peat=True, superresolution=True, moy5m=True):
     """
     Process data for a specific WAP site.
     
@@ -430,19 +430,20 @@ def process_wap_data(wap_number, classification_path, output_dir=None, use_peat=
     
     # Set resolution and path modifiers based on superresolution flag
     resolution = 5 if superresolution else 10
-    mediane_dir = "mediane" if superresolution else "mediane_10m"
-    file_prefix = "" if superresolution else "10m_"
+    resolution_suffix = "" if superresolution else "_10m"
+    mediane_dir = "mediane" if not moy5m else "mediane_10m"
+    file_prefix = "" if not moy5m else "10m_"
     
     # Add resolution suffix to output directory if not using superresolution
     resolution_suffix = "" if superresolution else "_10m"
-    output_dir = f"{output_dir}{resolution_suffix}"
+    output_dir = f"{output_dir}"
     
     os.makedirs(output_dir, exist_ok=True)
     
-    sentinel_path = f"DataCubeS2/BandsS22023_WAP{wap_number}{peat_suffix}/{mediane_dir}/{file_prefix}mediane_clipped_STACK_2023_BandB2_WAP{wap_number}_deflate.tif"
-    sentinel_bands_dir = f"DataCubeS2/BandsS22023_WAP{wap_number}{peat_suffix}/{mediane_dir}"
-    sentinel_indices_dir = f"DataCubeS2/IndicesS22023_WAP{wap_number}{peat_suffix}/{mediane_dir}"
-    
+    sentinel_path = f"DataCubeS2/BandsS22023_WAP{wap_number}{peat_suffix}{resolution_suffix}/{mediane_dir}/{file_prefix}mediane_clipped_STACK_2023_BandB2_WAP{wap_number}_deflate.tif"
+    sentinel_bands_dir = f"DataCubeS2/BandsS22023_WAP{wap_number}{peat_suffix}{resolution_suffix}/{mediane_dir}"
+    sentinel_indices_dir = None #f"DataCubeS2/IndicesS22023_WAP{wap_number}{peat_suffix}{resolution_suffix}/{mediane_dir}"
+
     # Output paths
     proportions_csv = os.path.join(output_dir, f"class_proportions_WAP{wap_number}.csv")
     filtered_csv = os.path.join(output_dir, f"class_proportions_WAP{wap_number}_filtered.csv")
@@ -486,17 +487,20 @@ def process_wap_data(wap_number, classification_path, output_dir=None, use_peat=
     print(f"Results saved in {output_dir}")
 
 if __name__ == "__main__":
-    wap = 23
+    wap = 32
     use_peat = False
     superresolution = True  # Use 5m resolution (True) or 10m resolution (False)
     peat_suffix = "_peat" if use_peat else ""
     resolution = 5 if superresolution else 10
+    resolution_suffix = "_5m" if superresolution else "_10m"
+    moy5m = True
+    moy5m_suffix = "_moy5m" if moy5m else ""
     
     # Base output directory without resolution suffix
-    base_output_dir = f"data/samples/selection15/regression_wap{wap}{peat_suffix}"
+    base_output_dir = f"data/samples/selection14/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}"
 
-    classification_path = f"drone_treated/WAP23_tiles/WAP23_classif_all{peat_suffix}.tif"
+    classification_path = f"drone_treated/WAP32_tiles/WAP32_classif_no_chicoutai{peat_suffix}.tif"
 
     print(f"Processing WAP{wap} data with {'peat' if use_peat else 'standard'} dataset at {resolution}m resolution...")
     process_wap_data(wap, classification_path=classification_path, output_dir=base_output_dir, 
-                   use_peat=use_peat, superresolution=superresolution)
+                   use_peat=use_peat, superresolution=superresolution, moy5m=moy5m)

@@ -120,7 +120,60 @@ def load_sentinel_features(bands_dir, indices_dir):
     features = np.stack(bands, axis=0)  # (n_features, rows, cols)
     return features, band_names, geo_transform, projection
 
-def create_regression_tiff(model_paths, bands_dir, indices_dir, output_path, sqrt_transform=False, normalise=True):
+def load_mask(mask_path, ref_transform, ref_projection, ref_width, ref_height):
+    """
+    Load a mask file and reproject it to match the reference dataset if needed
+    
+    Args:
+        mask_path: Path to the mask file (should be binary, 1 for valid pixels)
+        ref_transform: GeoTransform of the reference dataset
+        ref_projection: Projection of the reference dataset
+        ref_width: Width of the reference dataset
+        ref_height: Height of the reference dataset
+        
+    Returns:
+        mask_array: Binary mask array (1 for valid pixels, 0 for masked pixels)
+    """
+    print(f"Loading mask from {mask_path}...")
+    
+    # Open the mask file
+    mask_ds = gdal.Open(mask_path)
+    if mask_ds is None:
+        raise ValueError(f"Could not open mask file: {mask_path}")
+    
+    # Check if mask needs reprojection
+    mask_transform = mask_ds.GetGeoTransform()
+    mask_projection = mask_ds.GetProjection()
+    mask_width = mask_ds.RasterXSize
+    mask_height = mask_ds.RasterYSize
+    
+    # If mask dimensions and projection match reference, read directly
+    if (mask_width == ref_width and mask_height == ref_height and 
+        mask_transform == ref_transform and mask_projection == ref_projection):
+        mask_array = mask_ds.GetRasterBand(1).ReadAsArray()
+    else:
+        # Reproject mask to match reference dataset
+        print("Reprojecting mask to match reference dataset...")
+        mem_driver = gdal.GetDriverByName('MEM')
+        mask_reprojected = mem_driver.Create('', ref_width, ref_height, 1, gdal.GDT_Byte)
+        mask_reprojected.SetGeoTransform(ref_transform)
+        mask_reprojected.SetProjection(ref_projection)
+        
+        # Reproject
+        gdal.ReprojectImage(mask_ds, mask_reprojected, mask_projection, ref_projection, 
+                           gdal.GRA_NearestNeighbour)
+        
+        # Read reprojected mask
+        mask_array = mask_reprojected.GetRasterBand(1).ReadAsArray()
+    
+    # Ensure mask is binary (0 or 1)
+    mask_array = (mask_array > 0).astype(np.uint8)
+    
+    print(f"Mask loaded. Valid pixels: {np.sum(mask_array)}/{mask_array.size} ({np.sum(mask_array)/mask_array.size*100:.2f}%)")
+    
+    return mask_array
+
+def create_regression_tiff(model_paths, bands_dir, indices_dir, output_path, mask_path=None, sqrt_transform=False, normalise=True):
     """
     Create a multi-band TIFF with regression predictions for each target class
     
@@ -131,6 +184,7 @@ def create_regression_tiff(model_paths, bands_dir, indices_dir, output_path, sqr
         bands_dir: Directory containing Sentinel band TIFs
         indices_dir: Directory containing Sentinel index TIFs
         output_path: Path to save the output TIFF
+        mask_path: Path to a mask file (optional). Only pixels where mask is 1 will be processed
         sqrt_transform: Whether to apply inverse sqrt transform to through_proportion predictions
         normalise: Whether to normalise predictions so that their sum is 100% for each pixel
     """
@@ -159,6 +213,11 @@ def create_regression_tiff(model_paths, bands_dir, indices_dir, output_path, sqr
     features, band_names, geo_transform, projection = load_sentinel_features(bands_dir, indices_dir)
     height, width = features[0].shape
     
+    # Load mask if provided
+    mask = None
+    if mask_path:
+        mask = load_mask(mask_path, geo_transform, projection, width, height)
+    
     # Create output raster
     driver = gdal.GetDriverByName('GTiff')
     num_bands = len(target_classes)
@@ -172,7 +231,7 @@ def create_regression_tiff(model_paths, bands_dir, indices_dir, output_path, sqr
     out_ds.SetProjection(projection)
     
     # Initialize prediction arrays
-    prediction_arrays = {target_class: np.zeros((height, width), dtype=np.float32) 
+    prediction_arrays = {target_class: np.full((height, width), -1, dtype=np.float32)  # Initialize with NoData (-1)
                         for target_class in target_classes}
     
     # Make predictions
@@ -180,13 +239,36 @@ def create_regression_tiff(model_paths, bands_dir, indices_dir, output_path, sqr
     for row in tqdm(range(height)):
         # Extract features for the entire row
         row_features = []
+        row_mask = []
+        
         for col in range(width):
+            # If mask is provided, skip pixels outside the mask
+            if mask is not None and mask[row, col] == 0:
+                row_features.append(None)  # Placeholder
+                row_mask.append(False)
+                continue
+            
             # Extract features for this pixel
             pixel_features = [band[row, col] for band in features]
             row_features.append(pixel_features)
+            row_mask.append(True)
         
+        # Skip if no valid pixels in this row
+        if not any(row_mask):
+            continue
+        
+        # Collect only valid features
+        valid_features = [feat for feat, valid in zip(row_features, row_mask) if valid]
+        
+        # Skip if no valid features
+        if not valid_features:
+            continue
+            
         # Convert to numpy array
-        X = np.array(row_features)
+        X = np.array(valid_features)
+        
+        # Get valid column indices
+        valid_cols = [col for col, valid in enumerate(row_mask) if valid]
         
         # Predict for each target class
         for target_class in target_classes:
@@ -199,23 +281,35 @@ def create_regression_tiff(model_paths, bands_dir, indices_dir, output_path, sqr
             else:
                 predictions = model.predict(X)
             
-            prediction_arrays[target_class][row, :] = predictions
+            # Assign predictions back to the correct columns
+            for i, col in enumerate(valid_cols):
+                prediction_arrays[target_class][row, col] = predictions[i]
     
     if normalise:
         # Normalize predictions to sum to 1 (100%)
         print("Normalizing predictions...")
         sum_array = np.zeros((height, width), dtype=np.float32)
         for target_class in target_classes:
-            prediction_arrays[target_class] = np.maximum(0, prediction_arrays[target_class])  # Clip negative values
-            sum_array += prediction_arrays[target_class]
+            # Only normalize valid pixels (non-negative values)
+            valid_mask = prediction_arrays[target_class] >= 0
+            prediction_arrays[target_class][valid_mask] = np.maximum(0, prediction_arrays[target_class][valid_mask])  # Clip negative values
+            sum_array[valid_mask] += prediction_arrays[target_class][valid_mask]
         
         # Avoid division by zero
-        sum_array = np.where(sum_array > 0, sum_array, 1)
+        valid_sum_mask = sum_array > 0
         
         # Scale to 0-100% range as integers
         for i, target_class in enumerate(target_classes):
-            normalized = np.divide(prediction_arrays[target_class], sum_array) * 100
-            normalized_int = np.clip(normalized, 0, 100).astype(np.int16)
+            # Only normalize pixels that are in mask and have positive sum
+            valid_pixels = (prediction_arrays[target_class] >= 0) & valid_sum_mask
+            prediction_arrays[target_class][valid_pixels] = np.divide(
+                prediction_arrays[target_class][valid_pixels], 
+                sum_array[valid_pixels]
+            ) * 100
+            
+            # Convert to int16
+            normalized_int = np.full((height, width), -1, dtype=np.int16)  # Initialize with NoData
+            normalized_int[valid_pixels] = np.clip(prediction_arrays[target_class][valid_pixels], 0, 100).astype(np.int16)
             
             # Write to band
             band = out_ds.GetRasterBand(i + 1)
@@ -227,16 +321,21 @@ def create_regression_tiff(model_paths, bands_dir, indices_dir, output_path, sqr
         # No normalization: just clip to 0-100 and write as integer percentages
         print("Writing predictions without normalization...")
         for i, target_class in enumerate(target_classes):
-            # Assurons-nous que les valeurs sont positives
-            prediction_arrays[target_class] = np.maximum(0, prediction_arrays[target_class])
+            # Convert to percentages only for valid pixels (non-negative)
+            valid_pixels = prediction_arrays[target_class] >= 0
             
-            # Convertir les proportions (0-1) en pourcentages (0-100)
-            scaled = prediction_arrays[target_class] * 100
-            clipped = np.clip(scaled, 0, 100).astype(np.int16)
+            # Create output array with NoData values
+            output_array = np.full((height, width), -1, dtype=np.int16)
+            
+            # Process only valid pixels
+            output_array[valid_pixels] = np.clip(
+                prediction_arrays[target_class][valid_pixels] * 100, 
+                0, 100
+            ).astype(np.int16)
             
             # Write to band
             band = out_ds.GetRasterBand(i + 1)
-            band.WriteArray(clipped)
+            band.WriteArray(output_array)
             band.SetDescription(target_class)
             band.SetNoDataValue(-1)
             band.FlushCache()
@@ -247,90 +346,8 @@ def create_regression_tiff(model_paths, bands_dir, indices_dir, output_path, sqr
     
     print(f"Multi-band regression TIFF created at {output_path}")
     
-    # Create a color table for visualization
-    create_color_interpretation_file(output_path, target_classes)
-    
-    # Also create a visualization of the predictions
+    # Create a visualization of the predictions
     create_visualization(prediction_arrays, output_path.replace('.tif', '_visualization.png'))
-
-def create_color_interpretation_file(tiff_path, classes):
-    """
-    Create a color interpretation file for QGIS visualization
-    
-    Args:
-        tiff_path: Path to the multi-band TIFF file
-        classes: List of class names in band order
-    """
-    # Define color scheme for visualization
-    colors = {
-        "lichen": "#C8C8C8",           # Light gray
-        "chicoutai_green": "#228B22",   # Forest green
-        "through_proportion": "#A0522D", # Sienna
-        "sqrt_through_proportion": "#A0522D", # Same as through_proportion
-        "chicoutai": "#006400",        # Dark green
-        "green_depression": "#32CD32"   # Lime green
-    }
-    
-    # Create .vrt file
-    vrt_path = tiff_path.replace('.tif', '.vrt')
-    vrt_options = gdal.BuildVRTOptions(separate=True)
-    gdal.BuildVRT(vrt_path, [tiff_path], options=vrt_options)
-    
-    # Create .qml file for QGIS
-    qml_path = tiff_path.replace('.tif', '.qml')
-    with open(qml_path, 'w') as f:
-        f.write("""<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>
-<qgis version="3.22.4-Białowieża">
-  <pipe-data-defined-properties>
-    <Option type="Map">
-      <Option type="QString" name="name" value=""/>
-      <Option name="properties"/>
-      <Option type="QString" name="type" value="collection"/>
-    </Option>
-  </pipe-data-defined-properties>
-  <pipe>
-    <provider>
-      <resampling enabled="false" zoomedInResamplingMethod="nearestNeighbour" maxOversampling="2" zoomedOutResamplingMethod="nearestNeighbour"/>
-    </provider>
-    <rasterrenderer opacity="1" type="singlebandpseudocolor" band="1" classificationMin="0" classificationMax="100">
-      <rasterTransparency/>
-      <minMaxOrigin>
-        <limits>None</limits>
-        <extent>WholeRaster</extent>
-        <statAccuracy>Estimated</statAccuracy>
-        <cumulativeCutLower>0.02</cumulativeCutLower>
-        <cumulativeCutUpper>0.98</cumulativeCutUpper>
-        <stdDevFactor>2</stdDevFactor>
-      </minMaxOrigin>
-      <rastershader>
-        <colorrampshader maximumValue="100" classificationMode="1" colorRampType="INTERPOLATED" clip="0" labelPrecision="0" minimumValue="0">
-          <colorramp name="[source]" type="gradient">
-            <Option type="Map">
-              <Option type="QString" name="color1" value="#ffffff"/>
-              <Option type="QString" name="color2" value="{}"/>
-              <Option type="QString" name="discrete" value="0"/>
-              <Option type="QString" name="rampType" value="gradient"/>
-            </Option>
-          </colorramp>
-          <item label="0%" alpha="0" color="#ffffff" value="0"/>
-          <item label="50%" alpha="128" color="{}" value="50"/>
-          <item label="100%" alpha="255" color="{}" value="100"/>
-        </colorrampshader>
-      </rastershader>
-    </rasterrenderer>
-    <brightnesscontrast brightness="0" contrast="0" gamma="1"/>
-    <huesaturation colorizeGreen="128" invertColors="0" colorizeBlue="128" grayscaleMode="0" colorizeOn="0" saturation="0" colorizeRed="255" colorizeStrength="100"/>
-    <rasterresampler maxOversampling="2"/>
-    <resamplingStage>resamplingFilter</resamplingStage>
-  </pipe>
-  <blendMode>0</blendMode>
-</qgis>
-""".format(colors.get(classes[0], "#ff0000"), 
-            colors.get(classes[0], "#ff0000"), 
-            colors.get(classes[0], "#ff0000")))
-    
-    print(f"Created color interpretation files: {vrt_path} and {qml_path}")
-    print("NOTE: In QGIS, use the 'Select Band' option in layer properties to view each class proportion")
 
 def create_visualization(prediction_arrays, output_path):
     """
@@ -385,7 +402,7 @@ def main():
     """
     # Default paths for models and data
     wap = 23
-    use_peat = False
+    use_peat = True
     superresolution = True  # Use 5m resolution (True) or 10m resolution (False)
     peat_suffix = "_peat" if use_peat else ""
     
@@ -421,6 +438,9 @@ def main():
     bands_dir = f"DataCubeS2/BandsS22023_WAP{wap}{peat_suffix}/{mediane_dir}"
     indices_dir = f"DataCubeS2/IndicesS22023_WAP{wap}{peat_suffix}/{mediane_dir}"
     
+    # Mask path
+    mask_path = f"drone_treated/WAP{wap}_tiles/mask_WAP{wap}{peat_suffix}.tif"
+    
     # Output path
     output_path = os.path.join(base_dir, f"regression_predictions_{model_type}_WAP{wap}{peat_suffix}{resolution_suffix}.tif")
     
@@ -444,6 +464,7 @@ def main():
         bands_dir=bands_dir,
         indices_dir=indices_dir,
         output_path=output_path,
+        mask_path=mask_path,  # Pass the mask path to the function
         sqrt_transform=True,  # Apply inverse sqrt transform for through_proportion
         normalise=normalise   # Active ou désactive la normalisation des proportions
     )

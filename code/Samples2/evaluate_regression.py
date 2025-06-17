@@ -277,21 +277,21 @@ def main(truth_path=None, pred_path=None, output_path=None, bands=None):
 if __name__ == "__main__":
     
     # Default paths
-    wap = 32
-    use_peat = False
+    wap = 23
+    use_peat = True
     superresolution = True
     peat_suffix = "_peat" if use_peat else ""
     resolution_suffix = "" if superresolution else "_10m"
     
     # Truth TIF (from create_proportion_tif.py)
-    truth_tif = "data/samples/selection15/regression_wap23/proportions_WAP23.tif"
+    truth_tif = f"data/samples/selection15/regression_wap{wap}{peat_suffix}/proportions_WAP{wap}.tif"
 
     # Prediction TIF (from plot_regression_tif.py)
-    pred_tif = "data/samples/selection15/regression_wap23/regression_predictions_individual_WAP23.tif"
+    pred_tif = f"data/samples/selection15/regression_wap{wap}{peat_suffix}/regression_predictions_individual_WAP{wap}{peat_suffix}.tif"
 
     # Output path
-    output_path = "data/samples/selection15/regression_wap23/regression_evaluation.png"
-    
+    output_path = f"data/samples/selection15/regression_wap{wap}{peat_suffix}/regression_evaluation.png"
+
     # Default bands to compare
     bands = ['lichen', 'chicoutai_green', 'through_proportion']
 

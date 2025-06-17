@@ -390,14 +390,17 @@ def visualize_bins(input_csv, target_col, output_path, n_bins=10):
 if __name__ == "__main__":
     wap = 32
     use_peat = False
-    superresolution = False  # Use 5m resolution (True) or 10m resolution (False)
+    superresolution = True  # Use 5m resolution (True) or 10m resolution (False)
+    moy5m = True
+    
     peat_suffix = "_peat" if use_peat else ""
-    resolution_suffix = "" if superresolution else "_10m"
-    
+    resolution_suffix = "_5m" if superresolution else "_10m"
+    moy5m_suffix = "_moy5m" if moy5m else ""    
+
     # Input/output paths
-    filtered_csv = f"data/samples/selection14/regression_wap{wap}_no_chicoutai{peat_suffix}{resolution_suffix}/class_proportions_WAP{wap}_filtered.csv"
-    output_dir = f"data/samples/selection14/regression_wap{wap}_no_chicoutai{peat_suffix}{resolution_suffix}/balanced"
-    
+    filtered_csv = f"data/samples/selection14/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}/class_proportions_WAP{wap}_filtered.csv"
+    output_dir = f"data/samples/selection14/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}/balanced"
+
     # Process data to create balanced datasets
     process_wap_data(filtered_csv, output_dir)
     

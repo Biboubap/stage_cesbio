@@ -1,9 +1,10 @@
 """
 Perform regression analysis on balanced datasets created by sentinel_proportion_median.py.
-This script focuses on three grouped target classes:
+This script focuses on individual target classes:
 1. Lichen
 2. Chicoutai+Green (combined)
 3. sqrt_through_proportion (sqrt of dry_depression + sphaignes + black_depression)
+4. through_proportion (raw values)
 """
 import numpy as np
 import pandas as pd
@@ -31,7 +32,7 @@ def load_all_sentinel_features(indices_dir, bands_dir):
     """
     # List all tif files
     band_files = sorted(glob.glob(os.path.join(bands_dir, "*.tif")))
-    index_files = sorted(glob.glob(os.path.join(indices_dir, "*.tif")))
+    index_files = sorted(glob.glob(os.path.join(indices_dir, "*.tif"))) if indices_dir else []
     
     print(f"Found {len(band_files)} band files and {len(index_files)} index files")
     
@@ -184,52 +185,6 @@ def train_multivariate_rf(X, y_dict, target_names, test_size=0.3, random_state=4
     
     return models, X_test, y_test_dict
 
-def train_multioutput_rf(X, y_dict, target_names, test_size=0.3, random_state=42):
-    """
-    Train a multi-output RandomForest model that predicts all targets at once
-    
-    Args:
-        X: Array of features for each sample
-        y_dict: Dictionary with arrays of targets for each target class
-        target_names: List of target class names
-        test_size: Proportion of data to use for testing
-        random_state: Random seed for reproducibility
-    
-    Returns:
-        model: The trained multi-output model
-        X_test: Test features
-        y_test: Test targets matrix
-        y_test_dict: Dictionary of test targets by target name
-    """
-    # Combine all target variables into a single matrix
-    y_matrix = np.column_stack([y_dict[target_name] for target_name in target_names])
-    
-    # Split data
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y_matrix, test_size=test_size, random_state=random_state
-    )
-    
-    # Create and train multi-output model directly using RandomForestRegressor
-    # which can handle multivariate outputs natively
-    model = RandomForestRegressor(
-        n_estimators=150,
-        min_samples_leaf=4,
-        random_state=random_state,
-        max_depth=None,
-        max_features="sqrt",
-        n_jobs=-1  # Use all available cores for faster training
-    )
-    
-    print("Training multi-output Random Forest model...")
-    model.fit(X_train, y_train)
-    
-    # Create y_test_dict for evaluation
-    y_test_dict = {}
-    for i, target_name in enumerate(target_names):
-        y_test_dict[target_name] = y_test[:, i]
-    
-    return model, X_test, y_test, y_test_dict
-
 def evaluate_regression_models(models, X_test, y_test_dict, target_names, output_path, feature_names=None):
     """
     Evaluate the performance of regression models and create plots
@@ -317,102 +272,6 @@ def evaluate_regression_models(models, X_test, y_test_dict, target_names, output
     
     return metrics
 
-def evaluate_multioutput_rf(model, X_test, y_test, y_test_dict, target_names, output_path, feature_names=None):
-    """
-    Evaluate the performance of the multi-output RF model
-    
-    Args:
-        model: The trained multi-output model
-        X_test: Test features
-        y_test: Test targets matrix
-        y_test_dict: Dictionary of test targets by target name
-        target_names: List of target names
-        output_path: Path to save the evaluation plots
-        feature_names: List of feature names
-    
-    Returns:
-        metrics: Dictionary with performance metrics for each target
-    """
-    # Make predictions
-    y_pred = model.predict(X_test)
-    
-    # Initialize metrics dictionary
-    metrics = {}
-    
-    # Create a figure for the scatter plots
-    n_cols = min(3, len(target_names))
-    n_rows = (len(target_names) + n_cols - 1) // n_cols
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols*5, n_rows*5))
-    
-    # If only one subplot, axes needs to be in a 2D array
-    if len(target_names) == 1:
-        axes = np.array([[axes]])
-    elif n_rows == 1:
-        axes = axes.reshape(1, -1)
-    
-    # Evaluate each output dimension
-    for i, target_name in enumerate(target_names):
-        row = i // n_cols
-        col = i % n_cols
-        ax = axes[row, col]
-        
-        y_true = y_test[:, i]
-        y_pred_i = y_pred[:, i]
-        
-        # Calculate metrics
-        r2 = r2_score(y_true, y_pred_i)
-        rmse = np.sqrt(mean_squared_error(y_true, y_pred_i))
-        pearson_coef, _ = pearsonr(y_true, y_pred_i)
-        
-        metrics[target_name] = {
-            "r2": r2,
-            "rmse": rmse,
-            "pearson": pearson_coef
-        }
-        
-        # Create scatter plot
-        ax.scatter(y_true, y_pred_i, alpha=0.5, s=10)
-        max_val = max(np.max(y_true), np.max(y_pred_i))
-        ax.plot([0, max_val], [0, max_val], 'r--')
-        
-        # Customize labels based on the target
-        if target_name == 'sqrt_through_proportion':
-            ax.set_xlabel("Actual sqrt(proportion)")
-            ax.set_ylabel("Predicted sqrt(proportion)")
-        else:
-            ax.set_xlabel("Actual proportion")
-            ax.set_ylabel("Predicted proportion")
-            
-        ax.set_title(f"{target_name}\nR² = {r2:.3f}, RMSE = {rmse:.3f}, r = {pearson_coef:.3f}")
-        ax.grid(alpha=0.3)
-        ax.set_xlim(0, max_val * 1.05)
-        ax.set_ylim(0, max_val * 1.05)
-    
-    # Hide empty subplots
-    for i in range(len(target_names), n_rows * n_cols):
-        row = i // n_cols
-        col = i % n_cols
-        axes[row, col].axis('off')
-    
-    plt.tight_layout()
-    plt.savefig(output_path)
-    plt.close()
-    
-    print(f"Evaluation plot saved to {output_path}")
-    
-    # Create feature importance visualization if feature_names provided
-    if feature_names is not None and hasattr(model, 'feature_importances_'):
-        plt.figure(figsize=(12, 6))
-        sorted_idx = np.argsort(model.feature_importances_)[::-1]
-        plt.barh(range(len(sorted_idx)), model.feature_importances_[sorted_idx])
-        plt.yticks(range(len(sorted_idx)), [feature_names[i] for i in sorted_idx])
-        plt.title("Feature Importance (Multi-output RandomForest)")
-        plt.tight_layout()
-        plt.savefig(output_path.replace('.png', '_feature_importance.png'))
-        plt.close()
-    
-    return metrics
-
 def plot_feature_importance(models, target_names, output_path, feature_names, top_n=20):
     """
     Plot feature importance for all models
@@ -492,9 +351,9 @@ def save_models(models, feature_names, target_names, output_path):
     joblib.dump(model_data, output_path)
     print(f"Models saved to {output_path}")
 
-def run_all_regressions(data_dir, output_dir, wap_number=32, use_peat=False, superresolution=True, use_sqrt=True):
+def run_all_regressions(data_dir, output_dir, wap_number=32, use_peat=False, superresolution=True, use_sqrt=True, moy5m=False):
     """
-    Run all regressions (multi-output and individual) and produce consolidated output
+    Run individual regressions and produce consolidated output
     
     Args:
         data_dir: Directory containing the balanced data files
@@ -504,7 +363,7 @@ def run_all_regressions(data_dir, output_dir, wap_number=32, use_peat=False, sup
         superresolution: Whether to use 5m (True) or 10m (False) resolution data
         use_sqrt: Whether to use sqrt-transformed data for through proportion (True) or raw through proportion (False)
     """
-    print("Starting regression analysis for all datasets...")
+    print("Starting regression analysis for individual datasets...")
     print(f"Using sqrt transformation for through proportion: {use_sqrt}")
     
     # Create output directory
@@ -512,29 +371,22 @@ def run_all_regressions(data_dir, output_dir, wap_number=32, use_peat=False, sup
     peat_suffix = "_peat" if use_peat else ""
     
     # Set resolution and path modifiers based on superresolution flag
-    mediane_dir = "mediane" if superresolution else "mediane_10m"
-    file_prefix = "" if superresolution else "10m_"
-    
+    mediane_dir = "mediane" if not moy5m else "mediane_10m"
+    file_prefix = "" if not moy5m else "10m_"
+    resolution_suffix = "_10m" if not superresolution else ""
+
     # Define input paths
-    sentinel_bands_dir = f"DataCubeS2/BandsS22023_WAP{wap_number}{peat_suffix}/{mediane_dir}"
-    sentinel_indices_dir = f"DataCubeS2/IndicesS22023_WAP{wap_number}{peat_suffix}/{mediane_dir}"
+    sentinel_bands_dir = f"DataCubeS2/BandsS22023_WAP{wap_number}{peat_suffix}{resolution_suffix}/{mediane_dir}"
+    sentinel_indices_dir = None #f"DataCubeS2/IndicesS22023_WAP{wap_number}{peat_suffix}{resolution_suffix}/{mediane_dir}"
     
     # Define through_proportion file and target based on use_sqrt
     through_file = "balanced_sqrt_through_proportion.csv" if use_sqrt else "balanced_through_proportion.csv"
     through_target = "sqrt_through_proportion" if use_sqrt else "through_proportion"
     
-    # Fall back to alternative if file doesn't exist
-    alternative_through_file = "balanced_through_proportion.csv" if use_sqrt else "balanced_sqrt_through_proportion.csv"
-    alternative_through_target = "through_proportion" if use_sqrt else "sqrt_through_proportion"
-    
     through_path = os.path.join(data_dir, through_file)
     if not os.path.exists(through_path):
-        print(f"Warning: {through_file} not found, trying {alternative_through_file} instead")
-        through_file = alternative_through_file
-        through_target = alternative_through_target
-        through_path = os.path.join(data_dir, through_file)
-        if not os.path.exists(through_path):
-            print(f"Error: Neither {through_file} nor {alternative_through_file} exist in {data_dir}")
+        print(f"Error: {through_file} does not exist in {data_dir}. Please check the file name or path.")
+        return
     
     # Define datasets, their CSV paths, and corresponding target classes
     datasets = {
@@ -552,33 +404,6 @@ def run_all_regressions(data_dir, output_dir, wap_number=32, use_peat=False, sup
         }
     }
     
-    # Choose combined file based on what's available
-    combined_file = "balanced_combined_sqrt.csv" if use_sqrt else "balanced_combined_raw.csv"
-    combined_path = os.path.join(data_dir, combined_file)
-    
-    # Fall back to alternative if file doesn't exist
-    if not os.path.exists(combined_path):
-        alternative = "balanced_combined_raw.csv" if use_sqrt else "balanced_combined_sqrt.csv"
-        alt_path = os.path.join(data_dir, alternative)
-        if os.path.exists(alt_path):
-            print(f"Warning: {combined_file} not found, using {alternative} instead")
-            combined_file = alternative
-            combined_path = alt_path
-        else:
-            # Final fallback to legacy combined.csv
-            legacy_combined = "balanced_combined.csv"
-            legacy_path = os.path.join(data_dir, legacy_combined)
-            if os.path.exists(legacy_path):
-                print(f"Warning: {combined_file} and {alternative} not found, using {legacy_combined} instead")
-                combined_file = legacy_combined
-                combined_path = legacy_path
-    
-    # Define multioutput dataset
-    datasets['multioutput'] = {
-        'path': combined_path,
-        'targets': ['lichen', 'chicoutai_green', through_target]
-    }
-    
     # 1. Load Sentinel features
     print("\n1. Loading Sentinel features...")
     sentinel_features, feature_names = load_all_sentinel_features(
@@ -591,9 +416,6 @@ def run_all_regressions(data_dir, output_dir, wap_number=32, use_peat=False, sup
     
     # 2. Process each dataset for individual models
     for dataset_type, dataset_info in datasets.items():
-        if dataset_type == 'multioutput':
-            continue  # Skip multioutput for now, process it separately
-          
         print(f"\n2. Processing {dataset_type} dataset...")
         csv_path = dataset_info['path']
         target_class = dataset_info['target']
@@ -657,227 +479,61 @@ def run_all_regressions(data_dir, output_dir, wap_number=32, use_peat=False, sup
             "feature_names": feature_names,
             "target_name": target_class
         }, os.path.join(output_dir, f"{dataset_type}_rf.joblib"))
-    
-    # 3. Now process the multioutput model
-    if 'multioutput' in datasets:
-        print("\n3. Processing multioutput dataset...")
-        csv_path = datasets['multioutput']['path']
         
-        # Prepare data for regression
-        X, y_dict, available_groups = prepare_data_for_regression(
-            csv_path=csv_path,
-            sentinel_features=sentinel_features,
-            feature_names=feature_names
-        )
+        # Create individual plot for this model
+        plt.figure(figsize=(8, 8))
+        plt.scatter(y_test, y_pred, alpha=0.5, s=10)
+        max_val = max(np.max(y_test), np.max(y_pred))
+        plt.plot([0, max_val], [0, max_val], 'r--')
         
-        # Train multi-output model
-        print("Training multi-output RandomForest model...")
-        
-        # Combine all target variables into a single matrix
-        # Only use available groups that are in our target list
-        target_names = [tgt for tgt in datasets['multioutput']['targets'] if tgt in available_groups]
-        y_matrix = np.column_stack([y_dict[target_name] for target_name in target_names])
-        
-        # Split data
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y_matrix, test_size=0.3, random_state=42
-        )
-        
-        # Create and train multi-output model
-        model = RandomForestRegressor(
-            n_estimators=300,
-            min_samples_leaf=4,
-            random_state=42,
-            max_depth=None,
-            max_features="sqrt",
-            n_jobs=-1
-        )
-        
-        model.fit(X_train, y_train)
-        y_pred = model.predict(X_test)
-        
-        # Calculate metrics for each target
-        multioutput_metrics = {}
-        for i, target_name in enumerate(target_names):
-            r2 = r2_score(y_test[:, i], y_pred[:, i])
-            rmse = np.sqrt(mean_squared_error(y_test[:, i], y_pred[:, i]))
-            pearson_coef, _ = pearsonr(y_test[:, i], y_pred[:, i])
-            
-            multioutput_metrics[target_name] = {
-                'r2': r2,
-                'rmse': rmse,
-                'pearson': pearson_coef,
-                'y_true': y_test[:, i],
-                'y_pred': y_pred[:, i]
-            }
-        
-        all_metrics['multioutput'] = multioutput_metrics
-        
-        # Save the model
-        joblib.dump({
-            "model": model,
-            "feature_names": feature_names,
-            "target_names": target_names
-        }, os.path.join(output_dir, "multioutput_rf.joblib"))
-    
-    # 4. Create a consolidated visualization
-    print("\n4. Creating consolidated visualization...")
-    create_consolidated_plot(all_metrics, output_dir, use_sqrt)
-    
-    # 5. Create summary of performance metrics
-    print("\n5. Creating performance summary...")
-    create_performance_summary(all_metrics, output_dir)
-
-def create_consolidated_plot(all_metrics, output_dir, use_sqrt=True):
-    """
-    Create a consolidated plot showing all regression results
-    
-    Args:
-        all_metrics: Dictionary containing metrics for all models
-        output_dir: Directory to save output
-        use_sqrt: Whether sqrt transformation was used for through proportion
-    """
-    # Define target names based on use_sqrt parameter
-    if use_sqrt:
-        target_names = ['lichen', 'chicoutai_green', 'sqrt_through_proportion']
-        dataset_types = ['individual_lichen', 'individual_chicoutai_green', 'individual_through']
-    else:
-        target_names = ['lichen', 'chicoutai_green', 'through_proportion']
-        dataset_types = ['individual_lichen', 'individual_chicoutai_green', 'individual_through']
-    
-    # Create a 2x3 grid (2 rows, 3 columns)
-    fig, axes = plt.subplots(2, 3, figsize=(18, 12))
-    
-    # Plot individual models (top row)
-    for col, dataset_type in enumerate(dataset_types):
-        ax = axes[0, col]
-        
-        if dataset_type in all_metrics:
-            metrics = all_metrics[dataset_type]
-            y_true = metrics['y_true']
-            y_pred = metrics['y_pred']
-            r2 = metrics['r2']
-            rmse = metrics['rmse']
-            pearson = metrics['pearson']
-            target_class = metrics['target_class']
-            
-            # Plot scatter
-            ax.scatter(y_true, y_pred, alpha=0.5, s=10)
-            max_val = max(np.max(y_true), np.max(y_pred))
-            ax.plot([0, max_val], [0, max_val], 'r--')
-            
-            # Add title and metrics
-            title = f"Individual {target_class}\n" \
-                    f"R² = {r2:.3f}, RMSE = {rmse:.3f}, r = {pearson:.3f}"
-            ax.set_title(title)
-            
-            # Customize labels based on target
-            if target_class.startswith('sqrt_'):
-                ax.set_xlabel("Actual sqrt(proportion)")
-                ax.set_ylabel("Predicted sqrt(proportion)")
-            else:
-                ax.set_xlabel("Actual proportion")
-                ax.set_ylabel("Predicted proportion")
-                
-            ax.grid(alpha=0.3)
-            ax.set_xlim(0, max_val * 1.05)
-            ax.set_ylim(0, max_val * 1.05)
+        # Customize labels based on the target
+        if target_class.startswith('sqrt_'):
+            plt.xlabel("Actual sqrt(proportion)")
+            plt.ylabel("Predicted sqrt(proportion)")
         else:
-            ax.text(0.5, 0.5, f"No data for {dataset_type}", 
-                   horizontalalignment='center', verticalalignment='center')
-            ax.set_xticks([])
-            ax.set_yticks([])
-    
-    # Plot multi-output model results (bottom row) only if using sqrt transform
-    if use_sqrt and 'multioutput' in all_metrics:
-        for col, target_class in enumerate(target_names):
-            ax = axes[1, col]
+            plt.xlabel("Actual proportion")
+            plt.ylabel("Predicted proportion")
             
-            if target_class in all_metrics['multioutput']:
-                metrics = all_metrics['multioutput'][target_class]
-                
-                y_true = metrics['y_true']
-                y_pred = metrics['y_pred']
-                r2 = metrics['r2']
-                rmse = metrics['rmse']
-                pearson = metrics['pearson']
-                
-                # Plot scatter
-                ax.scatter(y_true, y_pred, alpha=0.5, s=10)
-                max_val = max(np.max(y_true), np.max(y_pred))
-                ax.plot([0, max_val], [0, max_val], 'r--')
-                
-                # Add title and metrics
-                title = f"Multi-output {target_class}\n" \
-                        f"R² = {r2:.3f}, RMSE = {rmse:.3f}, r = {pearson:.3f}"
-                ax.set_title(title)
-                
-                # Customize labels based on target
-                if target_class.startswith('sqrt_'):
-                    ax.set_xlabel("Actual sqrt(proportion)")
-                    ax.set_ylabel("Predicted sqrt(proportion)")
-                else:
-                    ax.set_xlabel("Actual proportion")
-                    ax.set_ylabel("Predicted proportion")
-                
-                ax.grid(alpha=0.3)
-                ax.set_xlim(0, max_val * 1.05)
-                ax.set_ylim(0, max_val * 1.05)
-            else:
-                ax.text(0.5, 0.5, f"No multi-output data for {target_class}", 
-                       horizontalalignment='center', verticalalignment='center')
-                ax.set_xticks([])
-                ax.set_yticks([])
-    else:
-        # If not using sqrt transform, hide the bottom row
-        for col in range(3):
-            axes[1, col].axis('off')
+        plt.title(f"{target_class}\nR² = {r2:.3f}, RMSE = {rmse:.3f}, r = {pearson_coef:.3f}")
+        plt.grid(alpha=0.3)
+        plt.savefig(os.path.join(output_dir, f"{dataset_type}_regression.png"))
+        plt.close()
+        
+        # Plot feature importance
+        if hasattr(rf, 'feature_importances_'):
+            plt.figure(figsize=(12, 8))
+            sorted_idx = np.argsort(rf.feature_importances_)[::-1]
+            top_n = min(20, len(sorted_idx))
+            top_idx = sorted_idx[:top_n]
+            plt.barh(range(top_n), rf.feature_importances_[top_idx])
+            plt.yticks(range(top_n), [feature_names[i] for i in top_idx])
+            plt.title(f"Feature Importance for {target_class}")
+            plt.tight_layout()
+            plt.savefig(os.path.join(output_dir, f"{dataset_type}_feature_importance.png"))
+            plt.close()
     
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, "consolidated_regression_results.png"), dpi=300)
-    plt.close()
+    # Create performance summary
+    print("\n3. Creating performance summary...")
+    create_performance_summary(all_metrics, output_dir)
 
 def create_performance_summary(all_metrics, output_dir):
     """
-    Create a summary plot and table of all performance metrics
+    Create a summary table of performance metrics for individual models
     
     Args:
         all_metrics: Dictionary containing metrics for all models
         output_dir: Directory to save output
     """
-    # Define target classes
-    target_names = ['lichen', 'chicoutai_green', 'through_proportion', 'sqrt_through_proportion']
     metrics_data = []
     
     # Collect metrics for individual models
-    dataset_types = ['individual_lichen', 'individual_chicoutai_green', 'individual_through', 'individual_sqrt_through']
-
-    for dataset_type in dataset_types:
-        if dataset_type in all_metrics:
-            metrics = all_metrics[dataset_type]
-            target_class = metrics['target_class']
-            
-            metrics_data.append({
-                'Target': target_class,
-                'Model Type': 'Individual',
-                'R²': metrics['r2'],
-                'RMSE': metrics['rmse'],
-                'Pearson r': metrics['pearson']
-            })
-    
-    # Collect metrics for multi-output model
-    if 'multioutput' in all_metrics:
-        for target_class in target_names:
-            if target_class in all_metrics['multioutput']:
-                metrics = all_metrics['multioutput'][target_class]
-                
-                metrics_data.append({
-                    'Target': target_class,
-                    'Model Type': 'Multi-output',
-                    'R²': metrics['r2'],
-                    'RMSE': metrics['rmse'],
-                    'Pearson r': metrics['pearson']
-                })
+    for dataset_type, metrics in all_metrics.items():
+        metrics_data.append({
+            'Target': metrics['target_class'],
+            'R²': metrics['r2'],
+            'RMSE': metrics['rmse'],
+            'Pearson r': metrics['pearson']
+        })
     
     # Convert to DataFrame
     metrics_df = pd.DataFrame(metrics_data)
@@ -886,77 +542,80 @@ def create_performance_summary(all_metrics, output_dir):
     metrics_df.to_csv(os.path.join(output_dir, "performance_metrics_summary.csv"), index=False)
     
     # Create a bar plot comparing R² values
-    plt.figure(figsize=(12, 8))
+    plt.figure(figsize=(10, 6))
     
-    # Set up positions for the bars
-    x = np.arange(len(target_names))
-    width = 0.35
+    # Create bars sorted by R² value
+    metrics_df_sorted = metrics_df.sort_values('R²', ascending=False)
+    bars = plt.bar(metrics_df_sorted['Target'], metrics_df_sorted['R²'], color='steelblue')
     
-    # Extract R² values for individual and multi-output models for each target
-    individual_r2 = []
-    multioutput_r2 = []
-    
-    for target in target_names:
-        # Find R² for individual model
-        ind_r2 = metrics_df[(metrics_df['Target'] == target) & 
-                           (metrics_df['Model Type'] == 'Individual')]['R²'].values
-        individual_r2.append(ind_r2[0] if len(ind_r2) > 0 else np.nan)
-        
-        # Find R² for multi-output model
-        mo_r2 = metrics_df[(metrics_df['Target'] == target) & 
-                           (metrics_df['Model Type'] == 'Multi-output')]['R²'].values
-        multioutput_r2.append(mo_r2[0] if len(mo_r2) > 0 else np.nan)
-    
-    # Create bars
-    plt.bar(x - width/2, individual_r2, width, label='Individual Model', color='steelblue')
-    plt.bar(x + width/2, multioutput_r2, width, label='Multi-output Model', color='darkorange')
-    
-    # Add labels, title and legend
+    # Add labels and title
     plt.xlabel('Target Class')
     plt.ylabel('R² Score')
-    plt.title('Model Performance Comparison: Individual vs. Multi-output')
-    plt.xticks(x, target_names)
-    plt.legend()
+    plt.title('Model Performance (R²)')
+    plt.xticks(rotation=45, ha='right')
     plt.grid(axis='y', alpha=0.3)
     
     # Add value labels on bars
-    for i, v in enumerate(individual_r2):
-        if not np.isnan(v):
-            plt.text(i - width/2, v + 0.02, f'{v:.3f}', ha='center')
-    
-    for i, v in enumerate(multioutput_r2):
-        if not np.isnan(v):
-            plt.text(i + width/2, v + 0.02, f'{v:.3f}', ha='center')
+    for bar in bars:
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2., height + 0.01,
+                 f'{height:.3f}', ha='center', va='bottom')
     
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, "performance_summary.png"), dpi=300)
+    plt.close()
+    
+    # Create RMSE comparison
+    plt.figure(figsize=(10, 6))
+    
+    # Create bars sorted by RMSE (lower is better)
+    metrics_df_sorted = metrics_df.sort_values('RMSE')
+    bars = plt.bar(metrics_df_sorted['Target'], metrics_df_sorted['RMSE'], color='lightcoral')
+    
+    # Add labels and title
+    plt.xlabel('Target Class')
+    plt.ylabel('RMSE')
+    plt.title('Model Performance (RMSE)')
+    plt.xticks(rotation=45, ha='right')
+    plt.grid(axis='y', alpha=0.3)
+    
+    # Add value labels on bars
+    for bar in bars:
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2., height + 0.001,
+                 f'{height:.3f}', ha='center', va='bottom')
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, "rmse_summary.png"), dpi=300)
     plt.close()
 
 if __name__ == "__main__":
     # Parameters
     wap = 32
     use_peat = False
-    superresolution = False  # Use 5m resolution (True) or 10m resolution (False)
+    superresolution = True  # Use 5m resolution (True) or 10m resolution (False)
+    moy5m = True
     use_sqrt = False          # Use sqrt-transformed through proportion (True) or raw through proportion (False)
     peat_suffix = "_peat" if use_peat else ""
-    resolution_suffix = "" if superresolution else "_10m"
-    
-    
-    data_dir = f"data/samples/selection14/regression_wap{wap}_no_chicoutai{peat_suffix}{resolution_suffix}/balanced"
-    output_dir = f"data/samples/selection14/regression_wap{wap}_no_chicoutai{peat_suffix}{resolution_suffix}/regression_results"
-    
+    resolution_suffix = "_5m" if superresolution else "_10m"
+    moy5m_suffix = "_moy5m" if moy5m else ""
+
+    data_dir = f"data/samples/selection14/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}/balanced"
+    output_dir = f"data/samples/selection14/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}/regression_results"
+
     # Add suffix to output directory when not using sqrt transform
     if not use_sqrt:
         output_dir += "_raw"
     
-    # Run all regressions and create consolidated output
+    # Run individual regressions and create output
     run_all_regressions(
         data_dir=data_dir,
         output_dir=output_dir,
         wap_number=wap,
         use_peat=use_peat,
         superresolution=superresolution,
-        use_sqrt=use_sqrt
+        use_sqrt=use_sqrt,
+        moy5m=moy5m
     )
 
     print("\nAll regression analyses completed successfully!")

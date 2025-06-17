@@ -63,8 +63,8 @@ def create_proportion_tiff(input_csv, sentinel_path, output_path):
     out_ds.SetGeoTransform(geo_transform)
     out_ds.SetProjection(projection)
     
-    # Initialize arrays with zeros for each band
-    proportion_arrays = {class_name: np.zeros((sentinel_height, sentinel_width), dtype=np.int16) 
+    # Initialize arrays with NoData values (-1) for each band
+    proportion_arrays = {class_name: np.full((sentinel_height, sentinel_width), -1, dtype=np.int16) 
                         for class_name in all_classes}
     
     # Fill arrays with proportion values (scaled to 0-100)
@@ -98,100 +98,11 @@ def create_proportion_tiff(input_csv, sentinel_path, output_path):
     # Close dataset
     out_ds = None
     print(f"Multi-band proportion TIFF created at {output_path}")
-    
-    # Create a color table for visualization in QGIS
-    create_color_interpretation_file(output_path, all_classes)
-
-def create_color_interpretation_file(tiff_path, classes):
-    """
-    Create a color interpretation file for QGIS to properly display the bands
-    
-    Args:
-        tiff_path: Path to the multi-band TIFF file
-        classes: List of class names in band order
-    """
-    # Define a consistent color scheme for classes
-    colors = {
-        "chicoutai": "#006400",        # Dark green
-        "dry_depression": "#998800",    # Yellow-brown
-        "green_depression": "#32CD32",  # Lime green
-        "lichen": "#C8C8C8",           # Light gray
-        "sphaignes": "#8B4513",         # Saddle brown
-        "watered_depression": "#505050", # Dark gray
-        "black_depression": "#321400",   # Very dark brown
-        "none": "#000000",              # Black
-        "chicoutai_green": "#228B22",   # Forest green
-        "through_proportion": "#A0522D" # Sienna
-    }
-    
-    # Create .vrt file with color interpretation
-    vrt_path = tiff_path.replace('.tif', '.vrt')
-    
-    ds = gdal.Open(tiff_path)
-    vrt_options = gdal.BuildVRTOptions(separate=True)
-    gdal.BuildVRT(vrt_path, [tiff_path], options=vrt_options)
-    
-    # Create metadata file with band descriptions
-    # This helps QGIS show proper names in the layer properties
-    qml_path = tiff_path.replace('.tif', '.qml')
-    with open(qml_path, 'w') as f:
-        f.write("""<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>
-<qgis version="3.22.4-Białowieża">
-  <pipe-data-defined-properties>
-    <Option type="Map">
-      <Option type="QString" name="name" value=""/>
-      <Option name="properties"/>
-      <Option type="QString" name="type" value="collection"/>
-    </Option>
-  </pipe-data-defined-properties>
-  <pipe>
-    <provider>
-      <resampling enabled="false" zoomedInResamplingMethod="nearestNeighbour" maxOversampling="2" zoomedOutResamplingMethod="nearestNeighbour"/>
-    </provider>
-    <rasterrenderer opacity="1" type="singlebandpseudocolor" band="1" classificationMin="0" classificationMax="100">
-      <rasterTransparency/>
-      <minMaxOrigin>
-        <limits>None</limits>
-        <extent>WholeRaster</extent>
-        <statAccuracy>Estimated</statAccuracy>
-        <cumulativeCutLower>0.02</cumulativeCutLower>
-        <cumulativeCutUpper>0.98</cumulativeCutUpper>
-        <stdDevFactor>2</stdDevFactor>
-      </minMaxOrigin>
-      <rastershader>
-        <colorrampshader maximumValue="100" classificationMode="1" colorRampType="INTERPOLATED" clip="0" labelPrecision="0" minimumValue="0">
-          <colorramp name="[source]" type="gradient">
-            <Option type="Map">
-              <Option type="QString" name="color1" value="#ffffff"/>
-              <Option type="QString" name="color2" value="{}"/>
-              <Option type="QString" name="discrete" value="0"/>
-              <Option type="QString" name="rampType" value="gradient"/>
-            </Option>
-          </colorramp>
-          <item label="0%" alpha="0" color="#ffffff" value="0"/>
-          <item label="50%" alpha="128" color="{}" value="50"/>
-          <item label="100%" alpha="255" color="{}" value="100"/>
-        </colorrampshader>
-      </rastershader>
-    </rasterrenderer>
-    <brightnesscontrast brightness="0" contrast="0" gamma="1"/>
-    <huesaturation colorizeGreen="128" invertColors="0" colorizeBlue="128" grayscaleMode="0" colorizeOn="0" saturation="0" colorizeRed="255" colorizeStrength="100"/>
-    <rasterresampler maxOversampling="2"/>
-    <resamplingStage>resamplingFilter</resamplingStage>
-  </pipe>
-  <blendMode>0</blendMode>
-</qgis>
-""".format(colors.get(classes[0], "#ff0000"), 
-            colors.get(classes[0], "#ff0000"), 
-            colors.get(classes[0], "#ff0000")))
-    
-    print(f"Created color interpretation files: {vrt_path} and {qml_path}")
-    print("NOTE: In QGIS, use the 'Select Band' option in layer properties to view each class proportion")
 
 if __name__ == "__main__":
     wap = 23
     superresolution = True  # Use 5m resolution (True) or 10m resolution (False)
-    use_peat = False
+    use_peat = True
     peat_suffix = "_peat" if use_peat else ""
     resolution_suffix = "" if superresolution else "_10m"
     
@@ -199,7 +110,7 @@ if __name__ == "__main__":
     mediane_dir = "mediane" if superresolution else "mediane_10m"
     file_prefix = "" if superresolution else "10m_"
     
-    input_csv = f"data/samples/selection15/regression_wap{wap}{peat_suffix}{resolution_suffix}/class_proportions_WAP{wap}.csv"
+    input_csv = f"data/samples/selection15/regression_wap{wap}{peat_suffix}{resolution_suffix}/class_proportions_WAP{wap}_filtered.csv"
     sentinel_path = f"DataCubeS2/BandsS22023_WAP{wap}{peat_suffix}/{mediane_dir}/{file_prefix}mediane_clipped_STACK_2023_BandB2_WAP{wap}_deflate.tif"
     output_path = f"data/samples/selection15/regression_wap{wap}{peat_suffix}{resolution_suffix}/proportions_WAP{wap}.tif"
     create_proportion_tiff(input_csv, sentinel_path, output_path)
