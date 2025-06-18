@@ -1,0 +1,73 @@
+Accuracy: 0.8493589743589743
+Confusion matrix:
+ [[59  9  6  6]
+ [ 4 68  0  0]
+ [10  5 65  0]
+ [ 1  5  1 73]]
+Classification report:
+                         precision    recall  f1-score   support
+
+  peat_degraded_lichen       0.80      0.74      0.77        80
+            peat_green       0.78      0.94      0.86        72
+      peat_pure_lichen       0.90      0.81      0.86        80
+through_and_depression       0.92      0.91      0.92        80
+
+              accuracy                           0.85       312
+             macro avg       0.85      0.85      0.85       312
+          weighted avg       0.85      0.85      0.85       312
+
+Features utilisées : ['r_mean', 'g_mean', 'b_mean', 'r_var', 'g_var', 'b_var', 'r_n_mean', 'g_n_mean', 'b_n_mean', 'r_large_mean', 'g_large_mean', 'b_large_mean', 'z_var', 'z_moins_z_n', 'z_moins_z_large']
+[0.09991448 0.08469862 0.16381806 0.03024854 0.03928408 0.04115874
+ 0.04687241 0.05121368 0.08477279 0.05827824 0.08651351 0.15342919
+ 0.01656701 0.01783112 0.02539953]
+
+ Population fusionnée sauvegardée dans data/samples/selection16/merged/merged_wap32.json
+Population équilibrée sauvegardée dans data/samples/selection16/merged/merged_balanced350_wap32.json
+Chargement des échantillons depuis data/samples/selection16/merged/merged_wap32.json...
+Population initiale: 7273 échantillons au total
+Répartition initiale par catégorie:
+  - depression_fen: 1621 échantillons
+  - depression_green: 520 échantillons
+  - depression_peat: 669 échantillons
+  - depression_sphagnum: 284 échantillons
+  - depression_water: 870 échantillons
+  - peat_degraded_lichen: 1008 échantillons
+  - peat_green: 357 échantillons
+  - peat_pure_lichen: 1215 échantillons
+  - through_green: 358 échantillons
+  - through_sphagnum: 371 échantillons
+
+Répartition finale des catégories:
+  - peat_degraded_lichen: 1008 échantillons
+  - peat_green: 357 échantillons
+  - peat_pure_lichen: 1215 échantillons
+  - through_and_depression: 4693 échantillons
+Population finale: 7273 échantillons au total
+
+Population avec catégories fusionnées sauvegardée dans data/samples/selection16/merged/merged_wap32_grouped.json
+Chargement des échantillons depuis data/samples/selection16/merged/merged_wap32.json...
+Population initiale: 7273 échantillons au total
+Répartition initiale par catégorie:
+  - depression_fen: 1621 échantillons
+  - depression_green: 520 échantillons
+  - depression_peat: 669 échantillons
+  - depression_sphagnum: 284 échantillons
+  - depression_water: 870 échantillons
+  - peat_degraded_lichen: 1008 échantillons
+  - peat_green: 357 échantillons
+  - peat_pure_lichen: 1215 échantillons
+  - through_green: 358 échantillons
+  - through_sphagnum: 371 échantillons
+
+Équilibrage des catégories à 400 échantillons par catégorie...
+Catégorie 'through_and_depression': 4693 → 400 échantillons (sélection aléatoire)
+Catégorie 'peat_pure_lichen': 1215 → 400 échantillons (sélection aléatoire)
+Catégorie 'peat_degraded_lichen': 1008 → 400 échantillons (sélection aléatoire)
+Catégorie 'peat_green': 357 échantillons (inchangé - moins que la limite)
+
+Répartition finale des catégories:
+  - peat_degraded_lichen: 400 échantillons
+  - peat_green: 357 échantillons
+  - peat_pure_lichen: 400 échantillons
+  - through_and_depression: 400 échantillons
+Population finale: 1557 échantillons au total

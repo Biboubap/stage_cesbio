@@ -100,8 +100,8 @@ def create_proportion_tiff(input_csv, sentinel_path, output_path):
     print(f"Multi-band proportion TIFF created at {output_path}")
 
 if __name__ == "__main__":
-    wap = 23
-    use_peat = True
+    wap = 32
+    use_peat = False
     superresolution = False  # Use 5m resolution (True) or 10m resolution (False)
     peat_suffix = "_peat" if use_peat else ""
     resolution = 5 if superresolution else 10

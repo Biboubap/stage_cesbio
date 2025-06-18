@@ -7,6 +7,8 @@ from rasters_manager import RastersManager
 from osgeo import gdal
 import pickle
 
+
+
 def create_samples_and_compute(x_start, y_start, x_end, y_end, size_patch, ds_path, dz_path=None, dt_path=None):
     n_samples_x = (x_end - x_start) // size_patch
     n_samples_y = (y_end - y_start) // size_patch
@@ -62,20 +64,34 @@ def load_mask_tiff(mask_path):
     mask = ds.GetRasterBand(1).ReadAsArray()
     return mask
 
-def predict_samples_2(clf, features, positions, n_samples_x, n_samples_y, samples_set=None, mask=None, size_patch=32):
+def predict_samples_2(clf, features, positions, n_samples_x, n_samples_y, samples_set=None, mask=None, size_patch=32, grouped=False):
     preds = clf.predict(features)
     pred_map = np.zeros((n_samples_y, n_samples_x), dtype=np.uint8)
-    # Update class_to_val to match the order specified in the classification report
-    class_to_val = {
-        "chicoutai": 1,
-        "dry_depression": 2,
-        "green_depression": 3,
-        "lichen": 4,
-        "sphaignes": 5,
-        "watered_depression": 6,
-        "black_depression" : 7,
-        "None": 0
-    }
+    
+    # Mise à jour des classes selon l'option grouped
+    if grouped:
+        class_to_val = {
+            "peat_degraded_lichen": 1,
+            "peat_green": 2,
+            "peat_pure_lichen": 3,
+            "through_and_depression": 4,
+            "None": 0
+        }
+    else:
+        class_to_val = {
+            "depression_fen": 1,
+            "depression_green": 2,
+            "depression_peat": 3,
+            "depression_sphagnum": 4,
+            "depression_water": 5,
+            "peat_degraded_lichen": 6,
+            "peat_green": 7,
+            "peat_pure_lichen": 8,
+            "through_green": 9,
+            "through_sphagnum": 10,
+            "None": 0
+        }
+    
     samples_matrix = samples_set.get_samples_matrix() if samples_set is not None else None
 
     for idx, (i_x, i_y) in enumerate(positions):
@@ -94,21 +110,13 @@ def predict_samples_2(clf, features, positions, n_samples_x, n_samples_y, sample
         pred_map[i_y, i_x] = class_to_val.get(preds[idx], 0)
     return pred_map
 
-def create_classification_map(pred_map, size_patch):
+def create_classification_map(pred_map, size_patch, grouped=False):
     n_samples_y, n_samples_x = pred_map.shape
     color_map = np.zeros((n_samples_x*size_patch, n_samples_y*size_patch, 3), dtype=np.uint8)
-    # Update color_dict to match the colors in the QML
-    color_dict = {
-        1: [0, 100, 0],       # chicoutai: vert foncé 
-        2: [153, 136, 0],     # dry_depression: noir-jaune
-        3: [50, 205, 50],     # green_depression: vert clair/flashy
-        4: [200, 200, 200],   # lichen: gris clair
-        5: [139, 69, 19],     # sphaignes: marron/orange foncé
-        6: [80, 80, 80],      # watered_depression: gris
-        7: [50, 45, 10],      # black_depression: updated color to dark brown
-        0: [0, 0, 0],         # mask out: noir
-        255: [0, 0, 0]        # no data: noir
-    }
+    
+    # Utiliser le dictionnaire global approprié selon l'option grouped
+    color_dict = GROUPED_COLOR_DICT if grouped else ORIGINAL_COLOR_DICT
+    
     for i_x in range(n_samples_x):
         for i_y in range(n_samples_y):
             val = pred_map[i_y, i_x]
@@ -116,7 +124,7 @@ def create_classification_map(pred_map, size_patch):
             color_map[i_x*size_patch:(i_x+1)*size_patch, i_y*size_patch:(i_y+1)*size_patch] = color
     return color_map
 
-def plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path=None):
+def plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path=None, grouped=False):
     import matplotlib.patches as mpatches
     fig, axes = plt.subplots(1, 2, figsize=(16, 8))
     print("rgb_img shape:", rgb_img.shape)
@@ -128,15 +136,26 @@ def plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path=N
     axes[1].set_title("Carte de classification\nFenêtre x: {}-{}, y: {}-{}".format(x_start, x_end, y_start, y_end))
     axes[1].axis("off")
     # Légende des couleurs
-    color_labels = [
-        ("chicoutai",         [0, 100, 0]),
-        ("dry_depression",    [153, 136, 0]),
-        ("green_depression",  [50, 205, 50]),
-        ("lichen",            [200, 200, 200]),
-        ("sphaignes",         [139, 69, 19]),
-        ("watered_depression",[80, 80, 80]),
-        ("black_depression",  [25, 20, 0]),
-    ]
+    if grouped:
+        color_labels = [
+            ("peat_degraded_lichen",  [150, 150, 150]),
+            ("peat_green",            [100, 180, 100]),
+            ("peat_pure_lichen",      [200, 200, 200]),
+            ("through_and_depression", [65, 105, 225]),
+        ]
+    else:
+        color_labels = [
+            ("depression_fen",        [0, 0, 139]),
+            ("depression_green",      [0, 100, 0]),
+            ("depression_peat",       [153, 136, 0]),
+            ("depression_sphagnum",   [188, 143, 143]),
+            ("depression_water",      [65, 105, 225]),
+            ("peat_degraded_lichen",  [150, 150, 150]),
+            ("peat_green",            [100, 180, 100]),
+            ("peat_pure_lichen",      [200, 200, 200]),
+            ("through_green",         [50, 205, 50]),
+            ("through_sphagnum",      [139, 69, 19]),
+        ]
     patches = [mpatches.Patch(color=np.array(rgb)/255, label=label) for label, rgb in color_labels]
     axes[1].legend(handles=patches, loc='lower right', fontsize=10, title="Écozones")
     plt.tight_layout()
@@ -239,39 +258,20 @@ def plot_feature_importances(clf, save_path, feature_names=None):
     plt.tight_layout()
     plt.savefig(save_path)
 
-def create_qgis_colormap(output_qml, class_labels=None):
+def create_qgis_colormap(output_qml, class_labels=None, grouped=False):
     """
     Creates a QGIS color map file (.qml) for the classified raster.
     
     Args:
         output_qml: Path to save the QML file
         class_labels: Optional dictionary mapping class values to labels
+        grouped: Whether to use grouped classes
     """
+    # Utiliser les dictionnaires globaux appropriés
     if class_labels is None:
-        class_labels = {
-            1: "Chicoutai",
-            2: "Dry Depression",
-            3: "Green Depression",
-            4: "Lichen",
-            5: "Sphaignes",
-            6: "Watered Depression",
-            7: "Black Depression",
-            0: "No Data",
-            255: "No Data"
-        }
+        class_labels = GROUPED_CLASS_LABELS if grouped else ORIGINAL_CLASS_LABELS
     
-    # Define colors for each class (matching our visualization)
-    color_dict = {
-        1: [0, 100, 0],       # chicoutai: vert foncé 
-        2: [153, 136, 0],     # dry_depression: noir-jaune
-        3: [50, 205, 50],     # green_depression: vert clair/flashy
-        4: [200, 200, 200],   # lichen: gris clair
-        5: [139, 69, 19],     # sphaignes: marron/orange foncé
-        6: [80, 80, 80],      # watered_depression: gris
-        7: [50, 45, 10],      # black_depression: dark brown
-        0: [0, 0, 0],         # mask out: noir
-        255: [0, 0, 0]        # no data: noir
-    }
+    color_dict = GROUPED_COLOR_DICT if grouped else ORIGINAL_COLOR_DICT
 
     # QGIS QML template matching the provided example format
     qml_template = """<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>
@@ -354,7 +354,7 @@ def create_qgis_colormap(output_qml, class_labels=None):
     
     print(f"QGIS color map saved to {output_qml}")
 
-def save_classification_to_tif(pred_map, ref_tif_path, out_tif_path, size_patch=32, create_qml=True):
+def save_classification_to_tif(pred_map, ref_tif_path, out_tif_path, size_patch=32, create_qml=True, grouped=False):
     """
     Sauvegarde la carte de classification (pred_map) au format .tif,
     en utilisant la géoréférence et la taille du raster de référence.
@@ -389,7 +389,7 @@ def save_classification_to_tif(pred_map, ref_tif_path, out_tif_path, size_patch=
     # Create QML file only if requested
     if create_qml:
         qml_path = out_tif_path.replace('.tif', '.qml')
-        create_qgis_colormap(qml_path)
+        create_qgis_colormap(qml_path, grouped=grouped)
     else:
         print("Création du fichier QML ignorée (create_qml=False)")
 
@@ -506,7 +506,7 @@ def merge_classif(classif1_path, classif2_path, out_path, nodata_val=0, both_val
     out_ds = None
     print(f"Carte fusionnée sauvegardée dans {out_path}")
 
-def main_prediction():
+def main_prediction(out_folder, model_path):
     # Paramètres de la fenêtre à tester
     
     x_start = 0
@@ -547,7 +547,7 @@ def main_prediction():
     #                       feature_names=feature_names)
 
     # # # 4. Charger le modèle
-    model_data = joblib.load("data/samples/selection15/model_all_samples.joblib")
+    model_data = joblib.load(model_path)
     clf = model_data["model"]  # Extraire le modèle du dictionnaire
     feature_names_model = model_data["feature_names"]  # Récupérer aussi les noms de features
     print("Modèle RF chargé.")
@@ -571,8 +571,8 @@ def main_prediction():
     
     # 7. Prédire
     pred_map = predict_samples_2(
-        clf, features_filtered, positions, n_samples_x, n_samples_y, samples_set,
-        mask=mask, size_patch=size_patch
+    clf, features_filtered, positions, n_samples_x, n_samples_y, samples_set,
+    mask=mask, size_patch=size_patch, grouped=grouped
     )
     print("Prédictions effectuées.")
     
@@ -581,29 +581,99 @@ def main_prediction():
     print("Samples isolés filtrés.")
 
     # 9. Créer la carte de classification
-    color_map = create_classification_map(pred_map_filtered, size_patch)
+    color_map = create_classification_map(pred_map_filtered, size_patch, grouped=grouped)
     print("Carte de classification créée.")
 
     # 10. Afficher et sauvegarder les résultats
-    plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path="data/samples/selection15/classif_WAP32_all_samples.png")
+    plot_results(rgb_img, color_map, x_start, y_start, x_end, y_end, save_path=f"{out_folder}/classif_16_WAP32.png", grouped=grouped)
     print("Résultats affichés et sauvegardés.")
 
     # 11. Sauvegarder la carte de classification au format .tif with QML color map
     save_classification_to_tif(
         pred_map_filtered,
         ref_tif_path=ds_path,
-        out_tif_path="data/samples/selection15/classif_WAP32_all_samples_filtered.tif",
-        size_patch = size_patch,
-        create_qml=True
+        out_tif_path=f"{out_folder}/classif_16_WAP32.tif",
+        size_patch=size_patch,
+        create_qml=True, grouped=grouped
     )
 
     # 12. Sauvegarder les importances des features
     # When plotting feature importances, always use the feature_names from your model
     plot_feature_importances(clf, 
-                         save_path="data/samples/selection15/features_WAP32_all_samples.png", 
+                         save_path=f"{out_folder}/features_16_WAP32.png", 
                          feature_names=feature_names_model)
 
- 
+ # Définition globale des dictionnaires de classes et couleurs
+# Classes originales (non regroupées)
+ORIGINAL_CLASS_LABELS = {
+    1: "depression_fen",
+    2: "depression_green",
+    3: "depression_peat",
+    4: "depression_sphagnum",
+    5: "depression_water",
+    6: "peat_degraded_lichen",
+    7: "peat_green",
+    8: "peat_pure_lichen",
+    9: "through_green",
+    10: "through_sphagnum",
+    0: "No Data",
+    255: "No Data"
+}
+
+ORIGINAL_COLOR_DICT = {
+    1: [0, 0, 139],        # depression_fen: bleu foncé
+    2: [0, 100, 0],        # depression_green: vert foncé
+    3: [153, 136, 0],      # depression_peat: jaune-marron
+    4: [188, 143, 143],    # depression_sphagnum: rose-marron
+    5: [65, 105, 225],     # depression_water: bleu royal
+    6: [150, 150, 150],    # peat_degraded_lichen: gris moyen
+    7: [100, 180, 100],    # peat_green: vert clair
+    8: [200, 200, 200],    # peat_pure_lichen: gris clair
+    9: [50, 205, 50],      # through_green: vert vif
+    10: [139, 69, 19],     # through_sphagnum: marron
+    0: [0, 0, 0],          # mask out: noir
+    255: [0, 0, 0]         # no data: noir
+}
+
+# Classes regroupées
+GROUPED_CLASS_LABELS = {
+    1: "peat_degraded_lichen",
+    2: "peat_green",
+    3: "peat_pure_lichen",
+    4: "through_and_depression",
+    0: "No Data",
+    255: "No Data"
+}
+
+GROUPED_COLOR_DICT = {
+    1: [150, 150, 150],    # peat_degraded_lichen: gris moyen
+    2: [100, 180, 100],    # peat_green: vert clair
+    3: [200, 200, 200],    # peat_pure_lichen: gris clair
+    4: [65, 105, 225],     # through_and_depression: bleu royal
+    0: [0, 0, 0],          # mask out: noir
+    255: [0, 0, 0]         # no data: noir
+}
+
 if __name__ == "__main__":
-    main_prediction()
-    #merge_classif("data/samples/selection6/classification_result_2.tif", "data/samples/selection9/classification_result_nonlichen.tif", "data/samples/selection9/fusion_classif.tif")
+    out_folder = "data/samples/selection16/classifs/model_16_nopg1"
+    grouped = False  # Changer à True pour utiliser les classes regroupées
+    
+    if grouped:
+        # Utiliser les classes regroupées avec 350 échantillons par classe
+        model_path = "data/samples/selection16/classifs/model_16_nopg1_grouped/model_16_nopg1_grouped.joblib"
+        out_suffix = "_grouped"
+        # Utiliser les dictionnaires globaux définis en haut du fichier
+        class_labels = GROUPED_CLASS_LABELS
+        color_dict = GROUPED_COLOR_DICT
+    else:
+        # Utiliser les classes originales
+        model_path = "data/samples/selection16/classifs/model_16_nopg1/model_16_nopg1.joblib"
+        out_suffix = ""
+        # Utiliser les dictionnaires globaux définis en haut du fichier
+        class_labels = ORIGINAL_CLASS_LABELS
+        color_dict = ORIGINAL_COLOR_DICT
+    
+    print(f"Mode: {'Regroupé' if grouped else 'Original'}")
+    print(f"Classes utilisées: {list(class_labels.values())}")
+    
+    main_prediction(out_folder, model_path)

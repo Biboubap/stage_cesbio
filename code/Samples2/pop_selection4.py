@@ -95,6 +95,92 @@ def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_p
     # Now the state will store the category key instead of just 0 or 1
     selection_state = {(i_x, i_y): None for i_x in range(n_samples_x) for i_y in range(n_samples_y)}
 
+    def show_category_selector(current_key, block_x, block_y, main_fig):
+        nonlocal current_category_key
+        
+        # Calculate how many categories we can fit per page
+        categories_per_page = 12  # Adjust this number as needed
+        num_categories = len(class_dict)
+        num_pages = (num_categories + categories_per_page - 1) // categories_per_page
+        current_page = 0
+
+        def show_page(page_num):
+            plt.figure(figsize=(5, 6))
+            plt.axis('off')
+            cat_buttons = {}
+            
+            plt.text(0.1, 0.95, f"Select category (Page {page_num+1}/{num_pages}):", fontsize=12)
+            
+            # Add navigation arrows if multiple pages
+            if num_pages > 1:
+                if page_num > 0:
+                    prev_btn = plt.Rectangle((0.2, 0.02), 0.2, 0.05, alpha=0.2, facecolor='lightblue', edgecolor='black')
+                    plt.gca().add_patch(prev_btn)
+                    plt.text(0.25, 0.04, "Prev", ha='center', va='center')
+                    cat_buttons['prev'] = prev_btn
+                
+                if page_num < num_pages - 1:
+                    next_btn = plt.Rectangle((0.6, 0.02), 0.2, 0.05, alpha=0.2, facecolor='lightblue', edgecolor='black')
+                    plt.gca().add_patch(next_btn)
+                    plt.text(0.65, 0.04, "Next", ha='center', va='center')
+                    cat_buttons['next'] = next_btn
+            
+            # Get categories for current page
+            start_idx = page_num * categories_per_page
+            end_idx = min(start_idx + categories_per_page, num_categories)
+            page_categories = list(class_dict.items())[start_idx:end_idx]
+            
+            # Create "buttons" for each category on this page
+            y_pos = 0.9
+            for key, cat_name in page_categories:
+                y_pos -= 0.06
+                # Highlight the currently selected category
+                if key == current_key:
+                    rect = plt.Rectangle((0.1, y_pos-0.025), 0.8, 0.05, 
+                                       alpha=0.4, facecolor='yellow', edgecolor='black')
+                else:
+                    rect = plt.Rectangle((0.1, y_pos-0.025), 0.8, 0.05, 
+                                       alpha=0.2, facecolor='gray', edgecolor='black')
+                plt.gca().add_patch(rect)
+                plt.text(0.2, y_pos, f"{key}: {cat_name}", fontsize=10)
+                cat_buttons[key] = rect
+            
+            plt.tight_layout()
+            
+            def on_cat_click(event):
+                nonlocal current_page, current_category_key
+                if event.inaxes:
+                    # Navigation buttons
+                    if 'prev' in cat_buttons and cat_buttons['prev'].contains(event)[0]:
+                        plt.close()
+                        show_page(current_page - 1)
+                        return
+                    elif 'next' in cat_buttons and cat_buttons['next'].contains(event)[0]:
+                        plt.close()
+                        show_page(current_page + 1)
+                        return
+                    
+                    # Category buttons
+                    for key, rect in cat_buttons.items():
+                        if key not in ['prev', 'next'] and rect.contains(event)[0]:
+                            current_category_key = key
+                            print(f"Classe active changée pour : {class_dict[current_category_key]} (key: {current_category_key})")
+                            plt.close()
+                            
+                            # Update the main figure title to reflect the new active category
+                            main_fig.suptitle(f"Bloc ({block_x},{block_y}) - Sélection\n"
+                                        f"Classe active: {class_dict[current_category_key]} (key: {current_category_key})\n"
+                                        f"'0' pour tout sélectionner/désélectionner, Espace pour changer de classe\n"
+                                        f"Pavé numérique et flèches pour sélectionner des régions")
+                            main_fig.canvas.draw_idle()
+                            return
+            
+            plt.gcf().canvas.mpl_connect('button_press_event', on_cat_click)
+            plt.show(block=True)  # This is OK to block since it's a separate window
+        
+        # Show the first page
+        show_page(current_page)
+
     def plot_block(block_x, block_y):
         nonlocal current_category_key
         plt.close('all')
@@ -113,53 +199,8 @@ def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_p
             
             # Switch category when space is pressed
             if event.key == ' ':
-                # Create a separate category selection window instead of using input()
-                # to avoid event loop conflicts
-                plt.figure(figsize=(4, 3))
-                plt.axis('off')
-                cat_buttons = {}
-                
-                plt.text(0.1, 0.9, "Select category:", fontsize=12)
-                
-                # Create "buttons" for each category
-                y_pos = 0.8
-                for i, (key, cat_name) in enumerate(class_dict.items()):
-                    y_pos -= 0.1
-                    plt.text(0.2, y_pos, f"{key}: {cat_name}", fontsize=10)
-                    # Create invisible rectangle for click detection
-                    rect = plt.Rectangle((0.1, y_pos-0.05), 0.8, 0.08, 
-                                        alpha=0.2, facecolor='gray', edgecolor='black')
-                    plt.gca().add_patch(rect)
-                    cat_buttons[key] = rect
-                
-                plt.tight_layout()
-                
-                def on_cat_click(event):
-                    nonlocal current_category_key
-                    if event.inaxes:
-                        for key, rect in cat_buttons.items():
-                            contains, _ = rect.contains(event)
-                            if contains:
-                                current_category_key = key
-                                print(f"Classe active changée pour : {class_dict[current_category_key]} (key: {current_category_key})")
-                                plt.close()
-                                
-                                # Update the main figure title to reflect the new active category
-                                fig.suptitle(f"Bloc ({block_x},{block_y}) - Sélection\n"
-                                            f"Classe active: {class_dict[current_category_key]} (key: {current_category_key})\n"
-                                            f"'0' pour tout sélectionner/désélectionner, Espace pour changer de classe\n"
-                                            f"Pavé numérique et flèches pour sélectionner des régions")
-                                fig.canvas.draw_idle()
-                                return
-                
-                plt.gcf().canvas.mpl_connect('button_press_event', on_cat_click)
-                plt.show(block=True)  # This is OK to block since it's a separate window
-                
-                # Remove this duplicate update since we now do it in on_cat_click
-                # fig.suptitle(f"Bloc ({block_x},{block_y}) - Sélection\n"
-                #            f"Classe active: {class_dict[current_category_key]} (key: {current_category_key})\n"
-                #            f"'1' pour tout sélectionner, '0' pour tout désélectionner, Espace pour changer de classe")
-                # fig.canvas.draw_idle()
+                # Create a multi-page category selection window for handling many categories
+                show_category_selector(current_category_key, block_x, block_y, fig)
                 return
             
             # Number pad grid selection (dividing plot into 9 equal regions)
@@ -497,39 +538,55 @@ def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_p
 
 
 if __name__ == "__main__":
-    wap = 23
+    wap = 32
     size_patch = 16
     distance_large = 3
 
-    n_samples_x = 30
-    n_samples_y = 30
-    samples_plot_nb = 15
+    n_samples_x = 12*3
+    n_samples_y = 12*3
+    samples_plot_nb = 12
     default = None
-        
-    x_start = 1000
-    y_start = 1000
+    x_start = 800
+    y_start = 4200
 
     # Chemins des rasters
-    nb = "08_06"
+    nb = "07_04"
     
-    ds_path = f"drone_treated/WAP{wap}_tiles/rgb/Wap{wap}_main_transparent_mosaic_group1_{nb}.tif"
-    dz_path = f"drone_treated/WAP{wap}_tiles/dsm/Wap{wap}_main_dsm_{nb}.tif"
+    #WAP23
+    # ds_path = f"drone_treated/WAP{wap}_tiles/rgb/Wap{wap}_main_transparent_mosaic_group1_{nb}.tif"
+    # dz_path = f"drone_treated/WAP{wap}_tiles/dsm/Wap{wap}_main_dsm_{nb}.tif"
+
+    #WAP32
+    ds_path = f"drone_treated/WAP{wap}_tiles/rgb/WAP{wap}_full_transparent_mosaic_group1_{nb}.tif"
+    dz_path = f"drone_treated/WAP{wap}_tiles/dsm/WAP{wap}_full_dsm_{nb}.tif"
     dt_path = None
     
-    save_dir = "data/samples/selection13/"
+    save_dir = "data/samples/selection16/"
+
+    # class_dict = {
+    #     "l": "lichen",
+    #     "s": "sphaignes",
+    #     "c" : "chicoutai",
+    #     "gd": "green_depression",
+    #     "wd": "watered_depression",
+    #     "dd" : "dry_depression",
+    #     "bd": "black_depression",
+    # }
 
     class_dict = {
-        # "pp": "peat_plateau",
-        # "ld" : "large_depression",
-        # "fo": "forest",
-        # "la": "lake"
-        "l": "lichen",
-        "s": "sphaignes",
-        "c" : "chicoutai",
-        "gd": "green_depression",
-        "wd": "watered_depression",
-        "dd" : "dry_depression",
-        "bd": "black_depression",
+        "ppl" : "peat_pure_lichen",
+        "pdl" : "peat_degraded_lichen",
+        "pg" : "peat_green",
+
+        "ts": "through_sphagnum",
+        "tg": "through_green",
+        "td": "through_dark",
+
+        "dg" : "depression_green",
+        "dd" : "depression_peat",
+        "df" : "depression_fen",
+        "ds" : "depression_sphagnum",
+        "dw" : "depression_water",
     }
 
 

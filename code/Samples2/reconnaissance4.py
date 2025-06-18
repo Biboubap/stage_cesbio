@@ -85,12 +85,12 @@ def train_random_forest(features, labels, feature_names, test_size=0.2, random_s
     return clf, X_test, y_test, feature_names
 
 if __name__ == "__main__":
-    features, labels, feature_names = load_samples("data/samples/selection15/merged/merged_15.json", exclude_temp=True)
+    features, labels, feature_names = load_samples("data/samples/selection16/merged/merged_balanced300_wap32.json", exclude_temp=True)
     clf, X_test, y_test, feature_names = train_random_forest(features, labels, feature_names)
     # Sauvegarde du modèle
     import joblib
     print(clf.feature_importances_)
-    joblib.dump({"model": clf, "feature_names": feature_names}, "data/samples/selection15/model_all_samples.joblib")
+    joblib.dump({"model": clf, "feature_names": feature_names}, "data/samples/selection16/classifs/model_16_2/model_16_nopg1.joblib")
 
 
 def grid_search_rf(features, labels, feature_names, test_size=0.3, random_state=42):
@@ -121,11 +121,11 @@ def grid_search_rf(features, labels, feature_names, test_size=0.3, random_state=
     return grid.best_estimator_, X_test, y_test, feature_names
 
 # if __name__ == "__main__":
-#     features, labels, feature_names = load_samples("data/samples/selection12/pop_merged/pop_12_balanced.json", exclude_temp=True)
+#     features, labels, feature_names = load_samples("data/samples/selection16/merged/merged_balanced300_wap32.json", exclude_temp=True)
 #     clf, X_test, y_test, feature_names = grid_search_rf(features, labels, feature_names)
 #     # Sauvegarde du meilleur modèle
 #     # import joblib
-    # joblib.dump({"model": clf, "feature_names": feature_names}, "data/samples/selection12/pop_merged/random_forest_best_model.joblib")
+#     #joblib.dump({"model": clf, "feature_names": feature_names}, "data/samples/selection12/pop_merged/random_forest_best_model.joblib")
 
 # from sklearn.ensemble import RandomForestClassifier
 # from sklearn.model_selection import cross_val_score
