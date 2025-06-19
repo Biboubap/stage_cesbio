@@ -310,7 +310,7 @@ if __name__ == "__main__":
     process_all_tiles(
         rgb_folder=f"drone_treated/WAP{wap}_tiles/rgb",
         dsm_folder=f"drone_treated/WAP{wap}_tiles/dsm",
-        out_folder=f"drone_treated/WAP{wap}_tiles/classification_no_chicouitai",
+        out_folder=f"drone_treated/WAP{wap}_tiles/classification_no_chicoutai",
         model_path=f"data/samples/selection14/model_wap32_no_chicoutai.joblib",  # Update to use the new model
         max_tiles=None,  # Process all tiles, or specify a number to limit
         size_patch=16,

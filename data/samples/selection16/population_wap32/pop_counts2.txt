@@ -1,0 +1,6 @@
+peat_pure_lichen: 286
+peat_green: 100
+peat_degraded_lichen: 148
+through_sphagnum: 27
+through_green: 7
+depression_peat: 1

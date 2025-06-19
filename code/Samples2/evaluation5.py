@@ -577,7 +577,7 @@ def main_prediction(out_folder, model_path):
     print("Prédictions effectuées.")
     
     # 8. Filtrage des samples isolés - activer le filtre
-    pred_map_filtered = pred_map#filter_isolated_samples(pred_map)
+    pred_map_filtered = filter_isolated_samples(pred_map)
     print("Samples isolés filtrés.")
 
     # 9. Créer la carte de classification
@@ -655,19 +655,20 @@ GROUPED_COLOR_DICT = {
 }
 
 if __name__ == "__main__":
-    out_folder = "data/samples/selection16/classifs/model_16_nopg1"
+    out_folder = "data/samples/selection16/classifs/model_16_7"
     grouped = False  # Changer à True pour utiliser les classes regroupées
+    if grouped : out_folder += "_grouped"
     
     if grouped:
         # Utiliser les classes regroupées avec 350 échantillons par classe
-        model_path = "data/samples/selection16/classifs/model_16_nopg1_grouped/model_16_nopg1_grouped.joblib"
-        out_suffix = "_grouped"
+        model_path = "data/samples/selection16/classifs/model_16_5_grouped/model_16_5_grouped.joblib"
+        out_suffix = "_grouped_filtered"
         # Utiliser les dictionnaires globaux définis en haut du fichier
         class_labels = GROUPED_CLASS_LABELS
         color_dict = GROUPED_COLOR_DICT
     else:
         # Utiliser les classes originales
-        model_path = "data/samples/selection16/classifs/model_16_nopg1/model_16_nopg1.joblib"
+        model_path = "data/samples/selection16/classifs/model_16_7/model_16_7.joblib"
         out_suffix = ""
         # Utiliser les dictionnaires globaux définis en haut du fichier
         class_labels = ORIGINAL_CLASS_LABELS

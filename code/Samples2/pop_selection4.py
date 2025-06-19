@@ -538,30 +538,30 @@ def pop_selection(x_start, y_start, n_samples_x, n_samples_y, size_patch, file_p
 
 
 if __name__ == "__main__":
-    wap = 32
+    wap = 23
     size_patch = 16
     distance_large = 3
 
-    n_samples_x = 12*3
-    n_samples_y = 12*3
+    n_samples_x = 12*4
+    n_samples_y = 12*4
     samples_plot_nb = 12
     default = None
-    x_start = 800
-    y_start = 4200
+    x_start = 1000
+    y_start = 1000
 
     # Chemins des rasters
-    nb = "07_04"
+    nb = "07_03"
     
     #WAP23
-    # ds_path = f"drone_treated/WAP{wap}_tiles/rgb/Wap{wap}_main_transparent_mosaic_group1_{nb}.tif"
-    # dz_path = f"drone_treated/WAP{wap}_tiles/dsm/Wap{wap}_main_dsm_{nb}.tif"
+    ds_path = f"drone_treated/WAP{wap}_tiles/rgb/Wap{wap}_main_transparent_mosaic_group1_{nb}.tif"
+    dz_path = f"drone_treated/WAP{wap}_tiles/dsm/Wap{wap}_main_dsm_{nb}.tif"
 
-    #WAP32
-    ds_path = f"drone_treated/WAP{wap}_tiles/rgb/WAP{wap}_full_transparent_mosaic_group1_{nb}.tif"
-    dz_path = f"drone_treated/WAP{wap}_tiles/dsm/WAP{wap}_full_dsm_{nb}.tif"
+    # #WAP32
+    # ds_path = f"drone_treated/WAP{wap}_tiles/rgb/WAP{wap}_full_transparent_mosaic_group1_{nb}.tif"
+    # dz_path = f"drone_treated/WAP{wap}_tiles/dsm/WAP{wap}_full_dsm_{nb}.tif"
     dt_path = None
     
-    save_dir = "data/samples/selection16/"
+    save_dir = "data/samples/selection16/population_wap23"
 
     # class_dict = {
     #     "l": "lichen",

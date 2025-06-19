@@ -23,6 +23,9 @@
 /**/*.pyc 
 /**/*.pdf 
 /**/*.vrt
+/**/*.qml
+/**/*.tfw 
+/**/*.pptx#
 
 /drone_treated/
 

@@ -1,0 +1,116 @@
+Accuracy: 0.8798185941043084
+Confusion matrix:
+ [[ 68  11  14   7]
+ [  4  74   1   2]
+ [  6   2  91   1]
+ [  2   3   0 155]]
+Classification report:
+                         precision    recall  f1-score   support
+
+  peat_degraded_lichen       0.85      0.68      0.76       100
+            peat_green       0.82      0.91      0.87        81
+      peat_pure_lichen       0.86      0.91      0.88       100
+through_and_depression       0.94      0.97      0.95       160
+
+              accuracy                           0.88       441
+             macro avg       0.87      0.87      0.86       441
+          weighted avg       0.88      0.88      0.88       441
+
+Features utilisées : ['r_mean', 'g_mean', 'b_mean', 'r_var', 'g_var', 'b_var', 'r_n_mean', 'g_n_mean', 'b_n_mean', 'r_large_mean', 'g_large_mean', 'b_large_mean', 'z_var', 'z_moins_z_n', 'z_moins_z_large']
+[0.08861894 0.08777417 0.19342861 0.03347179 0.04079807 0.04868581
+ 0.04042173 0.05334083 0.10598983 0.03699425 0.06663147 0.14372148
+ 0.01467734 0.01677482 0.02867087]
+
+
+ Fichiers trouvés dans data/samples/selection16/population_wap32 (46): ['data/samples/selection16/population_wap32/depression_fen_3.json', 'data/samples/selection16/population_wap32/through_sphagnum_4.json', 'data/samples/selection16/population_wap32/through_green_3.json', 'data/samples/selection16/population_wap32/depression_peat_1.json', 'data/samples/selection16/population_wap32/depression_green_1.json', 'data/samples/selection16/population_wap32/peat_pure_lichen_2.json', 'data/samples/selection16/population_wap32/peat_pure_lichen_3.json', 'data/samples/selection16/population_wap32/peat_degraded_lichen_5.json', 'data/samples/selection16/population_wap32/peat_green_1.json', 'data/samples/selection16/population_wap32/depression_fen_2.json', 'data/samples/selection16/population_wap32/depression_sphagnum_1.json', 'data/samples/selection16/population_wap32/peat_green_11.json', 'data/samples/selection16/population_wap32/depression_sphagnum_2.json', 'data/samples/selection16/population_wap32/through_dark_1.json', 'data/samples/selection16/population_wap32/depression_sphagnum_3.json', 'data/samples/selection16/population_wap32/peat_green_3.json', 'data/samples/selection16/population_wap32/peat_degraded_lichen_1.json', 'data/samples/selection16/population_wap32/peat_pure_lichen_1.json', 'data/samples/selection16/population_wap32/depression_water_1.json', 'data/samples/selection16/population_wap32/peat_degraded_lichen_3.json', 'data/samples/selection16/population_wap32/peat_pure_lichen_11.json', 'data/samples/selection16/population_wap32/depression_fen_1.json', 'data/samples/selection16/population_wap32/through_green_2.json', 'data/samples/selection16/population_wap32/depression_sphagnum_5.json', 'data/samples/selection16/population_wap32/depression_sphagnum_4.json', 'data/samples/selection16/population_wap32/peat_degraded_lichen_2.json', 'data/samples/selection16/population_wap32/depression_green_3.json', 'data/samples/selection16/population_wap32/peat_degraded_lichen_11.json', 'data/samples/selection16/population_wap32/through_sphagnum_2.json', 'data/samples/selection16/population_wap32/peat_pure_lichen_5.json', 'data/samples/selection16/population_wap32/peat_green_2.json', 'data/samples/selection16/population_wap32/depression_peat_2.json', 'data/samples/selection16/population_wap32/depression_green_2.json', 'data/samples/selection16/population_wap32/peat_pure_lichen_6.json', 'data/samples/selection16/population_wap32/peat_green_4.json', 'data/samples/selection16/population_wap32/through_sphagnum_11.json', 'data/samples/selection16/population_wap32/peat_degraded_lichen_6.json', 'data/samples/selection16/population_wap32/through_sphagnum_3.json', 'data/samples/selection16/population_wap32/depression_peat_4.json', 'data/samples/selection16/population_wap32/depression_peat_3.json', 'data/samples/selection16/population_wap32/depression_fen_4.json', 'data/samples/selection16/population_wap32/peat_degraded_lichen_4.json', 'data/samples/selection16/population_wap32/through_green_1.json', 'data/samples/selection16/population_wap32/depression_fen_21.json', 'data/samples/selection16/population_wap32/peat_pure_lichen_4.json', 'data/samples/selection16/population_wap32/through_sphagnum_1.json']
+Fichiers trouvés dans data/samples/selection16/population_wap23 (3): ['data/samples/selection16/population_wap23/peat_green_1.json', 'data/samples/selection16/population_wap23/peat_degraded_lichen_1.json', 'data/samples/selection16/population_wap23/peat_pure_lichen_1.json']
+Fichiers trouvés dans data/samples/selection16/population_13 (4): ['data/samples/selection16/population_13/dry_depression_3.json', 'data/samples/selection16/population_13/watered_depression_1.json', 'data/samples/selection16/population_13/watered_depression_2.json', 'data/samples/selection16/population_13/dry_depression_1.json']
+Retirés 100 premiers samples de depression_green_2.json
+Total de samples depuis data/samples/selection16/population_wap32: 7212
+Total de samples depuis data/samples/selection16/population_wap23: 419
+Limitation du nombre de samples de data/samples/selection16/population_13: 3214 -> 150
+Total de samples depuis data/samples/selection16/population_13: 150
+Aucune catégorie à exclure, conservation des 7781 samples
+
+Après exclusion de 'aucune catégorie':
+Population fusionnée: 7781 samples au total
+Répartition par catégorie:
+  - depression_fen: 1621 samples
+  - depression_green: 520 samples
+  - depression_peat: 669 samples
+  - depression_sphagnum: 284 samples
+  - depression_water: 870 samples
+  - dry_depression: 107 samples
+  - peat_degraded_lichen: 1058 samples
+  - peat_green: 402 samples
+  - peat_pure_lichen: 1441 samples
+  - through_dark: 37 samples
+  - through_green: 358 samples
+  - through_sphagnum: 371 samples
+  - watered_depression: 43 samples
+Catégorie 'depression_fen': 1621 → 400 samples (sélection aléatoire)
+Catégorie 'through_sphagnum': 371 samples (inchangé - moins que la limite)
+Catégorie 'through_green': 358 samples (inchangé - moins que la limite)
+Catégorie 'depression_peat': 669 → 400 samples (sélection aléatoire)
+Catégorie 'depression_green': 520 → 400 samples (sélection aléatoire)
+Catégorie 'peat_pure_lichen': 1441 → 400 samples (sélection aléatoire)
+Catégorie 'peat_degraded_lichen': 1058 → 400 samples (sélection aléatoire)
+Catégorie 'peat_green': 402 → 400 samples (sélection aléatoire)
+Catégorie 'depression_sphagnum': 284 samples (inchangé - moins que la limite)
+Catégorie 'through_dark': 37 samples (inchangé - moins que la limite)
+Catégorie 'depression_water': 870 → 400 samples (sélection aléatoire)
+Catégorie 'dry_depression': 107 samples (inchangé - moins que la limite)
+Catégorie 'watered_depression': 43 samples (inchangé - moins que la limite)
+
+Après équilibrage:
+Population équilibrée: 4000 samples au total
+Répartition par catégorie:
+  - depression_fen: 400 samples
+  - depression_green: 400 samples
+  - depression_peat: 400 samples
+  - depression_sphagnum: 284 samples
+  - depression_water: 400 samples
+  - dry_depression: 107 samples
+  - peat_degraded_lichen: 400 samples
+  - peat_green: 400 samples
+  - peat_pure_lichen: 400 samples
+  - through_dark: 37 samples
+  - through_green: 358 samples
+  - through_sphagnum: 371 samples
+  - watered_depression: 43 samples
+
+Population fusionnée sauvegardée dans data/samples/selection16/merged/merged_wap32_23_dd13.json
+Population équilibrée sauvegardée dans data/samples/selection16/merged/merged_balanced_wap32_23_dd13.json
+Chargement des échantillons depuis data/samples/selection16/merged/merged_wap32_23_dd13.json...
+Population initiale: 7781 échantillons au total
+Répartition initiale par catégorie:
+  - depression_fen: 1621 échantillons
+  - depression_green: 520 échantillons
+  - depression_peat: 669 échantillons
+  - depression_sphagnum: 284 échantillons
+  - depression_water: 870 échantillons
+  - dry_depression: 107 échantillons
+  - peat_degraded_lichen: 1058 échantillons
+  - peat_green: 402 échantillons
+  - peat_pure_lichen: 1441 échantillons
+  - through_dark: 37 échantillons
+  - through_green: 358 échantillons
+  - through_sphagnum: 371 échantillons
+  - watered_depression: 43 échantillons
+
+Équilibrage des catégories à 800 échantillons par catégorie...
+Catégorie 'through_and_depression': 4880 → 800 échantillons (sélection aléatoire)
+Catégorie 'peat_pure_lichen': 1441 → 800 échantillons (sélection aléatoire)
+Catégorie 'peat_degraded_lichen': 1058 → 800 échantillons (sélection aléatoire)
+Catégorie 'peat_green': 402 échantillons (inchangé - moins que la limite)
+
+Répartition finale des catégories:
+  - peat_degraded_lichen: 800 échantillons
+  - peat_green: 402 échantillons
+  - peat_pure_lichen: 800 échantillons
+  - through_and_depression: 800 échantillons
+Population finale: 2802 échantillons au total
+
+Population avec catégories fusionnées sauvegardée dans data/samples/selection16/merged/merged_balanced_grouped_wap32_23_dd13.json
+
+

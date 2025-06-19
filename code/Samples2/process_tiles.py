@@ -7,7 +7,7 @@ from osgeo import gdal
 from rasters_manager import RastersManager
 
 # Import necessary functions from evaluation5
-from evaluation5 import (
+from evaluation5_previous import (
     create_samples_and_compute,
     extract_features,
     filter_features,
@@ -313,33 +313,33 @@ def sort_tiles_by_coordinates(tiles_info):
     return sorted(tiles_info, key=get_sort_key)
 
 if __name__ == "__main__":
-    model = "model_all_samples"
+    model = "selection13/merged/model_wap_32_5"
 
-    # wap = 32
+    wap = 32
+    process_all_tiles(
+        rgb_folder=f"drone_treated/WAP{wap}_tiles/rgb",
+        dsm_folder=f"drone_treated/WAP{wap}_tiles/dsm",
+        out_folder=f"drone_treated/WAP{wap}_tiles/classification_5wd",
+        model_path=f"data/samples/selection13/merged/model_wap_32_5.joblib",  # Update to use the new model
+        max_tiles=None,  # Process all tiles, or specify a number to limit
+        size_patch=16,
+        # start_column="05", 
+        # start_row="05"   
+        nb_wap = wap
+    )
+
+    # wap = 23
     # process_all_tiles(
     #     rgb_folder=f"drone_treated/WAP{wap}_tiles/rgb",
     #     dsm_folder=f"drone_treated/WAP{wap}_tiles/dsm",
-    #     out_folder=f"drone_treated/WAP{wap}_tiles/classification_wap32_no_chicoutai",
-    #     model_path=f"data/samples/selection14/model_wap32_no_chicoutai.joblib",  # Update to use the new model
+    #     out_folder=f"drone_treated/WAP{wap}_tiles/classification_wap23_model_16_5",
+    #     model_path=f"data/samples/selection16/classifs/model_16_5_grouped/model_16_5_grouped.joblib",  # Update to use the new model
     #     max_tiles=None,  # Process all tiles, or specify a number to limit
     #     size_patch=16,
     #     # start_column="00", 
     #     # start_row="00"   
     #     nb_wap = wap
     # )
-
-    wap = 23
-    process_all_tiles(
-        rgb_folder=f"drone_treated/WAP{wap}_tiles/rgb",
-        dsm_folder=f"drone_treated/WAP{wap}_tiles/dsm",
-        out_folder=f"drone_treated/WAP{wap}_tiles/classification_all",
-        model_path=f"data/samples/selection15/{model}.joblib",  # Update to use the new model
-        max_tiles=None,  # Process all tiles, or specify a number to limit
-        size_patch=16,
-        # start_column="00", 
-        # start_row="00"   
-        nb_wap = wap
-    )
 
     # wap = 12
     # process_all_tiles(

@@ -1,0 +1,50 @@
+Accuracy: 0.8198347107438017
+Confusion matrix:
+ [[57  1  0  3  0  0  0  1  0  0]
+ [ 4 48  0  3  0  0  2  0  5  0]
+ [ 0  0 56  3  0  0  0  0  0  3]
+ [ 5  3  3 43  0  0  1  1  0  1]
+ [ 0  2  0  0 60  0  0  0  0  0]
+ [ 5  0  2  0  0 45  5  5  0  0]
+ [ 0  1  0  0  0  2 48  1  0  0]
+ [ 1  0  0  0  0  9  0 52  0  0]
+ [ 2  3  3  0  0  1  0  0 47  6]
+ [ 2  2  2 10  0  5  1  0  0 40]]
+Classification report:
+                       precision    recall  f1-score   support
+
+      depression_fen       0.75      0.92      0.83        62
+    depression_green       0.80      0.77      0.79        62
+     depression_peat       0.85      0.90      0.88        62
+ depression_sphagnum       0.69      0.75      0.72        57
+    depression_water       1.00      0.97      0.98        62
+peat_degraded_lichen       0.73      0.73      0.73        62
+          peat_green       0.84      0.92      0.88        52
+    peat_pure_lichen       0.87      0.84      0.85        62
+       through_green       0.90      0.76      0.82        62
+    through_sphagnum       0.80      0.65      0.71        62
+
+            accuracy                           0.82       605
+           macro avg       0.82      0.82      0.82       605
+        weighted avg       0.82      0.82      0.82       605
+
+Features utilisées : ['r_mean', 'g_mean', 'b_mean', 'r_var', 'g_var', 'b_var', 'r_n_mean', 'g_n_mean', 'b_n_mean', 'r_large_mean', 'g_large_mean', 'b_large_mean', 'z_var', 'z_moins_z_n', 'z_moins_z_large']
+[0.07348723 0.07983699 0.1183915  0.06771194 0.07373223 0.06591088
+ 0.06059946 0.06193641 0.08759403 0.06255437 0.07013585 0.07914326
+ 0.03822153 0.02598204 0.03476228]
+
+
+Après équilibrage:
+Population équilibrée: 3023 samples au total
+Répartition par catégorie:
+  - depression_fen: 310 samples
+  - depression_green: 310 samples
+  - depression_peat: 310 samples
+  - depression_sphagnum: 284 samples
+  - depression_water: 310 samples
+  - peat_degraded_lichen: 310 samples
+  - peat_green: 259 samples
+  - peat_pure_lichen: 310 samples
+  - through_green: 310 samples
+  - through_sphagnum: 310 samples
+  

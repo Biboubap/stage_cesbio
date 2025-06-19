@@ -23,7 +23,7 @@ from evaluation5 import (
 
 
 def process_all_tiles(rgb_folder, dsm_folder, out_folder, model_path, max_tiles=None, size_patch=16, 
-                     start_row=None, start_column=None, nb_wap=32):
+                     start_row=None, start_column=None, nb_wap=32, grouped=False):
     
     """
     Process all corresponding RGB and DSM tiles in the given folders.
@@ -36,7 +36,9 @@ def process_all_tiles(rgb_folder, dsm_folder, out_folder, model_path, max_tiles=
         max_tiles: Maximum number of tiles to process (None for all)
         size_patch: Size of the patch for classification
         start_x: Optional starting X coordinate (e.g., '09')
-        start_y: Optional starting Y coordinate (e.g., '04')
+        start_y: Optional starting Y coordinate (e.g., '09')
+        nb_wap: WAP number (32, 23, 12, or 99)
+        grouped: Whether to use grouped classes for prediction
     """
     start_y = start_column if start_column is not None else None
     start_x = start_row if start_row is not None else None
@@ -134,17 +136,14 @@ def process_all_tiles(rgb_folder, dsm_folder, out_folder, model_path, max_tiles=
             feature_names_model,
             x_start=0, 
             y_start=0,
-            size_patch=size_patch
+            size_patch=size_patch,
+            grouped=grouped  # Pass the grouped parameter
         ))
     ray.get(tiles)
 
 @ray.remote
 def process_single_tile(rgb_path, dsm_path, out_path, clf, feature_names_model, 
-                        x_start=0, y_start=0, x_end=None, y_end=None, size_patch=16):
-    ds = gdal.Open(rgb_path)
-    x_end = ds.RasterXSize
-    y_end = ds.RasterYSize
-    ds = None
+                        x_start=0, y_start=0, x_end=None, y_end=None, size_patch=16, grouped=False):
     """
     Process a single tile and save the classification result.
     
@@ -156,6 +155,7 @@ def process_single_tile(rgb_path, dsm_path, out_path, clf, feature_names_model,
         feature_names_model: List of feature names required by the model
         x_start, y_start, x_end, y_end: Boundaries for processing
         size_patch: Size of patches for classification
+        grouped: Whether to use grouped classes for prediction
     """
     # Set default bounds if not provided
     if x_end is None or y_end is None:
@@ -206,7 +206,7 @@ def process_single_tile(rgb_path, dsm_path, out_path, clf, feature_names_model,
     print("Running prediction...")
     pred_map = predict_samples_2(
         clf, features_filtered, positions, n_samples_x, n_samples_y, 
-        samples_set, mask=None, size_patch=size_patch
+        samples_set, mask=None, size_patch=size_patch, grouped=grouped
     )
     
     # Mark transparent (NaN) areas with class 0
@@ -218,7 +218,7 @@ def process_single_tile(rgb_path, dsm_path, out_path, clf, feature_names_model,
     
     # Apply filter to remove isolated samples
     print("Applying isolated samples filter...")
-    pred_map_filtered = pred_map#filter_isolated_samples(pred_map)
+    pred_map_filtered = filter_isolated_samples(pred_map)
     
     # Save classification result as TIF
     print(f"Saving classification to: {out_path}")
@@ -227,7 +227,8 @@ def process_single_tile(rgb_path, dsm_path, out_path, clf, feature_names_model,
         ref_tif_path=rgb_path,
         out_tif_path=out_path,
         size_patch=size_patch,
-        create_qml=False
+        create_qml=False,
+        grouped=grouped  # Pass the grouped parameter
     )
 
     rm = RastersManager()
@@ -313,59 +314,76 @@ def sort_tiles_by_coordinates(tiles_info):
 if __name__ == "__main__":
     ray.init()
     
-    model = "model_all_samples"
+    # # Using grouped classification for WAP32
+    # wap = 32
+    # process_all_tiles(
+    #     rgb_folder=f"drone_treated/WAP{wap}_tiles/rgb",
+    #     dsm_folder=f"drone_treated/WAP{wap}_tiles/dsm",
+    #     out_folder=f"drone_treated/WAP{wap}_tiles/classification_model_16_6_grouped",
+    #     model_path=f"data/samples/selection16/classifs/model_16_6_grouped/model_16_6_grouped.joblib",
+    #     max_tiles=10,  # Process all tiles, or specify a number to limit
+    #     size_patch=16,
+    #     start_column="07",
+    #     start_row="05",
+    #     nb_wap=wap,
+    #     grouped=True  # Use grouped classes
+    # )
 
+    # Using grouped classification for WAP32
     wap = 32
     process_all_tiles(
         rgb_folder=f"drone_treated/WAP{wap}_tiles/rgb",
         dsm_folder=f"drone_treated/WAP{wap}_tiles/dsm",
-        out_folder=f"drone_treated/WAP{wap}_tiles/classification_all",
-        model_path=f"data/samples/selection15/{model}.joblib",  # Update to use the new model
+        out_folder=f"drone_treated/WAP{wap}_tiles/classification_16_7",
+        model_path=f"data/samples/selection16/classifs/model_16_7/model_16_7.joblib",
         max_tiles=None,  # Process all tiles, or specify a number to limit
         size_patch=16,
-        start_column="07", 
-        start_row="09",
-        nb_wap = wap
+    
+        nb_wap=wap,
+        grouped=False  # Use grouped classes
     )
 
+
+
+
+    # # Using grouped classification for WAP23
     # wap = 23
     # process_all_tiles(
     #     rgb_folder=f"drone_treated/WAP{wap}_tiles/rgb",
     #     dsm_folder=f"drone_treated/WAP{wap}_tiles/dsm",
-    #     out_folder=f"drone_treated/WAP{wap}_tiles/classification_all",
-    #     model_path=f"data/samples/selection15/{model}.joblib",  # Update to use the new model
-    #     max_tiles=None,  # Process all tiles, or specify a number to limit
+    #     out_folder=f"drone_treated/WAP{wap}_tiles/classification_model_16_5_grouped",
+    #     model_path=f"data/samples/selection16/classifs/model_16_5_grouped/model_16_5_grouped.joblib",
+    #     max_tiles=None,
     #     size_patch=16,
-    #     # start_column="00", 
-    #     # start_row="00"   
-    #     nb_wap = wap
+    #     nb_wap=wap,
+    #     grouped=True  # Use grouped classes
     # )
 
+    # # For WAP12 (commented out)
     # wap = 12
     # process_all_tiles(
     #     rgb_folder=f"drone_treated/WAP{wap}_tiles/rgb",
     #     dsm_folder=f"drone_treated/WAP{wap}_tiles/dsm",
     #     out_folder=f"drone_treated/WAP{wap}_tiles/classification_wap32_5wd",
-    #         model_path="data/samples/selection13/merged/model_wap_32_5.joblib",  # Update to use the new model
-    #     max_tiles=None,  # Process all tiles, or specify a number to limit
+    #     model_path="data/samples/selection13/merged/model_wap_32_5.joblib",
+    #     max_tiles=None,
     #     size_patch=16,
-    #     # start_column="00", 
-    #     # start_row="00"   
-    #     nb_wap = wap
+    #     nb_wap=wap,
+    #     grouped=False  # Not using grouped classes
     # )
 
+    # # For WAP99 (commented out)
     # wap = 99
     # process_all_tiles(
     #     rgb_folder=f"drone_treated/WAP{wap}_tiles/rgb",
     #     dsm_folder=f"drone_treated/WAP{wap}_tiles/dsm",
     #     out_folder=f"drone_treated/WAP{wap}_tiles/classification_wap32_5wd",
-    #         model_path="data/samples/selection13/merged/model_wap_32_5.joblib",  # Update to use the new model
-    #     max_tiles=None,  # Process all tiles, or specify a number to limit
+    #     model_path="data/samples/selection13/merged/model_wap_32_5.joblib",
+    #     max_tiles=None,
     #     size_patch=16,
-    #     # start_column="00", 
-    #     # start_row="00"   
-    #     nb_wap = wap
+    #     nb_wap=wap,
+    #     grouped=False  # Not using grouped classes
     # )
 
 
-    
+

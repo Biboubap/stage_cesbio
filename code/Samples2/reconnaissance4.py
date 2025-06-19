@@ -85,12 +85,16 @@ def train_random_forest(features, labels, feature_names, test_size=0.2, random_s
     return clf, X_test, y_test, feature_names
 
 if __name__ == "__main__":
-    features, labels, feature_names = load_samples("data/samples/selection16/merged/merged_balanced300_wap32.json", exclude_temp=True)
+    features, labels, feature_names = load_samples("data/samples/selection16/merged/merged_balanced_wap32_23_ddwd13.json", exclude_temp=True)
     clf, X_test, y_test, feature_names = train_random_forest(features, labels, feature_names)
     # Sauvegarde du modèle
     import joblib
+    import os
     print(clf.feature_importances_)
-    joblib.dump({"model": clf, "feature_names": feature_names}, "data/samples/selection16/classifs/model_16_2/model_16_nopg1.joblib")
+    output_dir = "data/samples/selection16/classifs/model_16_7"
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir, exist_ok=True)
+    joblib.dump({"model": clf, "feature_names": feature_names}, f"{output_dir}/model_16_7.joblib")
 
 
 def grid_search_rf(features, labels, feature_names, test_size=0.3, random_state=42):

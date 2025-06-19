@@ -797,7 +797,7 @@ def merge_selection15(input_json, selection15_dir, output_json):
     
     return merged_data
 
-def merge_balance_selection16(input_dir, output_merged, output_balanced, category_to_remove="through_dark", balance_count=300):
+def merge_balance_selection16(input_dirs, output_merged, output_balanced, category_to_remove="through_dark", balance_count=300, dir_limits=None):
     """
     Merge toutes les populations de selection16, retire une catégorie spécifique,
     sauvegarde le résultat intermédiaire, puis équilibre les samples et sauvegarde
@@ -809,6 +809,7 @@ def merge_balance_selection16(input_dir, output_merged, output_balanced, categor
         output_balanced: Chemin où sauvegarder la population équilibrée
         category_to_remove: Catégorie à exclure (par défaut "through_dark")
         balance_count: Nombre de samples par catégorie après équilibrage
+        dir_limits: Dictionnaire optionnel avec {dir_path: max_samples} pour limiter des dossiers spécifiques
     """
     import os
     import glob
@@ -818,30 +819,50 @@ def merge_balance_selection16(input_dir, output_merged, output_balanced, categor
     os.makedirs(os.path.dirname(output_merged), exist_ok=True)
     os.makedirs(os.path.dirname(output_balanced), exist_ok=True)
     
-    # 1. Trouver tous les fichiers JSON dans le répertoire d'entrée
-    json_files = glob.glob(os.path.join(input_dir, "*.json"))
-    print(f"Fichiers trouvés ({len(json_files)}): {json_files}")
+    # Initialiser dir_limits si None
+    if dir_limits is None:
+        dir_limits = {}
     
+    # 1. Trouver tous les fichiers JSON dans le répertoire d'entrée
+    json_files_by_dir = {}
+    for input_dir in input_dirs:
+        if not os.path.exists(input_dir):
+            raise FileNotFoundError(f"Le répertoire {input_dir} n'existe pas.")
+        json_files = glob.glob(os.path.join(input_dir, "*.json"))
+        json_files_by_dir[input_dir] = json_files
+        print(f"Fichiers trouvés dans {input_dir} ({len(json_files)}): {json_files}")
+
     # 2. Fusionner tous les samples avec des traitements spécifiques
     all_samples = []
     
-    for path in json_files:
-        data = load_population(path)
-        samples = data.get("samples", [])
-        filename = os.path.basename(path)
+    for input_dir, json_files in json_files_by_dir.items():
+        dir_samples = []
         
-        # Traitement spécifique pour depression_green_2.json
-        if filename == "depression_green_2.json":
-            # Retirer les 100 premiers samples
-            if len(samples) > 100:
-                removed_count = min(100, len(samples))
-                samples = samples[100:]  # Garder seulement à partir du 101e sample
-                print(f"Retirés {removed_count} premiers samples de {filename}")
-            else:
-                samples = []  # Si moins de 100 samples, retirer tous les samples
-                print(f"Retirés tous les {len(samples)} samples de {filename} (moins de 100 samples)")
+        for path in json_files:
+            data = load_population(path)
+            samples = data.get("samples", [])
+            filename = os.path.basename(path)
+            
+            # Traitement spécifique pour depression_green_2.json
+            if filename == "depression_green_2.json":
+                # Retirer les 100 premiers samples
+                if len(samples) > 100:
+                    removed_count = min(100, len(samples))
+                    samples = samples[100:]  # Garder seulement à partir du 101e sample
+                    print(f"Retirés {removed_count} premiers samples de {filename}")
+                else:
+                    samples = []  # Si moins de 100 samples, retirer tous les samples
+                    print(f"Retirés tous les {len(samples)} samples de {filename} (moins de 100 samples)")
+            
+            dir_samples.extend(samples)
         
-        all_samples.extend(samples)
+        # Appliquer les limites par dossier si configurées
+        if input_dir in dir_limits and len(dir_samples) > dir_limits[input_dir]:
+            print(f"Limitation du nombre de samples de {input_dir}: {len(dir_samples)} -> {dir_limits[input_dir]}")
+            dir_samples = random.sample(dir_samples, dir_limits[input_dir])
+        
+        all_samples.extend(dir_samples)
+        print(f"Total de samples depuis {input_dir}: {len(dir_samples)}")
     
     # 3. Sauvegarder dans un fichier temporaire
     merged_data = {
@@ -852,7 +873,12 @@ def merge_balance_selection16(input_dir, output_merged, output_balanced, categor
     save_population(merged_data, output_merged + "_temp.json")
     
     # 4. Filtrer la catégorie à exclure
-    filtered_samples = [s for s in all_samples if s["category"] != category_to_remove]
+    if category_to_remove:
+        filtered_samples = [s for s in all_samples if s["category"] != category_to_remove]
+        print(f"Retrait de la catégorie '{category_to_remove}': {len(all_samples)} -> {len(filtered_samples)} samples")
+    else:
+        filtered_samples = all_samples
+        print(f"Aucune catégorie à exclure, conservation des {len(filtered_samples)} samples")
     
     # 5. Sauvegarder le résultat filtré
     filtered_data = {
@@ -864,7 +890,7 @@ def merge_balance_selection16(input_dir, output_merged, output_balanced, categor
     
     # Compter les samples par catégorie après filtrage
     filtered_counts = Counter([s["category"] for s in filtered_samples])
-    print(f"\nAprès exclusion de '{category_to_remove}':")
+    print(f"\nAprès exclusion de '{category_to_remove if category_to_remove else 'aucune catégorie'}':")
     print(f"Population fusionnée: {len(filtered_samples)} samples au total")
     print(f"Répartition par catégorie:")
     for cat, count in sorted(filtered_counts.items()):
@@ -950,7 +976,7 @@ def merge_categories_selection16(input_json, output_json, balance_count=None):
         "depression_water",
         "through_sphagnum",
         "through_green",
-        "depression_green"
+        "depression_green",
     ]
     
     target_category = "through_and_depression"
@@ -1020,27 +1046,35 @@ def merge_categories_selection16(input_json, output_json, balance_count=None):
 # Exemple d'utilisation :
 if __name__ == "__main__":
     # 1. Fusion des échantillons de selection16 et équilibrage
+    # Limiter population_13 à 100 samples
+    dir_limits = {
+        "data/samples/selection16/population_13": 150
+    }
+    
     merge_balance_selection16(
-        input_dir="data/samples/selection16/populations",
-        output_merged="data/samples/selection16/merged/merged_wap32.json",
-        output_balanced="data/samples/selection16/merged/merged_balanced300_wap32.json",
+        input_dirs=["data/samples/selection16/population_wap32",
+        "data/samples/selection16/population_wap23",
+        "data/samples/selection16/population_13"],
+        output_merged="data/samples/selection16/merged/merged_wap32_23_ddwd13.json",
+        output_balanced="data/samples/selection16/merged/merged_balanced_wap32_23_ddwd13.json",
         category_to_remove="through_dark",
-        balance_count=300
+        balance_count=400,
+        dir_limits=dir_limits
     )
     
-    # 2. Fusion des catégories dans les résultats (sans équilibrage supplémentaire)
-    merge_categories_selection16(
-        input_json="data/samples/selection16/merged/merged_wap32.json",
-        output_json="data/samples/selection16/merged/merged_wap32_grouped.json"
-    )
+    # # 2. Fusion des catégories dans les résultats (sans équilibrage supplémentaire)
+    # merge_categories_selection16(
+    #     input_json="data/samples/selection16/merged/merged_wap32_23.json",
+    #     output_json="data/samples/selection16/merged/merged_wap32_23_grouped.json"
+    # )
 
-    # 3. Fusion des catégories avec équilibrage à 400 échantillons par catégorie
-    merge_categories_selection16(
-        input_json="data/samples/selection16/merged/merged_wap32.json",
-        output_json="data/samples/selection16/merged/merged_wap32_grouped_balanced350.json",
-        balance_count=350
-    )
-    
-   
+    # # 3. Fusion des catégories avec équilibrage à 800 échantillons par catégorie
+    # merge_categories_selection16(
+    #     input_json="data/samples/selection16/merged/merged_wap32_23_dd13.json",
+    #     output_json="data/samples/selection16/merged/merged_balanced_grouped_wap32_23_dd13.json",
+    #     balance_count=800
+    # )
+
+
 
 
