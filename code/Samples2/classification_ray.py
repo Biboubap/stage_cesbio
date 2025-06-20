@@ -534,9 +534,42 @@ if __name__ == "__main__":
         out_folder=f"Konstantin/Chesnay_tiles/merged_classification",
         model1_path=model1_path,
         model2_path=model2_path,
-        max_tiles=None,  # Process all tiles
-        size_patch=8,
+        max_tiles=30,  # Process all tiles
+        size_patch=16,
     )
+
+    process_all_tiles(
+        rgb_folder=f"Konstantin/Chesnay_tiles/rgb",
+        dsm_folder=f"Konstantin/Chesnay_tiles/dsm",
+        out_folder=f"Konstantin/Chesnay_tiles/merged_classification",
+        model1_path=model1_path,
+        model2_path=model2_path,
+        max_tiles=30,  # Process all tiles
+        size_patch=16,
+    )
+    
+
+    process_all_tiles(
+        rgb_folder=f"Konstantin/Chesnay_tiles/rgb",
+        dsm_folder=f"Konstantin/Chesnay_tiles/dsm",
+        out_folder=f"Konstantin/Chesnay_tiles/merged_classification",
+        model1_path=model1_path,
+        model2_path=model2_path,
+        max_tiles=30,  # Process all tiles
+        size_patch=16,
+    )
+    
+
+    process_all_tiles(
+        rgb_folder=f"Konstantin/Chesnay_tiles/rgb",
+        dsm_folder=f"Konstantin/Chesnay_tiles/dsm",
+        out_folder=f"Konstantin/Chesnay_tiles/merged_classification",
+        model1_path=model1_path,
+        model2_path=model2_path,
+        max_tiles=30,  # Process all tiles
+        size_patch=16,
+    )
+    
     
     ray.shutdown()
 

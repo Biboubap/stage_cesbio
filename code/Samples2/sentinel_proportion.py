@@ -65,7 +65,7 @@ def sentinel_to_drone_bounds(col_s, row_s, sentinel_path, drone_path):
     
     return xmin, xmax, ymin, ymax
 
-def compute_class_proportions(classification_path, sentinel_path, output_csv, class_names=None):
+def compute_class_proportions(classification_path, sentinel_path, output_csv, class_names=None, through_class_names=None):
     """
     Compute the proportion of each class within each Sentinel-2 pixel.
     
@@ -90,6 +90,8 @@ def compute_class_proportions(classification_path, sentinel_path, output_csv, cl
             255: "nodata"
         }
     
+    if through_class_names is None:
+        through_class_names = ["sphaignes", "dry_depression", "black_depression", "watered_depression"]
     # Load rasters
     ds_class = gdal.Open(classification_path)
     ds_sent = gdal.Open(sentinel_path)
@@ -138,16 +140,11 @@ def compute_class_proportions(classification_path, sentinel_path, output_csv, cl
                 prop = count / valid_pixels if valid_pixels > 0 else 0
                 class_proportions[class_name] = prop
                 # Calculate square root for specific classes
-                if class_name in ["dry_depression", "sphaignes", "black_depression", "watered_depression"]:
+                if class_name in through_class_names:
                     class_proportions[f"sqrt_{class_name}"] = np.sqrt(prop) if prop > 0 else 0
 
             # Calculate through_proportion (sum of sphaignes, dry_depression, black_depression)
-            through_proportion = (
-                class_proportions.get("sphaignes", 0) + 
-                class_proportions.get("dry_depression", 0) + 
-                class_proportions.get("black_depression", 0) +
-                class_proportions.get("watered_depression", 0)
-            )
+            through_proportion = sum(class_proportions.get(name, 0) for name in through_class_names)
             class_proportions["through_proportion"] = through_proportion
             class_proportions["sqrt_through_proportion"] = np.sqrt(through_proportion) if through_proportion > 0 else 0
             
@@ -410,7 +407,7 @@ def plot_class_proportions(csv_path, output_dir, purcent_exclusion=0.05):
     
     print(f"Class proportion histograms saved in {output_dir}")
 
-def process_wap_data(wap_number, classification_path, output_dir=None, use_peat=True, superresolution=True, moy5m=True):
+def process_wap_data(wap_number, classification_path, output_dir=None, use_peat=True, superresolution=True, moy5m=True, class_names=None, through_class_names=None):
     """
     Process data for a specific WAP site.
     
@@ -455,7 +452,9 @@ def process_wap_data(wap_number, classification_path, output_dir=None, use_peat=
     compute_class_proportions(
         classification_path=classification_path,
         sentinel_path=sentinel_path,
-        output_csv=proportions_csv
+        output_csv=proportions_csv,
+        class_names=class_names, 
+        through_class_names=through_class_names
     )
     
     # Step 2: Filter by valid proportion
@@ -497,10 +496,23 @@ if __name__ == "__main__":
     moy5m_suffix = "_moy5m" if moy5m else ""
     
     # Base output directory without resolution suffix
-    base_output_dir = f"data/samples/selection15/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}"
+    base_output_dir = f"data/regressions/regression_merged_model/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}"
 
-    classification_path = f"drone_treated/WAP32_tiles/WAP32_classif_all{peat_suffix}.tif"
+    classification_path = f"drone_treated/WAP32_tiles/WAP32_classif_merged.tif"
 
+    class_labels = {
+        1: "Pure_Lichen",
+        2: "Degraded_Lichen",
+        3: "Green",
+        4: "Sphagnum",
+        5: "Depression",
+        6: "Water",
+        0: "No Data",
+        255: "No Data"
+    }
+
+    through_class_labels = ["Sphagnum", "Depression", "Water"]
+       
     print(f"Processing WAP{wap} data with {'peat' if use_peat else 'standard'} dataset at {resolution}m resolution...")
     process_wap_data(wap, classification_path=classification_path, output_dir=base_output_dir, 
-                   use_peat=use_peat, superresolution=superresolution, moy5m=moy5m)
+                   use_peat=use_peat, superresolution=superresolution, moy5m=moy5m, class_names=class_labels, through_class_names=through_class_labels)
