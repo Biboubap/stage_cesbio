@@ -19,13 +19,23 @@ gdalwarp drone_treated/WAP23_tiles/classification_wap32_5wd/*.tif drone_treated/
 gdalwarp drone_treated/WAP12_tiles/classification_wap32_5wd/*.tif drone_treated/WAP12_tiles/WAP32_classif_5wd.tif 
 gdalwarp drone_treated/WAP99_tiles/classification_wap32_5wd/*.tif drone_treated/WAP99_tiles/WAP32_classif_5wd.tif 
 
-mkdir -p Konstantin/Chesnay_tiles/rgb
+mkdir -p Konstantin/Chesnay_tiles_tiles/rgb
 mkdir -p Konstantin/Chesnay_tiles/dsm
 mkdir -p Konstantin/Chesnay_tiles/thermal
-gdal_retile.py -targetDir Konstantin/Chesnay_tiles/rgb -ps 4992 4992 -of GTiff Konstantin/UAV_Konstantin_Tabatha/Chesnay/ChesnayAugust2023_ortho_export_MonJun16161612078476.tif
+gdal_retile.py -targetDir Konstantin/Chesnay_tiles/rgb -ps 4992 4992 -of GTiff Konstantin/UAV_Konstantin_Tabatha/Chesnay/ChesnayAugust2023_ElevationToolbox_export_MonJun16161652839886_32615.tif
 gdal_retile.py -targetDir Konstantin/Chesnay_tiles/dsm -ps 4992 4992 -of GTiff Konstantin/UAV_Konstantin_Tabatha/Chesnay/Chesnay_DSM_Resampled.tif
 gdal_retile.py -targetDir Konstantin/Chesnay_tiles/thermal -ps 4992 4992 -of GTiff Konstantin/UAV_Konstantin_Tabatha/Chesnay/ChesnayAugust2023Thermal_RadiometricThermal_export_MonJun16174733351905_32615.tif
 gdalwarp Konstantin/Chesnay_tiles/merged_classification/*.tif Konstantin/Chesnay_tiles/merged_classification.tif
+
+
+mkdir -p Konstantin/Belcher_tiles/rgb
+mkdir -p Konstantin/Belcher_tiles/dsm
+# mkdir -p Konstantin/Belcher_tiles/thermal
+gdal_retile.py -targetDir Konstantin/Belcher_tiles/rgb -ps 4992 4992 -of GTiff Konstantin/UAV_Konstantin_Tabatha/Belcher/BelcherAugust2023_ortho_export_TueJun17212958144821_32615.tif
+gdal_retile.py -targetDir Konstantin/Belcher_tiles/dsm -ps 4992 4992 -of GTiff Konstantin/UAV_Konstantin_Tabatha/Belcher/Belcher_DSM_Resampled.tif
+# gdal_retile.py -targetDir Konstantin/Belcher_tiles/thermal -ps 4992 4992 -of GTiff Konstantin/UAV_Konstantin_Tabatha/Belcher/BelcherAugust2023Thermal_RadiometricThermal_export_MonJun16174733351905_32615.tif
+gdalwarp Konstantin/Belcher_tiles/merged_classification/*.tif Konstantin/Belcher_tiles/merged_classification.tif
+
 
 ## Créer le dossier de sortie s'il n'existe pas
 mkdir -p DataCubeS2/WAP32_10m/mediane_indices_10m/
