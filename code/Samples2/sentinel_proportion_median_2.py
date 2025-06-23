@@ -57,13 +57,13 @@ def create_balanced_dataset(input_csv, output_dir, target_col, n_bins=10, keep_z
     # Create bins of equal size
     bin_edges = [min_val + i * bin_width for i in range(n_bins + 1)]
     
-    # Plot histogram of original data
-    plt.figure(figsize=(12, 6))
-    plt.subplot(1, 2, 1)
-    df_clean[target_col].hist(bins=30)
-    plt.title(f'Original Distribution of {target_col}')
-    plt.xlabel('Value')
-    plt.ylabel('Count')
+    # # Plot histogram of original data
+    # plt.figure(figsize=(12, 6))
+    # plt.subplot(1, 2, 1)
+    # df_clean[target_col].hist(bins=30)
+    # plt.title(f'Original Distribution of {target_col}')
+    # plt.xlabel('Value')
+    # plt.ylabel('Count')
     
     # Create balanced dataset
     balanced_dfs = []
@@ -107,18 +107,18 @@ def create_balanced_dataset(input_csv, output_dir, target_col, n_bins=10, keep_z
     # Concatenate all bins
     balanced_df = pd.concat(final_dfs)
     
-    # Plot histogram of balanced data
-    plt.subplot(1, 2, 2)
-    balanced_df[target_col].hist(bins=30)
-    plt.title(f'Balanced Distribution of {target_col}')
-    plt.xlabel('Value')
-    plt.ylabel('Count')
-    plt.tight_layout()
+    # # Plot histogram of balanced data
+    # plt.subplot(1, 2, 2)
+    # balanced_df[target_col].hist(bins=30)
+    # plt.title(f'Balanced Distribution of {target_col}')
+    # plt.xlabel('Value')
+    # plt.ylabel('Count')
+    # plt.tight_layout()
     
-    # Save plot
-    plot_path = os.path.join(output_dir, f"distribution_{target_col.replace('/', '_')}.png")
-    plt.savefig(plot_path)
-    plt.close()
+    # # Save plot
+    # plot_path = os.path.join(output_dir, f"distribution_{target_col.replace('/', '_')}.png")
+    # plt.savefig(plot_path)
+    # plt.close()
     
     # Save balanced dataset
     balanced_df.to_csv(output_csv, index=False)
@@ -131,7 +131,7 @@ def process_wap_data(filtered_csv, output_dir):
     Process filtered data from sentinel_proportion.py to create five balanced datasets:
     1. Pure_Lichen
     2. Degraded_Lichen
-    3. Merged_Lichen (Pure_Lichen + Degraded_Lichen)
+    3. All_Lichen 
     4. Green
     5. Through proportion (without sqrt transform)
     
@@ -145,11 +145,6 @@ def process_wap_data(filtered_csv, output_dir):
     # Load the data
     df = pd.read_csv(filtered_csv)
     
-    # Create merged_lichen column (Pure_Lichen + Degraded_Lichen)
-    if 'Pure_Lichen' in df.columns and 'Degraded_Lichen' in df.columns:
-        df['Merged_Lichen'] = df['Pure_Lichen'] + df['Degraded_Lichen']
-        df.to_csv(filtered_csv, index=False)  # Save back to add the new column
-
     n_bins = 25
     
     # Process Pure_Lichen class
@@ -157,6 +152,15 @@ def process_wap_data(filtered_csv, output_dir):
         input_csv=filtered_csv,
         output_dir=output_dir,
         target_col='Pure_Lichen',
+        n_bins=n_bins,
+        keep_zero=True,
+        quantile=0.5
+    )
+
+    sqrt_pure_lichen_df = create_balanced_dataset(
+        input_csv=filtered_csv,
+        output_dir=output_dir,
+        target_col='sqrt_Pure_Lichen',
         n_bins=n_bins,
         keep_zero=True,
         quantile=0.5
@@ -171,22 +175,51 @@ def process_wap_data(filtered_csv, output_dir):
         keep_zero=True,
         quantile=0.6
     )
-    
-    # Process Merged_Lichen class (Pure_Lichen + Degraded_Lichen)
-    merged_lichen_df = create_balanced_dataset(
+
+    # Process Degraded_Lichen class
+    sqrt_degraded_lichen_df = create_balanced_dataset(
         input_csv=filtered_csv,
         output_dir=output_dir,
-        target_col='Merged_Lichen',
+        target_col='sqrt_Degraded_Lichen',
         n_bins=n_bins,
         keep_zero=True,
         quantile=0.6
     )
     
+    # Process Merged_Lichen class (Pure_Lichen + Degraded_Lichen)
+    merged_lichen_df = create_balanced_dataset(
+        input_csv=filtered_csv,
+        output_dir=output_dir,
+        target_col='all_lichen',
+        n_bins=n_bins,
+        keep_zero=True,
+        quantile=0.6
+    )
+    
+    # Process Merged_Lichen class (Pure_Lichen + Degraded_Lichen)
+    sqrt_merged_lichen_df = create_balanced_dataset(
+        input_csv=filtered_csv,
+        output_dir=output_dir,
+        target_col='sqrt_all_lichen',
+        n_bins=n_bins,
+        keep_zero=True,
+        quantile=0.6
+    )
+
     # Process Green class
     green_df = create_balanced_dataset(
         input_csv=filtered_csv,
         output_dir=output_dir,
         target_col='Green',
+        n_bins=n_bins,
+        keep_zero=True,
+        quantile=0.6
+    )
+    # Process Green class
+    sqrt_green_df = create_balanced_dataset(
+        input_csv=filtered_csv,
+        output_dir=output_dir,
+        target_col='sqrt_Green',
         n_bins=n_bins,
         keep_zero=True,
         quantile=0.6
@@ -201,94 +234,152 @@ def process_wap_data(filtered_csv, output_dir):
         keep_zero=True,
         quantile=0.5
     )
-    
+
+    # Process through_proportion (without sqrt transform)
+    sqrt_through_df = create_balanced_dataset(
+        input_csv=filtered_csv, 
+        output_dir=output_dir,
+        target_col='sqrt_through_proportion',
+        n_bins=n_bins,
+        keep_zero=True,
+        quantile=0.5
+    )
+
+    fixed_bins = np.linspace(0, 1, n_bins + 1)
     # Create summary plot with all distributions
-    plt.figure(figsize=(20, 8))
+    plt.figure(figsize=(25, 8))
     
     plt.subplot(1, 5, 1)
-    pure_lichen_df['Pure_Lichen'].hist(bins=n_bins)
+    pure_lichen_df['Pure_Lichen'].hist(bins=fixed_bins)
     plt.title('Balanced Pure_Lichen')
     plt.xlabel('Proportion')
     plt.ylabel('Count')
+    plt.xlim(0, 1)
     
     plt.subplot(1, 5, 2)
-    degraded_lichen_df['Degraded_Lichen'].hist(bins=n_bins)
+    degraded_lichen_df['Degraded_Lichen'].hist(bins=fixed_bins)
     plt.title('Balanced Degraded_Lichen')
     plt.xlabel('Proportion')
     plt.ylabel('Count')
+    plt.xlim(0, 1)
     
     plt.subplot(1, 5, 3)
-    merged_lichen_df['Merged_Lichen'].hist(bins=n_bins)
-    plt.title('Balanced Merged_Lichen')
-    plt.xlabel('Proportion')
-    plt.ylabel('Count')
-    
-    plt.subplot(1, 5, 4)
-    green_df['Green'].hist(bins=n_bins)
+    green_df['Green'].hist(bins=fixed_bins)
     plt.title('Balanced Green')
     plt.xlabel('Proportion')
     plt.ylabel('Count')
+    plt.xlim(0, 1)
+
+    plt.subplot(1, 5, 4)
+    merged_lichen_df['all_lichen'].hist(bins=fixed_bins)
+    plt.title('Balanced All Lichen Proportion')
+    plt.xlabel('Proportion')
+    plt.ylabel('Count')
+    plt.xlim(0, 1)
     
     plt.subplot(1, 5, 5)
-    through_df['through_proportion'].hist(bins=n_bins)
+    through_df['through_proportion'].hist(bins=fixed_bins)
     plt.title('Balanced Through Proportion')
     plt.xlabel('Proportion')
     plt.ylabel('Count')
+    plt.xlim(0, 1)
     
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, 'all_balanced_distributions.png'))
     plt.close()
+
+    #SQRT
+    plt.figure(figsize=(25, 8))
+
+    plt.subplot(1, 5, 1)
+    sqrt_pure_lichen_df['sqrt_Pure_Lichen'].hist(bins=fixed_bins)
+    plt.title('sqrt Balanced Pure_Lichen')
+    plt.xlabel('sqrt Proportion')
+    plt.ylabel('Count')
+    plt.xlim(0, 1)
     
-    # Create an analysis of the balanced datasets
-    summary = {
-        'Category': ['Pure_Lichen', 'Degraded_Lichen', 'Merged_Lichen', 'Green', 'Through'],
-        'Original Samples': [
-            len(df[df['Pure_Lichen'] > 0]),
-            len(df[df['Degraded_Lichen'] > 0]),
-            len(df[df['Merged_Lichen'] > 0]),
-            len(df[df['Green'] > 0]),
-            len(df[df['through_proportion'] > 0])
-        ],
-        'Balanced Samples': [
-            len(pure_lichen_df),
-            len(degraded_lichen_df),
-            len(merged_lichen_df),
-            len(green_df),
-            len(through_df)
-        ],
-        'Min Value': [
-            pure_lichen_df['Pure_Lichen'].min(),
-            degraded_lichen_df['Degraded_Lichen'].min(),
-            merged_lichen_df['Merged_Lichen'].min(),
-            green_df['Green'].min(),
-            through_df['through_proportion'].min()
-        ],
-        'Max Value': [
-            pure_lichen_df['Pure_Lichen'].max(),
-            degraded_lichen_df['Degraded_Lichen'].max(),
-            merged_lichen_df['Merged_Lichen'].max(),
-            green_df['Green'].max(),
-            through_df['through_proportion'].max()
-        ],
-        'Mean': [
-            pure_lichen_df['Pure_Lichen'].mean(),
-            degraded_lichen_df['Degraded_Lichen'].mean(),
-            merged_lichen_df['Merged_Lichen'].mean(),
-            green_df['Green'].mean(),
-            through_df['through_proportion'].mean()
-        ],
-        'Median': [
-            pure_lichen_df['Pure_Lichen'].median(),
-            degraded_lichen_df['Degraded_Lichen'].median(),
-            merged_lichen_df['Merged_Lichen'].median(),
-            green_df['Green'].median(),
-            through_df['through_proportion'].median()
-        ]
-    }
+    plt.subplot(1, 5, 2)
+    sqrt_degraded_lichen_df['sqrt_Degraded_Lichen'].hist(bins=fixed_bins)
+    plt.title('sqrt Balanced Degraded_Lichen')
+    plt.xlabel('sqrt Proportion')
+    plt.ylabel('Count')
+    plt.xlim(0, 1)
     
-    summary_df = pd.DataFrame(summary)
-    summary_df.to_csv(os.path.join(output_dir, 'balanced_datasets_summary.csv'), index=False)
-    print(f"Summary of balanced datasets saved to {os.path.join(output_dir, 'balanced_datasets_summary.csv')}")
+    plt.subplot(1, 5, 3)
+    sqrt_green_df['sqrt_Green'].hist(bins=fixed_bins)
+    plt.title('sqrt Balanced Green')
+    plt.xlabel('sqrt Proportion')
+    plt.ylabel('Count')
+    plt.xlim(0, 1)
+
+    plt.subplot(1, 5, 4)
+    sqrt_merged_lichen_df['sqrt_all_lichen'].hist(bins=fixed_bins)
+    plt.title('sqrt Balanced All Lichen')
+    plt.xlabel('sqrt Proportion')
+    plt.ylabel('Count')
+    plt.xlim(0, 1)
+    
+    plt.subplot(1, 5, 5)
+    sqrt_through_df['sqrt_through_proportion'].hist(bins=fixed_bins)
+    plt.title('sqrt Balanced Through')
+    plt.xlabel('sqrt Proportion')
+    plt.ylabel('Count')
+    plt.xlim(0, 1)
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'sqrt_all_balanced_distributions.png'))
+    plt.close()
+    
+    # # Create an analysis of the balanced datasets
+    # summary = {
+    #     'Category': ['Pure_Lichen', 'Degraded_Lichen', 'Merged_Lichen', 'Green', 'Through'],
+    #     'Original Samples': [
+    #         len(df[df['Pure_Lichen'] > 0]),
+    #         len(df[df['Degraded_Lichen'] > 0]),
+    #         len(df[df['Merged_Lichen'] > 0]),
+    #         len(df[df['Green'] > 0]),
+    #         len(df[df['through_proportion'] > 0])
+    #     ],
+    #     'Balanced Samples': [
+    #         len(pure_lichen_df),
+    #         len(degraded_lichen_df),
+    #         len(merged_lichen_df),
+    #         len(green_df),
+    #         len(through_df)
+    #     ],
+    #     'Min Value': [
+    #         pure_lichen_df['Pure_Lichen'].min(),
+    #         degraded_lichen_df['Degraded_Lichen'].min(),
+    #         merged_lichen_df['Merged_Lichen'].min(),
+    #         green_df['Green'].min(),
+    #         through_df['through_proportion'].min()
+    #     ],
+    #     'Max Value': [
+    #         pure_lichen_df['Pure_Lichen'].max(),
+    #         degraded_lichen_df['Degraded_Lichen'].max(),
+    #         merged_lichen_df['Merged_Lichen'].max(),
+    #         green_df['Green'].max(),
+    #         through_df['through_proportion'].max()
+    #     ],
+    #     'Mean': [
+    #         pure_lichen_df['Pure_Lichen'].mean(),
+    #         degraded_lichen_df['Degraded_Lichen'].mean(),
+    #         merged_lichen_df['Merged_Lichen'].mean(),
+    #         green_df['Green'].mean(),
+    #         through_df['through_proportion'].mean()
+    #     ],
+    #     'Median': [
+    #         pure_lichen_df['Pure_Lichen'].median(),
+    #         degraded_lichen_df['Degraded_Lichen'].median(),
+    #         merged_lichen_df['Merged_Lichen'].median(),
+    #         green_df['Green'].median(),
+    #         through_df['through_proportion'].median()
+    #     ]
+    # }
+    
+    # summary_df = pd.DataFrame(summary)
+    # summary_df.to_csv(os.path.join(output_dir, 'balanced_datasets_summary.csv'), index=False)
+    # print(f"Summary of balanced datasets saved to {os.path.join(output_dir, 'balanced_datasets_summary.csv')}")
     
     # Create a combined dataset containing all balanced samples
     print("Creating combined datasets...")
@@ -306,18 +397,18 @@ def process_wap_data(filtered_csv, output_dir):
     print(f"- Green samples: {len(green_df)}")
     print(f"- Through samples: {len(through_df)}")
     
-    # Add combined dataset to summary
-    summary['Category'].append('Combined (Unique)')
-    summary['Original Samples'].append(len(df))
-    summary['Balanced Samples'].append(len(combined_df))
-    summary['Min Value'].append(None)  # Not applicable
-    summary['Max Value'].append(None)  # Not applicable
-    summary['Mean'].append(None)       # Not applicable
-    summary['Median'].append(None)     # Not applicable
+    # # Add combined dataset to summary
+    # summary['Category'].append('Combined (Unique)')
+    # summary['Original Samples'].append(len(df))
+    # summary['Balanced Samples'].append(len(combined_df))
+    # summary['Min Value'].append(None)  # Not applicable
+    # summary['Max Value'].append(None)  # Not applicable
+    # summary['Mean'].append(None)       # Not applicable
+    # summary['Median'].append(None)     # Not applicable
     
-    # Update summary CSV
-    summary_df = pd.DataFrame(summary)
-    summary_df.to_csv(os.path.join(output_dir, 'balanced_datasets_summary.csv'), index=False)
+    # # Update summary CSV
+    # summary_df = pd.DataFrame(summary)
+    # summary_df.to_csv(os.path.join(output_dir, 'balanced_datasets_summary.csv'), index=False)
 
 def visualize_bins(input_csv, target_col, output_path, n_bins=10):
     """
@@ -387,35 +478,35 @@ if __name__ == "__main__":
     # Process data to create balanced datasets
     process_wap_data(filtered_csv, output_dir)
     
-    # Create additional visualization for bin distribution before balancing
-    visualize_bins(
-        input_csv=filtered_csv,
-        target_col='Pure_Lichen',
-        output_path=os.path.join(output_dir, 'pure_lichen_bins_distribution.png')
-    )
+    # # Create additional visualization for bin distribution before balancing
+    # visualize_bins(
+    #     input_csv=filtered_csv,
+    #     target_col='Pure_Lichen',
+    #     output_path=os.path.join(output_dir, 'pure_lichen_bins_distribution.png')
+    # )
     
-    visualize_bins(
-        input_csv=filtered_csv,
-        target_col='Degraded_Lichen',
-        output_path=os.path.join(output_dir, 'degraded_lichen_bins_distribution.png')
-    )
+    # visualize_bins(
+    #     input_csv=filtered_csv,
+    #     target_col='Degraded_Lichen',
+    #     output_path=os.path.join(output_dir, 'degraded_lichen_bins_distribution.png')
+    # )
     
-    visualize_bins(
-        input_csv=filtered_csv,
-        target_col='Merged_Lichen',
-        output_path=os.path.join(output_dir, 'merged_lichen_bins_distribution.png')
-    )
+    # visualize_bins(
+    #     input_csv=filtered_csv,
+    #     target_col='Merged_Lichen',
+    #     output_path=os.path.join(output_dir, 'merged_lichen_bins_distribution.png')
+    # )
     
-    visualize_bins(
-        input_csv=filtered_csv,
-        target_col='Green',
-        output_path=os.path.join(output_dir, 'green_bins_distribution.png')
-    )
+    # visualize_bins(
+    #     input_csv=filtered_csv,
+    #     target_col='Green',
+    #     output_path=os.path.join(output_dir, 'green_bins_distribution.png')
+    # )
     
-    visualize_bins(
-        input_csv=filtered_csv,
-        target_col='through_proportion',
-        output_path=os.path.join(output_dir, 'through_bins_distribution.png')
-    )
+    # visualize_bins(
+    #     input_csv=filtered_csv,
+    #     target_col='through_proportion',
+    #     output_path=os.path.join(output_dir, 'through_bins_distribution.png')
+    # )
     
    
