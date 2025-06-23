@@ -6,7 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import r2_score, mean_squared_error
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GridSearchCV
 from osgeo import gdal
 import glob
 import os
@@ -274,7 +274,174 @@ def save_models(models, feature_names, target_names, output_path):
     joblib.dump(model_data, output_path)
     print(f"Models saved to {output_path}")
 
-def run_all_regressions(data_dir, output_dir, wap_number=32, use_peat=False, superresolution=True, classes=None, moy5m=False):
+def perform_grid_search(X, y, target_class, param_grid=None, cv=5, scoring='r2'):
+    """
+    Perform grid search to find the best hyperparameters for a RandomForest model
+    for a specific target class.
+    
+    Args:
+        X: Features matrix
+        y: Target values
+        target_class: Name of the target class (for printing purposes)
+        param_grid: Grid of parameters to search
+        cv: Number of cross-validation folds
+        scoring: Scoring metric to use
+        
+    Returns:
+        best_model: The best model found
+        best_params: The best parameters found
+    """
+    if param_grid is None:
+        param_grid = {
+            'n_estimators': [100, 200],
+            'max_depth': [5, 10, 20, None],
+            'min_samples_split': [2, 5, 10],
+            'min_samples_leaf': [1, 5, 10],
+            'max_features': ['sqrt', 'log2']
+        }
+    
+    # Split the data for validation
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+    
+    # Create the model
+    rf = RandomForestRegressor(random_state=42, n_jobs=-1)
+    
+    # Create GridSearchCV object
+    print(f"\nStarting GridSearchCV for {target_class} with {cv}-fold cross-validation...")
+    print(f"Parameter grid: {param_grid}")
+    print(f"Scoring metric: {scoring}")
+    
+    grid_search = GridSearchCV(
+        estimator=rf,
+        param_grid=param_grid,
+        cv=cv,
+        scoring=scoring,
+        verbose=1,
+        return_train_score=True,
+        n_jobs=-1
+    )
+    
+    # Perform grid search
+    grid_search.fit(X_train, y_train)
+    
+    # Print results
+    print(f"\nGrid search completed for {target_class}")
+    print(f"Best parameters: {grid_search.best_params_}")
+    print(f"Best CV {scoring} score: {grid_search.best_score_:.3f}")
+    
+    # Get the best model and validate on the validation set
+    best_model = grid_search.best_estimator_
+    val_score = best_model.score(X_val, y_val)
+    val_pred = best_model.predict(X_val)
+    val_rmse = np.sqrt(mean_squared_error(y_val, val_pred))
+    val_pearson, _ = pearsonr(y_val, val_pred)
+    
+    print(f"Validation set R² score: {val_score:.3f}")
+    print(f"Validation set RMSE: {val_rmse:.3f}")
+    print(f"Validation set Pearson r: {val_pearson:.3f}")
+    
+    # Print detailed CV results for each parameter combination
+    print("\nDetailed cross-validation results:")
+    cv_results = pd.DataFrame(grid_search.cv_results_)
+    cv_results = cv_results.sort_values('rank_test_score')
+    
+    # Select only useful columns for display
+    display_columns = ['rank_test_score', 'mean_test_score', 'std_test_score', 
+                      'mean_train_score', 'std_train_score']
+    
+    # Add parameter columns
+    param_columns = [col for col in cv_results.columns if col.startswith('param_')]
+    display_columns = param_columns + display_columns
+    
+    # Display top 10 results
+    print(cv_results[display_columns].head(10))
+    
+    return best_model, grid_search.best_params_
+
+def run_grid_search_for_target(data_dir, output_dir, target_class, sentinel_features, feature_names, param_grid=None):
+    """
+    Run grid search for a specific target class
+    
+    Args:
+        data_dir: Directory containing the balanced data files
+        output_dir: Directory to save the output
+        target_class: Name of the target class to perform grid search on
+        sentinel_features: NumPy array of Sentinel features
+        feature_names: List of feature names
+        param_grid: Grid of parameters to search
+    
+    Returns:
+        best_model: The best model found
+        best_params: The best parameters found
+    """
+    # Create filename for the CSV
+    csv_file = f"balanced_{target_class}.csv"
+    csv_path = os.path.join(data_dir, csv_file)
+    
+    # Skip if file doesn't exist
+    if not os.path.exists(csv_path):
+        print(f"Warning: File {csv_path} does not exist, skipping {target_class}")
+        return None, None
+    
+    # Prepare data for regression - focusing only on the target class column
+    X, y, target_found = prepare_data_for_regression(
+        csv_path=csv_path,
+        sentinel_features=sentinel_features,
+        feature_names=feature_names,
+        target_class=target_class
+    )
+    
+    # Skip if target not found
+    if not target_found:
+        return None, None
+        
+    print(f"Starting grid search for {target_class}...")
+    
+    # Perform grid search
+    best_model, best_params = perform_grid_search(
+        X=X, 
+        y=y, 
+        target_class=target_class,
+        param_grid=param_grid
+    )
+    
+    # Create a safe filename version of the target class
+    safe_filename = target_class.replace('/', '_')
+    
+    # Save the best model
+    joblib.dump({
+        "model": best_model,
+        "feature_names": feature_names,
+        "target_name": target_class,
+        "best_params": best_params
+    }, os.path.join(output_dir, f"{safe_filename}_best_model.joblib"))
+    
+    print(f"Best model for {target_class} saved to {os.path.join(output_dir, f'{safe_filename}_best_model.joblib')}")
+    
+    # Save grid search results to text file
+    result_text_path = os.path.join(output_dir, f"grid_search_results_{safe_filename}.txt")
+    
+    # Get validation metrics from the perform_grid_search function
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+    val_score = best_model.score(X_val, y_val)
+    val_pred = best_model.predict(X_val)
+    val_rmse = np.sqrt(mean_squared_error(y_val, val_pred))
+    val_pearson, _ = pearsonr(y_val, val_pred)
+    
+    # Create the text file with results
+    with open(result_text_path, 'w') as f:
+        f.write(f"Grid search completed for {target_class}\n")
+        f.write(f"Best parameters: {best_params}\n")
+        f.write(f"Best CV r2 score: {best_model.score(X_train, y_train):.3f}\n")
+        f.write(f"Validation set R² score: {val_score:.3f}\n")
+        f.write(f"Validation set RMSE: {val_rmse:.3f}\n")
+        f.write(f"Validation set Pearson r: {val_pearson:.3f}\n")
+    
+    print(f"Grid search results saved to {result_text_path}")
+    
+    return best_model, best_params
+
+def run_all_regressions(data_dir, output_dir, wap_number=32, use_peat=False, superresolution=True, classes=None, moy5m=False, grid_search=False, grid_search_target=None):
     """
     Run individual regressions for each target class specified in the classes list
     
@@ -286,6 +453,8 @@ def run_all_regressions(data_dir, output_dir, wap_number=32, use_peat=False, sup
         superresolution: Whether to use 5m (True) or 10m (False) resolution data
         classes: List of target classes to perform regression on
         moy5m: Whether to use moy5m data
+        grid_search: Whether to perform grid search
+        grid_search_target: Specific target for grid search (None to use all classes)
     """
     print(f"Starting regression analysis for {len(classes)} individual classes: {classes}")
     
@@ -298,10 +467,8 @@ def run_all_regressions(data_dir, output_dir, wap_number=32, use_peat=False, sup
     resolution_suffix = "_10m" if not superresolution else ""
 
     # Define input paths
-   
     sentinel_bands_dir = f"DataCubeS2/WAP{wap_number}{peat_suffix}{resolution_suffix}/mediane_bands_10m/"
     sentinel_indices_dir = f"DataCubeS2/WAP{wap_number}{peat_suffix}{resolution_suffix}/mediane_indices_10m/"
-
     
     # 1. Load Sentinel features
     print("\n1. Loading Sentinel features...")
@@ -309,14 +476,80 @@ def run_all_regressions(data_dir, output_dir, wap_number=32, use_peat=False, sup
         indices_dir=sentinel_indices_dir, 
         bands_dir=sentinel_bands_dir
     )
-
     
+    # Check if grid search is requested for a specific target
+    if grid_search and grid_search_target:
+        # Create a grid search output directory
+        grid_search_dir = os.path.join(output_dir, "grid_search_results")
+        os.makedirs(grid_search_dir, exist_ok=True)
+        
+        print(f"\nRunning grid search for specific target: {grid_search_target}")
+        
+        param_grid = {
+            'n_estimators': [100, 200],
+            'max_depth': [5, 10, 20, None],
+            'min_samples_split': [2, 5, 10],
+            'min_samples_leaf': [1, 5, 10],
+            'max_features': ['sqrt', 'log2']
+        }
+        
+        best_model, best_params = run_grid_search_for_target(
+            data_dir=data_dir,
+            output_dir=grid_search_dir,
+            target_class=grid_search_target,
+            sentinel_features=sentinel_features,
+            feature_names=feature_names,
+            param_grid=param_grid
+        )
+        
+        # Early return if only grid search was requested
+        if grid_search_target not in classes:
+            print(f"Grid search completed for {grid_search_target}.")
+            return
+            
     # Results storage
     all_metrics = {}
     
     # 2. Process each target class in the list
     for target_class in classes:
         print(f"\n2. Processing {target_class} class...")
+        
+        # If grid search is requested for all classes
+        if grid_search and grid_search_target is None:
+            # Create a grid search output directory
+            grid_search_dir = os.path.join(output_dir, "grid_search_results")
+            os.makedirs(grid_search_dir, exist_ok=True)
+            
+            param_grid = {
+                'n_estimators': [100, 200],
+                'max_depth': [5, 10, 20, None],
+                'min_samples_split': [2, 5, 10],
+                'min_samples_leaf': [1, 5, 10],
+                'max_features': ['sqrt', "log2"]
+            }
+            
+            best_model, best_params = run_grid_search_for_target(
+                data_dir=data_dir,
+                output_dir=grid_search_dir,
+                target_class=target_class,
+                sentinel_features=sentinel_features,
+                feature_names=feature_names,
+                param_grid=param_grid
+            )
+            
+            # Use the best model for this target if found
+            rf_params = best_params if best_params else {}
+        else:
+            # Use default parameters if not doing grid search
+            rf_params = {
+                'n_estimators': 100,
+                'max_depth': 10,
+                'min_samples_leaf': 5,
+                'min_samples_split': 10,
+                'max_features': "sqrt",
+                'random_state': 42,
+                'n_jobs': -1
+            }
         
         # Create filename for the CSV
         csv_file = f"balanced_{target_class}.csv"
@@ -339,18 +572,10 @@ def run_all_regressions(data_dir, output_dir, wap_number=32, use_peat=False, sup
         if not target_found:
             continue
             
-        print(f"Training RandomForest model for {target_class}...")
+        print(f"Training RandomForest model for {target_class} with parameters: {rf_params}")
         
         # Train individual model for the specific target class
-        rf = RandomForestRegressor(
-            n_estimators=200,
-            min_samples_leaf=1,
-            min_samples_split=10,
-            random_state=42,
-            max_depth=10,
-            max_features="sqrt",
-            n_jobs=-1
-        )
+        rf = RandomForestRegressor(**rf_params)
         
         # Split the data
         X_train, X_test, y_train, y_test = train_test_split(
@@ -360,9 +585,12 @@ def run_all_regressions(data_dir, output_dir, wap_number=32, use_peat=False, sup
         # Train and predict
         rf.fit(X_train, y_train)
         y_pred = rf.predict(X_test)
-        
+        train_r2 = rf.score(X_train, y_train)
+        print(f"Training R² for {target_class}: {train_r2:.3f}")   
+
         # Calculate metrics
         r2 = r2_score(y_test, y_pred)
+        print(f"R² for {target_class}: {r2:.3f}")
         rmse = np.sqrt(mean_squared_error(y_test, y_pred))
         pearson_coef, _ = pearsonr(y_test, y_pred)
         
@@ -382,7 +610,8 @@ def run_all_regressions(data_dir, output_dir, wap_number=32, use_peat=False, sup
         joblib.dump({
             "model": rf,
             "feature_names": feature_names,
-            "target_name": target_class
+            "target_name": target_class,
+            "parameters": rf_params
         }, os.path.join(output_dir, f"{safe_filename}_rf.joblib"))
         
         # Create individual plot for this model
@@ -507,6 +736,19 @@ if __name__ == "__main__":
     data_dir = f"data/regressions/regression_merged_model/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}/balanced"
     output_dir = f"data/regressions/regression_merged_model/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}/regression_results"
     
+    # Check for grid search arguments
+    grid_search = True
+    grid_search_target = "through_proportion"
+    
+    # Parse command line arguments
+    if len(sys.argv) > 1 and sys.argv[1] == "--grid-search":
+        grid_search = True
+        if len(sys.argv) > 2:
+            grid_search_target = sys.argv[2]
+            print(f"Running grid search for specific target: {grid_search_target}")
+        else:
+            print("Running grid search for all targets")
+    
     # Run individual regressions for each class in the list
     run_all_regressions(
         data_dir=data_dir,
@@ -515,9 +757,11 @@ if __name__ == "__main__":
         use_peat=use_peat,
         superresolution=superresolution,
         classes=classes,
-        moy5m=moy5m
+        moy5m=moy5m,
+        grid_search=grid_search,
+        grid_search_target=grid_search_target
     )
 
     print("\nAll regression analyses completed successfully!")
     print(f"Results saved to {output_dir}")
-     
+
