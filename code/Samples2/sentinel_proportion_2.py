@@ -87,7 +87,6 @@ def compute_class_proportions(classification_path, sentinel_path, output_csv, cl
             6: "watered_depression",
             7: "black_depression",
             0: "none",
-            255: "nodata"
         }
     if through_class_names is None:
         through_class_names = ["sphaignes", "dry_depression", "black_depression", "watered_depression"]
@@ -126,14 +125,14 @@ def compute_class_proportions(classification_path, sentinel_path, output_csv, cl
                 continue
             
             # Count total valid pixels (non-nodata)
-            valid_pixels = np.sum((subclass != 255))
+            valid_pixels = np.sum((subclass != 0))
             if valid_pixels == 0:
                 continue
             
             # Compute proportions for each class
             class_proportions = {}
             for class_val, class_name in class_names.items():
-                if class_val == 255:  # Skip nodata
+                if class_val == 0:  # Skip nodata
                     continue
                 count = np.sum(subclass == class_val)
                 prop = count / valid_pixels if valid_pixels > 0 else 0
@@ -391,9 +390,10 @@ def process_wap_data(wap_number, classification_path, output_dir=None, use_peat=
     
     os.makedirs(output_dir, exist_ok=True)
     
-    sentinel_path = f"DataCubeS2/BandsS22023_WAP{wap_number}{peat_suffix}{resolution_suffix}/{mediane_dir}/{file_prefix}mediane_clipped_STACK_2023_BandB2_WAP{wap_number}_deflate.tif"
-    sentinel_bands_dir = f"DataCubeS2/BandsS22023_WAP{wap_number}{peat_suffix}{resolution_suffix}/{mediane_dir}"
-    sentinel_indices_dir = None #f"DataCubeS2/IndicesS22023_WAP{wap_number}{peat_suffix}{resolution_suffix}/{mediane_dir}"
+    sentinel_path = f"DataCubeS2/WAP{wap_number}{peat_suffix}{resolution_suffix}/mediane_bands_10m/{file_prefix}mediane_clipped_STACK_2023_BandB2_WAP{wap_number}_deflate.tif"
+    sentinel_bands_dir = f"DataCubeS2/WAP{wap_number}{peat_suffix}{resolution_suffix}/mediane_bands_10m/"
+    sentinel_indices_dir = f"DataCubeS2/WAP{wap_number}{peat_suffix}{resolution_suffix}/mediane_indices_10m/"
+
 
     # Output paths
     proportions_csv = os.path.join(output_dir, f"class_proportions_WAP{wap_number}.csv")
@@ -419,14 +419,14 @@ def process_wap_data(wap_number, classification_path, output_dir=None, use_peat=
         min_valid_proportion=0.95  # Keep pixels with at least 95% valid data
     )
     
-    # Step 3: Extract Sentinel band and index values
-    print(f"Extracting Sentinel band and index values...")
-    extract_sentinel_values(
-        sentinel_bands_dir=sentinel_bands_dir,
-        sentinel_indices_dir=sentinel_indices_dir,
-        proportions_csv=filtered_csv,
-        output_csv=merged_csv
-    )
+    # # Step 3: Extract Sentinel band and index values
+    # print(f"Extracting Sentinel band and index values...")
+    # extract_sentinel_values(
+    #     sentinel_bands_dir=sentinel_bands_dir,
+    #     sentinel_indices_dir=sentinel_indices_dir,
+    #     proportions_csv=filtered_csv,
+    #     output_csv=merged_csv
+    # )
     
     # Step 4: Create plots
     print(f"Creating plots...")
@@ -462,7 +462,6 @@ if __name__ == "__main__":
         5: "Depression",
         6: "Water",
         0: "No Data",
-        255: "No Data"
     }
 
     through_class_labels = ["Sphagnum", "Depression", "Water"]
