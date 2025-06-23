@@ -60,12 +60,25 @@ def process_all_tiles(rgb_folder, dsm_folder, out_folder, model1_path, model2_pa
         if match:
             x_coord, y_coord = match.groups()
             
-            # Look for any DSM file with the same coordinates
-            dsm_pattern = f'*_{x_coord}_{y_coord}.tif'
-            dsm_matches = glob.glob(os.path.join(dsm_folder, dsm_pattern))
+            # Convert to integers (to remove leading zeros)
+            x_coord_int = int(x_coord)
+            y_coord_int = int(y_coord)
             
-            if dsm_matches:
-                dsm_file = dsm_matches[0]  # Take the first match if multiple exist
+            # Look for DSM files with various formats (with or without leading zeros)
+            dsm_patterns = [
+                f'*_{x_coord}_{y_coord}.tif',          # Orirgb_patternginal format
+                f'*_{x_coord_int:02d}_{y_coord_int:02d}.tif'  # With leading zeros (2 digits)
+            ]
+            
+            # Try each pattern
+            dsm_file = None
+            for pattern in dsm_patterns:
+                dsm_matches = glob.glob(os.path.join(dsm_folder, pattern))
+                if dsm_matches:
+                    dsm_file = dsm_matches[0]  # Take the first match if multiple exist
+                    break
+            
+            if dsm_file:
                 out_file = os.path.join(out_folder, f"merged_classif_{x_coord}_{y_coord}.tif")
                 tiles_info.append((rgb_file, dsm_file, out_file, x_coord, y_coord))
             else:
@@ -133,7 +146,7 @@ def process_all_tiles(rgb_folder, dsm_folder, out_folder, model1_path, model2_pa
     create_qgis_colormap(qml_path)
     print(f"Created a single QML file at {qml_path} for all processed tiles")
 
-@ray.remote
+@ray.remote(num_cpus=1, memory=1 * 1024 * 1024 * 1024)  
 def process_single_tile(rgb_path, dsm_path, out_path, model1, model2, feature_names_model1, feature_names_model2,
                         x_start=0, y_start=0, x_end=None, y_end=None, size_patch=16):
     """
@@ -519,59 +532,86 @@ def sort_tiles_by_coordinates(tiles_info):
     return sorted(tiles_info, key=get_sort_key)
 
 if __name__ == "__main__":
-    ray.init(dashboard_host="127.0.0.1")
-    
-    
+    import psutil
+        # Calculer des limites raisonnables pour Ray
+    num_cpus = max(1, psutil.cpu_count() - 2)  # Laisser au moins 1 CPU pour le système
+    mem_bytes = psutil.virtual_memory().available
+    mem_gb = mem_bytes / (1024**3)
+    max_memory_gb = max(1, int(mem_gb * 0.7))  # Utiliser 70% de la mémoire disponible
+
+    print(f"Initialisation de Ray avec {num_cpus} CPUs et {max_memory_gb} GB de mémoire max")
+
+    # Initialiser Ray avec des limites explicites
+    ray.init(
+        num_cpus=num_cpus,
+        _memory=max_memory_gb * 1024 * 1024 * 1024,  # Convertir en bytes
+        include_dashboard=False,  # Désactiver le dashboard pour réduire la consommation
+        local_mode=False  # Mettre à False pour activer le parallélisme
+    )
+        
     # Path to model 1 (no_chicoutai)
     model1_path = "data/samples/selection14/model_wap32_no_chicoutai.joblib"
     
     # Path to model 2 (16_7)
     model2_path = "data/samples/selection16/classifs/model_16_7/model_16_7.joblib"
     
-    process_all_tiles(
-        rgb_folder=f"Konstantin/Chesnay_tiles/rgb",
-        dsm_folder=f"Konstantin/Chesnay_tiles/dsm",
-        out_folder=f"Konstantin/Chesnay_tiles/merged_classification",
-        model1_path=model1_path,
-        model2_path=model2_path,
-        max_tiles=30,  # Process all tiles
-        size_patch=16,
-    )
+    # process_all_tiles(
+    #     rgb_folder=f"Konstantin/Chesnay_tiles/rgb",
+    #     dsm_folder=f"Konstantin/Chesnay_tiles/dsm",
+    #     out_folder=f"Konstantin/Chesnay_tiles/merged_classification_8",
+    #     model1_path=model1_path,
+    #     model2_path=model2_path,
+    #     max_tiles=2,  # Process all tiles
+    #     size_patch=8,
+    # )
+
+    # process_all_tiles(
+    #     rgb_folder=f"Konstantin/Chesnay_tiles/rgb",
+    #     dsm_folder=f"Konstantin/Chesnay_tiles/dsm",
+    #     out_folder=f"Konstantin/Chesnay_tiles/merged_classification_16",
+    #     model1_path=model1_path,
+    #     model2_path=model2_path,
+    #     max_tiles=2,  # Process all tiles
+    #     size_patch=16,
+    # )
+
 
     process_all_tiles(
-        rgb_folder=f"Konstantin/Chesnay_tiles/rgb",
-        dsm_folder=f"Konstantin/Chesnay_tiles/dsm",
-        out_folder=f"Konstantin/Chesnay_tiles/merged_classification",
+        rgb_folder=f"Konstantin/Belcher_tiles/rgb",
+        dsm_folder=f"Konstantin/Belcher_tiles/dsm",
+        out_folder=f"Konstantin/Belcher_tiles/merged_classification_8",
         model1_path=model1_path,
         model2_path=model2_path,
-        max_tiles=30,  # Process all tiles
-        size_patch=16,
+        max_tiles=2,  # Process all tiles
+        size_patch=8,
     )
-    
 
+    wap = 12
     process_all_tiles(
-        rgb_folder=f"Konstantin/Chesnay_tiles/rgb",
-        dsm_folder=f"Konstantin/Chesnay_tiles/dsm",
-        out_folder=f"Konstantin/Chesnay_tiles/merged_classification",
+        rgb_folder=f"drone_treated/WAP{wap}_tiles/rgb",
+        dsm_folder=f"drone_treated/WAP{wap}_tiles/dsm",
+        out_folder=f"drone_treated/WAP{wap}_tiles/merged_classification",
         model1_path=model1_path,
         model2_path=model2_path,
-        max_tiles=30,  # Process all tiles
+        max_tiles=None,  # Process all tiles
         size_patch=16,
     )
-    
+   
+    # wap = 23
+    # process_all_tiles(
+    #     rgb_folder=f"drone_treated/WAP{wap}_tiles/rgb",
+    #     dsm_folder=f"drone_treated/WAP{wap}_tiles/dsm",
+    #     out_folder=f"drone_treated/WAP{wap}_tiles/merged_classification",
+    #     model1_path=model1_path,
+    #     model2_path=model2_path,
+    #     max_tiles=None,  # Process all tiles
+    #     size_patch=16,
+    # )
 
-    process_all_tiles(
-        rgb_folder=f"Konstantin/Chesnay_tiles/rgb",
-        dsm_folder=f"Konstantin/Chesnay_tiles/dsm",
-        out_folder=f"Konstantin/Chesnay_tiles/merged_classification",
-        model1_path=model1_path,
-        model2_path=model2_path,
-        max_tiles=30,  # Process all tiles
-        size_patch=16,
-    )
+     # For WAP12 (commented out)
     
     
-    ray.shutdown()
+    # ray.shutdown()
 
 
 
