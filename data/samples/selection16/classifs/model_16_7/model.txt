@@ -85,3 +85,6 @@ Population fusionnée sauvegardée dans data/samples/selection16/merged/merged_w
 Population équilibrée sauvegardée dans data/samples/selection16/merged/merged_balanced_wap32_23_ddwd13.json
 
 
+Accuracy: 0.826
+3813 samples 
+~400 / category

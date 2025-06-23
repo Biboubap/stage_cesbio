@@ -31,3 +31,8 @@ Filtered distribution by category:
   - lichen: 2000 samples
   - sphaignes: 2000 samples
   - watered_depression: 2000 samples
+
+
+Accuracy: 0.960
+11615 samples
+~ 2000 / category
