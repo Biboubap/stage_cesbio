@@ -301,7 +301,7 @@ def perform_grid_search(X, y, target_class, param_grid=None, cv=5, scoring='r2')
         }
     
     # Split the data for validation
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.3, random_state=42)
     
     # Create the model
     rf = RandomForestRegressor(random_state=42, n_jobs=-1)
@@ -422,7 +422,7 @@ def run_grid_search_for_target(data_dir, output_dir, target_class, sentinel_feat
     result_text_path = os.path.join(output_dir, f"grid_search_results_{safe_filename}.txt")
     
     # Get validation metrics from the perform_grid_search function
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.3, random_state=42)
     val_score = best_model.score(X_val, y_val)
     val_pred = best_model.predict(X_val)
     val_rmse = np.sqrt(mean_squared_error(y_val, val_pred))
@@ -731,14 +731,14 @@ if __name__ == "__main__":
     moy5m_suffix = "_moy5m" if moy5m else ""
 
     # Define the list of classes for regression
-    classes = ["sqrt_Pure_Lichen", "sqrt_Degraded_Lichen", "sqrt_Green", "sqrt_all_lichen", "through_proportion"]
+    classes = ["sqrt_Pure_Lichen", "sqrt_Degraded_Lichen", "sqrt_Green", "sqrt_all_lichen", "sqrt_through_proportion"]
 
     data_dir = f"data/regressions/regression_merged_model/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}/balanced"
-    output_dir = f"data/regressions/regression_merged_model/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}/regression_results"
+    output_dir = f"data/regressions/regression_merged_model/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}/regression_results_gridsearch"
     
     # Check for grid search arguments
     grid_search = True
-    grid_search_target = "through_proportion"
+    grid_search_target = "sqrt_all_lichen"
     
     # Parse command line arguments
     if len(sys.argv) > 1 and sys.argv[1] == "--grid-search":
