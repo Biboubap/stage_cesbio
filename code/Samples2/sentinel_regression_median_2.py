@@ -607,12 +607,15 @@ def create_comparative_plots(all_results, output_dir):
     # Save as CSV
     metrics_df.to_csv(os.path.join(output_dir, "performance_metrics_summary.csv"), index=False)
     
+    # Sort by R² (for consistent ordering in both plots)
+    metrics_df_sorted = metrics_df.sort_values('R²', ascending=False)
+    consistent_order = metrics_df_sorted['Target'].tolist()
+    
     # Create a bar plot comparing R² values
     plt.figure(figsize=(12, 7))
     
-    # Create bars sorted by R² value
-    metrics_df_sorted = metrics_df.sort_values('R²', ascending=False)
-    bars = plt.bar(metrics_df_sorted['Target'], metrics_df_sorted['R²'], color='steelblue')
+    # Use consistent order for both plots
+    bars = plt.bar(consistent_order, metrics_df_sorted['R²'], color='steelblue')
     
     # Add labels and title
     plt.xlabel('Target Class')
@@ -631,12 +634,14 @@ def create_comparative_plots(all_results, output_dir):
     plt.savefig(os.path.join(output_dir, "performance_summary.png"), dpi=300)
     plt.close()
     
-    # Create RMSE comparison
+    # Create RMSE comparison using the same order as R² plot
     plt.figure(figsize=(12, 7))
     
-    # Create bars sorted by RMSE (lower is better)
-    metrics_df_sorted = metrics_df.sort_values('RMSE')
-    bars = plt.bar(metrics_df_sorted['Target'], metrics_df_sorted['RMSE'], color='lightcoral')
+    # Reindex the dataframe to match the consistent order
+    metrics_for_rmse = metrics_df.set_index('Target').loc[consistent_order].reset_index()
+    
+    # Create bars with the same order as R² plot
+    bars = plt.bar(metrics_for_rmse['Target'], metrics_for_rmse['RMSE'], color='lightcoral')
     
     # Add labels and title
     plt.xlabel('Target Class')
@@ -1022,6 +1027,8 @@ def cross_validation(data_dir, output_dir, wap_number=32, use_peat=False, superr
                 entry['Std Non-sqrt R²'] = np.std(cv_results[target_class]['nonsqrt_metrics']['r2_values'])
                 entry['Avg Non-sqrt RMSE'] = cv_results[target_class]['nonsqrt_metrics']['avg_rmse']
                 entry['Std Non-sqrt RMSE'] = np.std(cv_results[target_class]['nonsqrt_metrics']['rmse_values'])
+                entry['Avg Non-sqrt Pearson r'] = cv_results[target_class]['nonsqrt_metrics']['avg_pearson']
+                entry['Std Non-sqrt Pearson r'] = np.std(cv_results[target_class]['nonsqrt_metrics']['pearson_values'])
             
             combined_metrics.append(entry)
     
@@ -1031,14 +1038,14 @@ def cross_validation(data_dir, output_dir, wap_number=32, use_peat=False, superr
     
     # Create comparative plots based on the CV results
     if len(cv_results) > 0:
-        # Create R² comparison plot
-        plt.figure(figsize=(12, 7))
-        
-        # Sort targets by average R²
+        # Sort targets by average R² for consistent ordering across all plots
         sorted_targets = sorted(cv_results.keys(), key=lambda x: cv_results[x]['avg_r2'], reverse=True)
         
-        # Calculate positions for the bars
+        # Create position indices for the bars
         x = np.arange(len(sorted_targets))
+        
+        # ---------- 1. R² comparison plot for sqrt values ----------
+        plt.figure(figsize=(12, 7))
         
         # Plot R² bars with error bars
         r2_values = [cv_results[target]['avg_r2'] for target in sorted_targets]
@@ -1049,7 +1056,7 @@ def cross_validation(data_dir, output_dir, wap_number=32, use_peat=False, superr
         # Add labels and title
         plt.xlabel('Target Class')
         plt.ylabel('R² Score')
-        plt.title(f'Model Performance (R²) with {n_folds}-fold CV')
+        plt.title(f'Model Performance (sqrt-transformed R²) with {n_folds}-fold CV')
         plt.xticks(x, sorted_targets, rotation=45, ha='right')
         plt.grid(axis='y', alpha=0.3)
         
@@ -1060,29 +1067,23 @@ def cross_validation(data_dir, output_dir, wap_number=32, use_peat=False, superr
                      f'{val:.3f}±{err:.3f}', ha='center', va='bottom')
         
         plt.tight_layout()
-        plt.savefig(os.path.join(cv_output_dir, "cv_performance_summary.png"), dpi=300)
+        plt.savefig(os.path.join(cv_output_dir, "cv_sqrt_r2_summary.png"), dpi=300)
         plt.close()
         
-        # Create RMSE comparison plot
+        # ---------- 2. RMSE comparison plot for sqrt values ----------
         plt.figure(figsize=(12, 7))
         
-        # Sort targets by average RMSE (lower is better)
-        sorted_targets_rmse = sorted(cv_results.keys(), key=lambda x: cv_results[x]['avg_rmse'])
-        
-        # Calculate positions for the bars
-        x = np.arange(len(sorted_targets_rmse))
-        
-        # Plot RMSE bars with error bars
-        rmse_values = [cv_results[target]['avg_rmse'] for target in sorted_targets_rmse]
-        rmse_errors = [np.std(cv_results[target]['rmse_values']) for target in sorted_targets_rmse]
+        # Use the same order as R² plot
+        rmse_values = [cv_results[target]['avg_rmse'] for target in sorted_targets]
+        rmse_errors = [np.std(cv_results[target]['rmse_values']) for target in sorted_targets]
         
         bars = plt.bar(x, rmse_values, yerr=rmse_errors, capsize=5, color='lightcoral')
         
         # Add labels and title
         plt.xlabel('Target Class')
         plt.ylabel('RMSE')
-        plt.title(f'Model Performance (RMSE) with {n_folds}-fold CV')
-        plt.xticks(x, sorted_targets_rmse, rotation=45, ha='right')
+        plt.title(f'Model Performance (sqrt-transformed RMSE) with {n_folds}-fold CV')
+        plt.xticks(x, sorted_targets, rotation=45, ha='right')
         plt.grid(axis='y', alpha=0.3)
         
         # Add value labels on bars
@@ -1092,37 +1093,137 @@ def cross_validation(data_dir, output_dir, wap_number=32, use_peat=False, superr
                      f'{val:.3f}±{err:.3f}', ha='center', va='bottom')
         
         plt.tight_layout()
-        plt.savefig(os.path.join(cv_output_dir, "cv_rmse_summary.png"), dpi=300)
+        plt.savefig(os.path.join(cv_output_dir, "cv_sqrt_rmse_summary.png"), dpi=300)
         plt.close()
         
-        # Create comparison plot for sqrt vs. non-sqrt classes (if any)
-        sqrt_classes = [c for c in cv_results.keys() if c.startswith('sqrt_') and cv_results[c]['nonsqrt_metrics']]
+        # ---------- 3. Pearson R comparison plot for sqrt values ----------
+        plt.figure(figsize=(12, 7))
+        
+        # Use the same order as R² plot
+        pearson_values = [cv_results[target]['avg_pearson'] for target in sorted_targets]
+        pearson_errors = [np.std(cv_results[target]['pearson_values']) for target in sorted_targets]
+        
+        bars = plt.bar(x, pearson_values, yerr=pearson_errors, capsize=5, color='mediumseagreen')
+        
+        # Add labels and title
+        plt.xlabel('Target Class')
+        plt.ylabel('Pearson r')
+        plt.title(f'Model Performance (sqrt-transformed Pearson r) with {n_folds}-fold CV')
+        plt.xticks(x, sorted_targets, rotation=45, ha='right')
+        plt.grid(axis='y', alpha=0.3)
+        
+        # Add value labels on bars
+        for bar, val, err in zip(bars, pearson_values, pearson_errors):
+            height = bar.get_height()
+            plt.text(bar.get_x() + bar.get_width()/2., height + 0.01,
+                     f'{val:.3f}±{err:.3f}', ha='center', va='bottom')
+        
+        plt.tight_layout()
+        plt.savefig(os.path.join(cv_output_dir, "cv_sqrt_pearson_summary.png"), dpi=300)
+        plt.close()
+        
+        # Now create plots for the non-sqrt (original scale) metrics
+        # Only include classes with sqrt_ prefix that have nonsqrt metrics
+        sqrt_classes = [c for c in sorted_targets if c.startswith('sqrt_') and cv_results[c]['nonsqrt_metrics']]
         
         if sqrt_classes:
+            # Create x positions for the bars
+            x_nonsqrt = np.arange(len(sqrt_classes))
+            
+            # ---------- 4. R² comparison plot for non-sqrt values (original scale) ----------
             plt.figure(figsize=(12, 7))
             
-            # Sort by sqrt R²
-            sorted_sqrt_targets = sorted(sqrt_classes, 
-                                        key=lambda x: cv_results[x]['avg_r2'],
-                                        reverse=True)
+            # Get values and errors for original scale (squared values)
+            nonsqrt_r2_values = [cv_results[target]['nonsqrt_metrics']['avg_r2'] for target in sqrt_classes]
+            nonsqrt_r2_errors = [np.std(cv_results[target]['nonsqrt_metrics']['r2_values']) for target in sqrt_classes]
             
-            # Calculate positions
-            x = np.arange(len(sorted_sqrt_targets))
+            bars = plt.bar(x_nonsqrt, nonsqrt_r2_values, yerr=nonsqrt_r2_errors, capsize=5, color='steelblue')
+            
+            # Add labels and title
+            plt.xlabel('Target Class')
+            plt.ylabel('R² Score')
+            plt.title(f'Model Performance (original scale R²) with {n_folds}-fold CV')
+            plt.xticks(x_nonsqrt, [t.replace('sqrt_', '') for t in sqrt_classes], rotation=45, ha='right')
+            plt.grid(axis='y', alpha=0.3)
+            
+            # Add value labels on bars
+            for bar, val, err in zip(bars, nonsqrt_r2_values, nonsqrt_r2_errors):
+                height = bar.get_height()
+                plt.text(bar.get_x() + bar.get_width()/2., height + 0.01,
+                         f'{val:.3f}±{err:.3f}', ha='center', va='bottom')
+            
+            plt.tight_layout()
+            plt.savefig(os.path.join(cv_output_dir, "cv_original_r2_summary.png"), dpi=300)
+            plt.close()
+            
+            # ---------- 5. RMSE comparison plot for non-sqrt values (original scale) ----------
+            plt.figure(figsize=(12, 7))
+            
+            # Get values and errors for original scale
+            nonsqrt_rmse_values = [cv_results[target]['nonsqrt_metrics']['avg_rmse'] for target in sqrt_classes]
+            nonsqrt_rmse_errors = [np.std(cv_results[target]['nonsqrt_metrics']['rmse_values']) for target in sqrt_classes]
+            
+            bars = plt.bar(x_nonsqrt, nonsqrt_rmse_values, yerr=nonsqrt_rmse_errors, capsize=5, color='lightcoral')
+            
+            # Add labels and title
+            plt.xlabel('Target Class')
+            plt.ylabel('RMSE')
+            plt.title(f'Model Performance (original scale RMSE) with {n_folds}-fold CV')
+            plt.xticks(x_nonsqrt, [t.replace('sqrt_', '') for t in sqrt_classes], rotation=45, ha='right')
+            plt.grid(axis='y', alpha=0.3)
+            
+            # Add value labels on bars
+            for bar, val, err in zip(bars, nonsqrt_rmse_values, nonsqrt_rmse_errors):
+                height = bar.get_height()
+                plt.text(bar.get_x() + bar.get_width()/2., height + 0.01,
+                         f'{val:.3f}±{err:.3f}', ha='center', va='bottom')
+            
+            plt.tight_layout()
+            plt.savefig(os.path.join(cv_output_dir, "cv_original_rmse_summary.png"), dpi=300)
+            plt.close()
+            
+            # ---------- 6. Pearson R comparison plot for non-sqrt values (original scale) ----------
+            plt.figure(figsize=(12, 7))
+            
+            # Get values and errors for original scale
+            nonsqrt_pearson_values = [cv_results[target]['nonsqrt_metrics']['avg_pearson'] for target in sqrt_classes]
+            nonsqrt_pearson_errors = [np.std(cv_results[target]['nonsqrt_metrics']['pearson_values']) for target in sqrt_classes]
+            
+            bars = plt.bar(x_nonsqrt, nonsqrt_pearson_values, yerr=nonsqrt_pearson_errors, capsize=5, color='mediumseagreen')
+            
+            # Add labels and title
+            plt.xlabel('Target Class')
+            plt.ylabel('Pearson r')
+            plt.title(f'Model Performance (original scale Pearson r) with {n_folds}-fold CV')
+            plt.xticks(x_nonsqrt, [t.replace('sqrt_', '') for t in sqrt_classes], rotation=45, ha='right')
+            plt.grid(axis='y', alpha=0.3)
+            
+            # Add value labels on bars
+            for bar, val, err in zip(bars, nonsqrt_pearson_values, nonsqrt_pearson_errors):
+                height = bar.get_height()
+                plt.text(bar.get_x() + bar.get_width()/2., height + 0.01,
+                         f'{val:.3f}±{err:.3f}', ha='center', va='bottom')
+            
+            plt.tight_layout()
+            plt.savefig(os.path.join(cv_output_dir, "cv_original_pearson_summary.png"), dpi=300)
+            plt.close()
+            
+            # ---------- 7. Direct sqrt vs. non-sqrt R² comparison plot ----------
+            plt.figure(figsize=(12, 7))
+            
+            # Set up bar positions
             bar_width = 0.35
             
-            # Get values and errors
-            sqrt_r2_values = [cv_results[target]['avg_r2'] for target in sorted_sqrt_targets]
-            sqrt_r2_errors = [np.std(cv_results[target]['r2_values']) for target in sorted_sqrt_targets]
-            
-            nonsqrt_r2_values = [cv_results[target]['nonsqrt_metrics']['avg_r2'] for target in sorted_sqrt_targets]
-            nonsqrt_r2_errors = [np.std(cv_results[target]['nonsqrt_metrics']['r2_values']) for target in sorted_sqrt_targets]
+            # Extract R² values for only sqrt classes in the same order
+            sqrt_r2_values = [cv_results[target]['avg_r2'] for target in sqrt_classes]
+            sqrt_r2_errors = [np.std(cv_results[target]['r2_values']) for target in sqrt_classes]
             
             # Plot bars
-            plt.bar(x - bar_width/2, sqrt_r2_values, bar_width, 
+            plt.bar(x_nonsqrt - bar_width/2, sqrt_r2_values, bar_width, 
                     yerr=sqrt_r2_errors, capsize=5, 
                     label='R² with sqrt transformation', color='steelblue')
             
-            plt.bar(x + bar_width/2, nonsqrt_r2_values, bar_width, 
+            plt.bar(x_nonsqrt + bar_width/2, nonsqrt_r2_values, bar_width, 
                     yerr=nonsqrt_r2_errors, capsize=5,
                     label='R² on original scale', color='lightcoral')
             
@@ -1130,7 +1231,7 @@ def cross_validation(data_dir, output_dir, wap_number=32, use_peat=False, superr
             plt.xlabel('Target Class')
             plt.ylabel('R² Score')
             plt.title(f'Comparison of R² Scores: sqrt vs. original scale ({n_folds}-fold CV)')
-            plt.xticks(x, [t.replace('sqrt_', '') for t in sorted_sqrt_targets], rotation=45, ha='right')
+            plt.xticks(x_nonsqrt, [t.replace('sqrt_', '') for t in sqrt_classes], rotation=45, ha='right')
             plt.legend()
             plt.grid(axis='y', alpha=0.3)
             
@@ -1243,6 +1344,8 @@ if __name__ == "__main__":
         moy5m=moy5m,
         n_folds=5  # Default is 5 folds
     )
+    
+    
     
     print("\nRegression analysis completed successfully!")
     print(f"Results saved to {output_dir}")

@@ -382,20 +382,26 @@ def process_wap_data(filtered_csv, output_dir):
     # print(f"Summary of balanced datasets saved to {os.path.join(output_dir, 'balanced_datasets_summary.csv')}")
     
     # Create a combined dataset containing all balanced samples
-    print("Creating combined datasets...")
+    # print("Creating combined datasets...")
     
-    # Create a combined dataset with all classes
-    combined_df = pd.concat([pure_lichen_df, degraded_lichen_df, merged_lichen_df, green_df, through_df], axis=0)
-    combined_df = combined_df.drop_duplicates(subset=['col_s', 'row_s'])
-    combined_path = os.path.join(output_dir, 'balanced_combined.csv')
-    combined_df.to_csv(combined_path, index=False)
+    # # Create a combined dataset with all classes
+    # combined_df = pd.concat([pure_lichen_df, degraded_lichen_df, merged_lichen_df, green_df, through_df], axis=0)
+    # combined_df = combined_df.drop_duplicates(subset=['col_s', 'row_s'])
+    # combined_path = os.path.join(output_dir, 'balanced_combined.csv')
+    # combined_df.to_csv(combined_path, index=False)
     
-    print(f"Combined dataset created: {combined_path} ({len(combined_df)} samples)")
+    # print(f"Combined dataset created: {combined_path} ({len(combined_df)} samples)")
     print(f"- Pure_Lichen samples: {len(pure_lichen_df)}")
     print(f"- Degraded_Lichen samples: {len(degraded_lichen_df)}")
     print(f"- Merged_Lichen samples: {len(merged_lichen_df)}")
     print(f"- Green samples: {len(green_df)}")
     print(f"- Through samples: {len(through_df)}")
+    print("SQRT SAMPLES :")
+    print(f"- sqrt Pure_Lichen samples: {len(sqrt_pure_lichen_df)}")
+    print(f"- sqrt Degraded_Lichen samples: {len(sqrt_degraded_lichen_df)}")
+    print(f"- sqrt Merged_Lichen samples: {len(sqrt_merged_lichen_df)}")
+    print(f"- sqrt Green samples: {len(sqrt_green_df)}")
+    print(f"- sqrt Through samples: {len(sqrt_through_df)}")
     
     # # Add combined dataset to summary
     # summary['Category'].append('Combined (Unique)')
