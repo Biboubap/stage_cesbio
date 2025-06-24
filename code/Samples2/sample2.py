@@ -64,6 +64,7 @@ class Sample2:
         Calcule les statistiques des voisins (moyennes RGB, T, Z) pour ce sample.
         Si un voisin existe dans sample_set, utilise ses statistiques déjà calculées.
         Sinon, extrait et calcule la moyenne directement depuis les rasters.
+        Ignore les valeurs None lors du calcul des moyennes.
         """
         # Ensure rasters are loaded
         self.rasters.load_rasters()
@@ -76,8 +77,9 @@ class Sample2:
         has_z = self.rasters.rast_z is not None
 
         # --- Voisinage 1 ---
-        r_sum = g_sum = b_sum = t_sum = 0
-        nb_neighbors = 0
+        # Use lists to collect valid values
+        r_values, g_values, b_values, t_values = [], [], [], []
+
         for i in range(-1, 2):
             for j in range(-1, 2):
                 if i == 0 and j == 0:
@@ -86,40 +88,32 @@ class Sample2:
                 y_n = self.y + j * size_patch
                 neighbor = sample_set.samples.get((x_n, y_n))
                 if neighbor is not None:
-                    r_sum += neighbor.r_mean
-                    g_sum += neighbor.g_mean
-                    b_sum += neighbor.b_mean
-                    if has_t:
-                        t_sum += neighbor.t_mean
-                    nb_neighbors += 1
+                    if neighbor.r_mean is not None: r_values.append(neighbor.r_mean)
+                    if neighbor.g_mean is not None: g_values.append(neighbor.g_mean)
+                    if neighbor.b_mean is not None: b_values.append(neighbor.b_mean)
+                    if has_t and neighbor.t_mean is not None: t_values.append(neighbor.t_mean)
                 elif (
                     0 <= x_n < rast_shape_r[0] - size_patch and
                     0 <= y_n < rast_shape_r[1] - size_patch
                 ):
                     # Calculer directement les statistiques au lieu de charger tout le patch
                     stats = self.rasters.calculate_patch_stats(x_n, y_n, size_patch)
-                    r_sum += stats['r_mean']
-                    g_sum += stats['g_mean']
-                    b_sum += stats['b_mean']
-                    if has_t and stats['t_mean'] is not None:
-                        t_sum += stats['t_mean']
-                    nb_neighbors += 1
+                    if stats['r_mean'] is not None: r_values.append(stats['r_mean'])
+                    if stats['g_mean'] is not None: g_values.append(stats['g_mean'])
+                    if stats['b_mean'] is not None: b_values.append(stats['b_mean'])
+                    if has_t and stats['t_mean'] is not None: t_values.append(stats['t_mean'])
 
-        # Calculate neighbor means if neighbors exist
-        if nb_neighbors > 0:
-            self.r_n_mean = r_sum / nb_neighbors
-            self.g_n_mean = g_sum / nb_neighbors
-            self.b_n_mean = b_sum / nb_neighbors
-            if has_t:
-                self.t_n_mean = t_sum / nb_neighbors
-        else:
-            self.r_n_mean = self.g_n_mean = self.b_n_mean = None
-            self.t_n_mean = None
+        # Calculate neighbor means using numpy for efficiency
+        self.r_n_mean = np.mean(r_values) if r_values else None
+        self.g_n_mean = np.mean(g_values) if g_values else None
+        self.b_n_mean = np.mean(b_values) if b_values else None
+        self.t_n_mean = np.mean(t_values) if t_values else None
 
         if distance_large > 1:
             # --- Voisinage large (distance_large) ---
-            r_large_sum = g_large_sum = b_large_sum = tL_sum = 0
-            nb_neighborsL = 0
+            # Use lists to collect valid values for large neighborhood
+            r_large_values, g_large_values, b_large_values, tL_values = [], [], [], []
+            
             for i in range(-distance_large, distance_large + 1):
                 for j in range(-distance_large, distance_large + 1):
                     if i == 0 and j == 0:
@@ -128,42 +122,33 @@ class Sample2:
                     y_n = self.y + j * size_patch
                     neighbor = sample_set.samples.get((x_n, y_n))
                     if neighbor is not None:
-                        r_large_sum += neighbor.r_mean
-                        g_large_sum += neighbor.g_mean
-                        b_large_sum += neighbor.b_mean
-                        if has_t:
-                            tL_sum += neighbor.t_mean
-                        nb_neighborsL += 1
+                        if neighbor.r_mean is not None: r_large_values.append(neighbor.r_mean)
+                        if neighbor.g_mean is not None: g_large_values.append(neighbor.g_mean)
+                        if neighbor.b_mean is not None: b_large_values.append(neighbor.b_mean)
+                        if has_t and neighbor.t_mean is not None: tL_values.append(neighbor.t_mean)
                     elif (
                         0 <= x_n < rast_shape_r[0] - size_patch and
                         0 <= y_n < rast_shape_r[1] - size_patch
                     ):
                         # Calculer directement les statistiques au lieu de charger tout le patch
                         stats = self.rasters.calculate_patch_stats(x_n, y_n, size_patch)
-                        r_large_sum += stats['r_mean']
-                        g_large_sum += stats['g_mean']
-                        b_large_sum += stats['b_mean']
-                        if has_t and stats['t_mean'] is not None:
-                            tL_sum += stats['t_mean']
-                        nb_neighborsL += 1
+                        if stats['r_mean'] is not None: r_large_values.append(stats['r_mean'])
+                        if stats['g_mean'] is not None: g_large_values.append(stats['g_mean'])
+                        if stats['b_mean'] is not None: b_large_values.append(stats['b_mean'])
+                        if has_t and stats['t_mean'] is not None: tL_values.append(stats['t_mean'])
             
-            # Calculate large neighbor means if neighbors exist
-            if nb_neighborsL > 0:
-                self.r_large_mean = r_large_sum / nb_neighborsL
-                self.g_large_mean = g_large_sum / nb_neighborsL
-                self.b_large_mean = b_large_sum / nb_neighborsL
-                if has_t:
-                    self.t_large_mean = tL_sum / nb_neighborsL
-                else:
-                    self.t_large_mean = None
-            else:
-                self.r_large_mean = self.g_large_mean = self.b_large_mean = None
-                self.t_large_mean = None
+            # Calculate large neighbor means using numpy for efficiency
+            self.r_large_mean = np.mean(r_large_values) if r_large_values else None
+            self.g_large_mean = np.mean(g_large_values) if g_large_values else None
+            self.b_large_mean = np.mean(b_large_values) if b_large_values else None
+            self.t_large_mean = np.mean(tL_values) if tL_values else None
+        else:
+            self.r_large_mean = self.g_large_mean = self.b_large_mean = None
+            self.t_large_mean = None
 
         # --- Z voisinage 1 ---
         if has_z:
-            z_sum = 0
-            nb_neighbors_z = 0
+            z_values = []
             for i in range(-1, 2):
                 for j in range(-1, 2):
                     if i == 0 and j == 0:
@@ -172,57 +157,44 @@ class Sample2:
                     y_n = self.y + j * size_patch
                     neighbor = sample_set.samples.get((x_n, y_n))
                     if neighbor is not None and neighbor.z_mean is not None:
-                        z_sum += neighbor.z_mean
-                        nb_neighbors_z += 1
+                        z_values.append(neighbor.z_mean)
                     elif (
                         0 <= x_n < rast_shape_z[0] - size_patch and
                         0 <= y_n < rast_shape_z[1] - size_patch
                     ):
-                        # Calculer directement la moyenne Z au lieu de charger tout le patch
                         stats = self.rasters.calculate_patch_stats(x_n, y_n, size_patch)
                         if stats['z_mean'] is not None:
-                            z_sum += stats['z_mean']
-                            nb_neighbors_z += 1
+                            z_values.append(stats['z_mean'])
             
-            if nb_neighbors_z > 0:
-                self.z_moins_z_n = self.z_mean - z_sum / nb_neighbors_z
-            else:
-                self.z_moins_z_n = None
+            z_n_mean = np.mean(z_values) if z_values else None
+            self.z_moins_z_n = self.z_mean - z_n_mean if z_n_mean is not None and self.z_mean is not None else None
         else:
             self.z_moins_z_n = None
 
-        if distance_large > 1:
+        if distance_large > 1 and has_z:
             # --- Z voisinage large ---
-            if has_z:
-                z_large_sum = 0
-                nb_neighbors_z_large = 0
-                for i in range(-distance_large, distance_large + 1):
-                    for j in range(-distance_large, distance_large + 1):
-                        if i == 0 and j == 0:
-                            continue
-                        x_n = self.x + i * size_patch
-                        y_n = self.y + j * size_patch
-                        neighbor = sample_set.samples.get((x_n, y_n))
-                        if neighbor is not None and neighbor.z_mean is not None:
-                            z_large_sum += neighbor.z_mean
-                            nb_neighbors_z_large += 1
-                        elif (
-                            0 <= x_n < rast_shape_z[0] - size_patch and
-                            0 <= y_n < rast_shape_z[1] - size_patch
-                        ):
-                            # Calculer directement la moyenne Z au lieu de charger tout le patch
-                            stats = self.rasters.calculate_patch_stats(x_n, y_n, size_patch)
-                            if stats['z_mean'] is not None:
-                                z_large_sum += stats['z_mean']
-                                nb_neighbors_z_large += 1
-                
-                if nb_neighbors_z_large > 0:
-                    z_large_mean = z_large_sum / nb_neighbors_z_large
-                    self.z_moins_z_large = self.z_mean - z_large_mean
-                else:
-                    self.z_moins_z_large = None
-            else:
-                self.z_moins_z_large = None
+            z_large_values = []
+            for i in range(-distance_large, distance_large + 1):
+                for j in range(-distance_large, distance_large + 1):
+                    if i == 0 and j == 0:
+                        continue
+                    x_n = self.x + i * size_patch
+                    y_n = self.y + j * size_patch
+                    neighbor = sample_set.samples.get((x_n, y_n))
+                    if neighbor is not None and neighbor.z_mean is not None:
+                        z_large_values.append(neighbor.z_mean)
+                    elif (
+                        0 <= x_n < rast_shape_z[0] - size_patch and
+                        0 <= y_n < rast_shape_z[1] - size_patch
+                    ):
+                        stats = self.rasters.calculate_patch_stats(x_n, y_n, size_patch)
+                        if stats['z_mean'] is not None:
+                            z_large_values.append(stats['z_mean'])
+            
+            z_large_mean = np.mean(z_large_values) if z_large_values else None
+            self.z_moins_z_large = self.z_mean - z_large_mean if z_large_mean is not None and self.z_mean is not None else None
+        else:
+            self.z_moins_z_large = None
 
     def __repr__(self):
         # Affichage lisible des principales statistiques du sample
