@@ -101,7 +101,7 @@ def load_mask(mask_path, ref_transform, ref_projection, ref_width, ref_height):
     Load a mask file and reproject it to match the reference dataset if needed
     
     Args:
-        mask_path: Path to the mask file (should be binary, 1 for valid pixels)
+        mask_path: Path to the prediction map (first band will be used for masking)
         ref_transform: GeoTransform of the reference dataset
         ref_projection: Projection of the reference dataset
         ref_width: Width of the reference dataset
@@ -110,12 +110,18 @@ def load_mask(mask_path, ref_transform, ref_projection, ref_width, ref_height):
     Returns:
         mask_array: Binary mask array (1 for valid pixels, 0 for masked pixels)
     """
-    print(f"Loading mask from {mask_path}...")
+    print(f"Loading mask from {mask_path} (using first band's noData values)...")
     
     # Open the mask file
     mask_ds = gdal.Open(mask_path)
     if mask_ds is None:
         raise ValueError(f"Could not open mask file: {mask_path}")
+    
+    # Get the first band and its noData value
+    first_band = mask_ds.GetRasterBand(1)
+    nodata_value = first_band.GetNoDataValue()
+    
+    print(f"Using noData value: {nodata_value}")
     
     # Check if mask needs reprojection
     mask_transform = mask_ds.GetGeoTransform()
@@ -126,12 +132,12 @@ def load_mask(mask_path, ref_transform, ref_projection, ref_width, ref_height):
     # If mask dimensions and projection match reference, read directly
     if (mask_width == ref_width and mask_height == ref_height and 
         mask_transform == ref_transform and mask_projection == ref_projection):
-        mask_array = mask_ds.GetRasterBand(1).ReadAsArray()
+        mask_array = first_band.ReadAsArray()
     else:
         # Reproject mask to match reference dataset
         print("Reprojecting mask to match reference dataset...")
         mem_driver = gdal.GetDriverByName('MEM')
-        mask_reprojected = mem_driver.Create('', ref_width, ref_height, 1, gdal.GDT_Byte)
+        mask_reprojected = mem_driver.Create('', ref_width, ref_height, 1, first_band.DataType)
         mask_reprojected.SetGeoTransform(ref_transform)
         mask_reprojected.SetProjection(ref_projection)
         
@@ -142,12 +148,16 @@ def load_mask(mask_path, ref_transform, ref_projection, ref_width, ref_height):
         # Read reprojected mask
         mask_array = mask_reprojected.GetRasterBand(1).ReadAsArray()
     
-    # Ensure mask is binary (0 or 1)
-    mask_array = (mask_array > 0).astype(np.uint8)
+    # Create binary mask (0 where noData, 1 elsewhere)
+    if nodata_value is not None:
+        binary_mask = (mask_array != nodata_value).astype(np.uint8)
+    else:
+        # If noData value is not defined, assume all pixels are valid
+        binary_mask = np.ones_like(mask_array, dtype=np.uint8)
     
-    print(f"Mask loaded. Valid pixels: {np.sum(mask_array)}/{mask_array.size} ({np.sum(mask_array)/mask_array.size*100:.2f}%)")
+    print(f"Mask created. Valid pixels: {np.sum(binary_mask)}/{binary_mask.size} ({np.sum(binary_mask)/binary_mask.size*100:.2f}%)")
     
-    return mask_array
+    return binary_mask
 
 def create_regression_tiff(model_paths, bands_dir, indices_dir, output_path, mask_path=None, normalise=True):
     """
@@ -159,7 +169,7 @@ def create_regression_tiff(model_paths, bands_dir, indices_dir, output_path, mas
         bands_dir: Directory containing Sentinel band TIFs
         indices_dir: Directory containing Sentinel index TIFs
         output_path: Path to save the output TIFF
-        mask_path: Path to a mask file (optional). Only pixels where mask is 1 will be processed
+        mask_path: Path to a mask file (optional). Only pixels where mask is not 0 will be processed
         normalise: Whether to normalise predictions so that their sum is 100% for each pixel
     """
     # Get target classes from model_paths
@@ -386,7 +396,7 @@ def main():
     Main function to create regression TIFFs using models saved by sentinel_proportion_median.py
     """
     # Default paths for models and data
-    wap = 32
+    wap = 23
     use_peat = False
     superresolution = False  # Use 5m resolution (True) or 10m resolution (False)
     peat_suffix = "_peat" if use_peat else ""
@@ -400,7 +410,7 @@ def main():
     # Base directory where regression results are stored
     
     base_dir = f"data/regressions/regression_merged_model/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}"
-    regression_dir = f"data/regressions/regression_merged_model/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}/regression_results"
+    regression_dir = f"data/regressions/regression_merged_model/regression_wap{32}{peat_suffix}{resolution_suffix}{moy5m_suffix}/regression_results"
 
     
     model_paths = {
@@ -412,11 +422,11 @@ def main():
     }
    
     # Sentinel data directories
-    bands_dir = f"DataCubeS2/WAP{wap}{peat_suffix}{resolution_suffix}/mediane_bands_10m/"
-    indices_dir = f"DataCubeS2/WAP{wap}{peat_suffix}{resolution_suffix}/mediane_indices_10m/"
+    bands_dir = f"DataCubeS2/WAP{wap}{peat_suffix}{resolution_suffix}/mediane_bands/"
+    indices_dir = f"DataCubeS2/WAP{wap}{peat_suffix}{resolution_suffix}/mediane_indices/"
     
     # Mask path
-    mask_path = f"drone_treated/WAP{wap}_tiles/mask_WAP{wap}{peat_suffix}.tif"
+    mask_path = f"data/regressions/regression_merged_model/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}/proportions_WAP{wap}.tif"
     
     # Output path
     output_path = os.path.join(base_dir, f"regression_predictions_WAP{wap}{peat_suffix}{resolution_suffix}.tif")
