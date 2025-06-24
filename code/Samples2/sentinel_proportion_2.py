@@ -390,9 +390,9 @@ def process_wap_data(wap_number, classification_path, output_dir=None, use_peat=
     
     os.makedirs(output_dir, exist_ok=True)
     
-    sentinel_path = f"DataCubeS2/WAP{wap_number}{peat_suffix}{resolution_suffix}/mediane_bands_10m/{file_prefix}mediane_clipped_STACK_2023_BandB2_WAP{wap_number}_deflate.tif"
-    sentinel_bands_dir = f"DataCubeS2/WAP{wap_number}{peat_suffix}{resolution_suffix}/mediane_bands_10m/"
-    sentinel_indices_dir = f"DataCubeS2/WAP{wap_number}{peat_suffix}{resolution_suffix}/mediane_indices_10m/"
+    sentinel_path = f"DataCubeS2/WAP{wap_number}{peat_suffix}{resolution_suffix}/mediane_bands/{file_prefix}mediane_clipped_STACK_2023_BandB2_WAP{wap_number}_deflate.tif"
+    sentinel_bands_dir = f"DataCubeS2/WAP{wap_number}{peat_suffix}{resolution_suffix}/mediane_bands/"
+    sentinel_indices_dir = f"DataCubeS2/WAP{wap_number}{peat_suffix}{resolution_suffix}/mediane_indices/"
 
 
     # Output paths
@@ -440,7 +440,7 @@ def process_wap_data(wap_number, classification_path, output_dir=None, use_peat=
     print(f"Results saved in {output_dir}")
 
 if __name__ == "__main__":
-    wap = 32
+    wap = 23
     use_peat = False
     superresolution = False  # Use 5m resolution (True) or 10m resolution (False)
     peat_suffix = "_peat" if use_peat else ""
@@ -452,7 +452,7 @@ if __name__ == "__main__":
     # Base output directory without resolution suffix
     base_output_dir = f"data/regressions/regression_merged_model/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}"
 
-    classification_path = f"drone_treated/WAP32_tiles/WAP32_classif_merged.tif"
+    classification_path = f"drone_treated/WAP{wap}_tiles/WAP{wap}_classif_merged.tif"
 
     class_labels = {
         1: "Pure_Lichen",

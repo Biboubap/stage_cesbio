@@ -101,51 +101,78 @@ done
 echo "All processing completed for WAP23 data clipping and median calculation."
 
 
+
+
+
+
 # Process all WAP sites in a loop
 echo "Starting batch processing for WAP12, WAP23, and WAP32..."
 for wap in 12 23 32; do
-    echo "Processing WAP${wap}..."
+    # if [ "$wap" == "12" ]; then
+    #         mosaic_file="Wap12_Main_transparent_mosaic_group1"
+    #     elif [ "$wap" == "23" ]; then
+    #         mosaic_file="Wap23_main_transparent_mosaic_group1"
+    #     elif [ "$wap" == "32" ]; then
+    #         mosaic_file="WAP32_full_transparent_mosaic_group1"
+    #     fi
+    # # Extract contour of non-transparent area from mosaic using Band 4 (comparing with 255)
+        # echo "Extracting contour of non-transparent area from WAP${wap} mosaic (${mosaic_file})..."
+        # gdal_calc.py --overwrite -A drone_treated/${mosaic_file}.tif --A_band=4 --outfile=drone_treated/WAP${wap}_tiles/mask_WAP${wap}.tif --calc="A==255" --NoDataValue=0
+
+        # # Convert the binary mask to a polygon
+        # echo "Converting mask to polygon contour..."
+        # gdal_polygonize.py drone_treated/WAP${wap}_tiles/mask_WAP${wap}.tif -f GeoJSON drone_treated/WAP${wap}_tiles/WAP${wap}_contour.json
+
     
     # Set the appropriate mosaic file name based on WAP site
-    if [ "$wap" == "12" ]; then
-        mosaic_file="Wap12_Main_transparent_mosaic_group1"
-    elif [ "$wap" == "23" ]; then
-        mosaic_file="Wap23_main_transparent_mosaic_group1"
-    elif [ "$wap" == "32" ]; then
-        mosaic_file="WAP32_full_transparent_mosaic_group1"
-    fi
+   
     
-    # # Extract contour of non-transparent area from mosaic using Band 4 (comparing with 255)
-    # echo "Extracting contour of non-transparent area from WAP${wap} mosaic (${mosaic_file})..."
-    # gdal_calc.py --overwrite -A drone_treated/${mosaic_file}.tif --A_band=4 --outfile=drone_treated/WAP${wap}_tiles/mask_WAP${wap}.tif --calc="A==255" --NoDataValue=0
+     # Create directories for clipped bands and indices
+    # mkdir -p DataCubeS2/WAP${wap}/clipped_bands
+    # mkdir -p DataCubeS2/WAP${wap}/clipped_indices
 
-    # # Convert the binary mask to a polygon
-    # echo "Converting mask to polygon contour..."
-    # gdal_polygonize.py drone_treated/WAP${wap}_tiles/mask_WAP${wap}.tif -f GeoJSON drone_treated/WAP${wap}_tiles/WAP${wap}_contour.json
+    # echo "Clipping Sentinel-2 bands with WAP contour..."
+    # for f in DataCubeS2/Bands_S2_10m_2023/*WAP${wap}_deflate.tif; do
+    #     base_filename=$(basename "$f")
+    #     gdalwarp -overwrite -of GTiff -tr 10.0 -10.0 -tap -cutline drone_treated/WAP${wap}_tiles/WAP${wap}_contour.json -crop_to_cutline "$f" "DataCubeS2/WAP${wap}/clipped_bands/clipped_${base_filename}"
+    #     echo "Clipped $base_filename"
+    # done
 
-    # Create directories for clipped bands and indices
-    mkdir -p DataCubeS2/BandsS22023_WAP${wap}_10m/clipped
-    
+    # echo "Clipping Sentinel-2 indices with WAP32 contour..."
+    # for f in DataCubeS2/Indices_S2_10m_2023/*WAP${wap}_deflate.tif; do
+    #     base_filename=$(basename "$f")
+    #     gdalwarp -overwrite -of GTiff -tr 10.0 -10.0 -tap -cutline drone_treated/WAP${wap}_tiles/WAP${wap}_contour.json -crop_to_cutline "$f" "DataCubeS2/WAP${wap}/clipped_indices/clipped_${base_filename}"
+    #     echo "Clipped $base_filename"
+    # done
 
-    # Clip Sentinel-2 bands using the contour
-    echo "Clipping Sentinel-2 bands with WAP${wap} contour..."
-    for f in DataCubeS2/BandsS22023_10m/*WAP${wap}_deflate.tif; do
+        
+    # # Create directories for median calculation
+    # mkdir -p DataCubeS2/WAP${wap}/mediane_bands
+    # mkdir -p DataCubeS2/WAP${wap}/mediane_indices
+
+    # # Compute median for clipped bands
+    # echo "Computing median for clipped Sentinel-2 bands..."
+    # for f in DataCubeS2/WAP${wap}/clipped_bands/clipped_*.tif; do
+    #     base_filename=$(basename "$f")
+    #     python /home/lcousin/stage_cesbio/DataCubeS2/TwinLakeCubeIndex/compute_median.py "$f" "DataCubeS2/WAP${wap}/mediane_bands/mediane_${base_filename}"
+    #     echo "Computed median for $base_filename"
+    # done
+
+    # Compute median for clipped indices
+    echo "Computing median for clipped Sentinel-2 indices..."
+    for f in DataCubeS2/WAP${wap}_10m/clipped_indices/clipped_*.tif; do
         base_filename=$(basename "$f")
-        gdalwarp -overwrite -of GTiff -tr 10.0 -10.0 -tap -cutline drone_treated/WAP${wap}_tiles/WAP${wap}_contour.json -crop_to_cutline "$f" "DataCubeS2/BandsS22023_WAP${wap}_10m/clipped/clipped_${base_filename}"
-        echo "Clipped $base_filename"
-    done
-    #ATTENTION A ADAPTER LA RESOLUTION CI-DESSUS
-    
-    # Create directories for median calculation
-    mkdir -p DataCubeS2/BandsS22023_WAP${wap}_10m/mediane
-    
-    # Compute median for clipped bands
-    echo "Computing median for clipped Sentinel-2 bands..."
-    for f in DataCubeS2/BandsS22023_WAP${wap}_10m/clipped/clipped_*.tif; do
-        base_filename=$(basename "$f")
-        python /home/lcousin/stage_cesbio/DataCubeS2/TwinLakeCubeIndex/compute_median.py "$f" "DataCubeS2/BandsS22023_WAP${wap}_10m/mediane/mediane_${base_filename}"
+        python /home/lcousin/stage_cesbio/DataCubeS2/TwinLakeCubeIndex/compute_median.py "$f" "DataCubeS2/WAP${wap}_10m/mediane_indices/mediane_${base_filename}"
         echo "Computed median for $base_filename"
     done
+    
+    # # Compute median for clipped bands
+    # echo "Computing median for clipped Sentinel-2 bands..."
+    # for f in DataCubeS2/BandsS22023_WAP${wap}_10m/clipped/clipped_*.tif; do
+    #     base_filename=$(basename "$f")
+    #     python /home/lcousin/stage_cesbio/DataCubeS2/TwinLakeCubeIndex/compute_median.py "$f" "DataCubeS2/BandsS22023_WAP${wap}_10m/mediane/mediane_${base_filename}"
+    #     echo "Computed median for $base_filename"
+    # done
 
     echo "Completed processing for WAP${wap}"
 done
