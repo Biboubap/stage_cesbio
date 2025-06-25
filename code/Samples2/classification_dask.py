@@ -611,22 +611,41 @@ if __name__ == "__main__":
     #     n_workers=num_cpus,  # Use automatically determined number of workers
     #     threads_per_worker=1  # 1 thread per worker for better parallelism
     # )
+    
     process_all_tiles(
-        rgb_folder=f"Konstantin/Belcher_tiles/rgb",
+         rgb_folder=f"Konstantin/Chesnay_tiles/rgb",
+        dsm_folder=f"Konstantin/Chesnay_tiles/dsm",
+        out_folder=f"Konstantin/Chesnay_tiles/merged_classification_8",
+        model1_path=model1_path,
+        model2_path=model2_path,
+        max_tiles=None,  # Process all tiles
+        size_patch=8,
+        n_workers=num_cpus,  # Use automatically determined number of workers
+        threads_per_worker=1  # 1 thread per worker for better parallelism
+    )
+  
+    process_all_tiles(
+         rgb_folder=f"Konstantin/Chesnay_tiles/rgb",
+        dsm_folder=f"Konstantin/Chesnay_tiles/dsm",
+        out_folder=f"Konstantin/Chesnay_tiles/merged_classification_16",
+        model1_path=model1_path,
+        model2_path=model2_path,
+        max_tiles=None,  # Process all tiles
+        size_patch=16,
+        n_workers=num_cpus,  # Use automatically determined number of workers
+        threads_per_worker=1  # 1 thread per worker for better parallelism
+    )
+    
+    process_all_tiles(
+         rgb_folder=f"Konstantin/Belcher_tiles/rgb",
         dsm_folder=f"Konstantin/Belcher_tiles/dsm",
         out_folder=f"Konstantin/Belcher_tiles/merged_classification_8",
         model1_path=model1_path,
         model2_path=model2_path,
-        max_tiles=2,  # Process all tiles
+        max_tiles=None,  # Process all tiles
         size_patch=8,
+        n_workers=num_cpus,  # Use automatically determined number of workers
+        threads_per_worker=1  # 1 thread per worker for better parallelism
     )
-    process_all_tiles(
-        rgb_folder=f"Konstantin/Belcher_tiles/rgb",
-        dsm_folder=f"Konstantin/Belcher_tiles/dsm",
-        out_folder=f"Konstantin/Belcher_tiles/merged_classification_16",
-        model1_path=model1_path,
-        model2_path=model2_path,
-        max_tiles=2,  # Process all tiles
-        size_patch=16,
-    )
+   
   
