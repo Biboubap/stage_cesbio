@@ -464,11 +464,11 @@ def run_all_regressions(data_dir, output_dir, wap_number=32, use_peat=False, sup
     
     # Set resolution and path modifiers based on superresolution flag
     file_prefix = "" if not moy5m else "10m_"
-    resolution_suffix = "_10m" if not superresolution else ""
+    resolution_suffix = "_10m" if not superresolution else "_5m"
 
     # Define input paths
-    sentinel_bands_dir = f"DataCubeS2/WAP{wap_number}{peat_suffix}{resolution_suffix}/mediane_bands_10m/"
-    sentinel_indices_dir = f"DataCubeS2/WAP{wap_number}{peat_suffix}{resolution_suffix}/mediane_indices_10m/"
+    sentinel_bands_dir = f"DataCubeS2/WAP{wap_number}{peat_suffix}{resolution_suffix}/mediane_bands/"
+    sentinel_indices_dir = f"DataCubeS2/WAP{wap_number}{peat_suffix}{resolution_suffix}/mediane_indices/"
     
     # 1. Load Sentinel features
     print("\n1. Loading Sentinel features...")
@@ -738,7 +738,7 @@ if __name__ == "__main__":
     
     # Check for grid search arguments
     grid_search = True
-    grid_search_target = "sqrt_all_lichen"
+    grid_search_target = "through_proportion"
     
     # Parse command line arguments
     if len(sys.argv) > 1 and sys.argv[1] == "--grid-search":

@@ -25,8 +25,9 @@ mkdir -p Konstantin/Chesnay_tiles/thermal
 gdal_retile.py -targetDir Konstantin/Chesnay_tiles/rgb -ps 4992 4992 -of GTiff Konstantin/UAV_Konstantin_Tabatha/Chesnay/ChesnayAugust2023_ElevationToolbox_export_MonJun16161652839886_32615.tif
 gdal_retile.py -targetDir Konstantin/Chesnay_tiles/dsm -ps 4992 4992 -of GTiff Konstantin/UAV_Konstantin_Tabatha/Chesnay/Chesnay_DSM_Resampled.tif
 gdal_retile.py -targetDir Konstantin/Chesnay_tiles/thermal -ps 4992 4992 -of GTiff Konstantin/UAV_Konstantin_Tabatha/Chesnay/ChesnayAugust2023Thermal_RadiometricThermal_export_MonJun16174733351905_32615.tif
-gdalwarp Konstantin/Chesnay_tiles/merged_classification/*.tif Konstantin/Chesnay_tiles/merged_classification.tif
-
+gdalwarp Konstantin/Chesnay_tiles/merged_classification_8/*.tif Konstantin/Chesnay_tiles/merged_classification_8.tif
+gdalwarp Konstantin/Chesnay_tiles/merged_classification_16/*.tif Konstantin/Chesnay_tiles/merged_classification_16.tif
+gdalwarp Konstantin/Belcher_tiles/merged_classification_8/*.tif Konstantin/Belcher_tiles/merged_classification_8.tif
 
 mkdir -p Konstantin/Belcher_tiles/rgb
 mkdir -p Konstantin/Belcher_tiles/dsm

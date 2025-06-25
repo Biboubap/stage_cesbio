@@ -127,42 +127,42 @@ for wap in 12 23 32; do
     # Set the appropriate mosaic file name based on WAP site
    
     
-     # Create directories for clipped bands and indices
-    # mkdir -p DataCubeS2/WAP${wap}/clipped_bands
-    # mkdir -p DataCubeS2/WAP${wap}/clipped_indices
+    #  Create directories for clipped bands and indices
+    # mkdir -p DataCubeS2/WAP${wap}_5m/clipped_bands
+    # mkdir -p DataCubeS2/WAP${wap}_5m/clipped_indices
 
     # echo "Clipping Sentinel-2 bands with WAP contour..."
-    # for f in DataCubeS2/Bands_S2_10m_2023/*WAP${wap}_deflate.tif; do
+    # for f in DataCubeS2/Bands_S2_5m_2023/*WAP${wap}_deflate.tif; do
     #     base_filename=$(basename "$f")
-    #     gdalwarp -overwrite -of GTiff -tr 10.0 -10.0 -tap -cutline drone_treated/WAP${wap}_tiles/WAP${wap}_contour.json -crop_to_cutline "$f" "DataCubeS2/WAP${wap}/clipped_bands/clipped_${base_filename}"
+    #     gdalwarp -overwrite -of GTiff -tr 5 -5.0 -tap -cutline drone_treated/WAP${wap}_tiles/WAP${wap}_contour.json -crop_to_cutline "$f" "DataCubeS2/WAP${wap}_5m/clipped_bands/clipped_${base_filename}"
     #     echo "Clipped $base_filename"
     # done
 
-    # echo "Clipping Sentinel-2 indices with WAP32 contour..."
-    # for f in DataCubeS2/Indices_S2_10m_2023/*WAP${wap}_deflate.tif; do
-    #     base_filename=$(basename "$f")
-    #     gdalwarp -overwrite -of GTiff -tr 10.0 -10.0 -tap -cutline drone_treated/WAP${wap}_tiles/WAP${wap}_contour.json -crop_to_cutline "$f" "DataCubeS2/WAP${wap}/clipped_indices/clipped_${base_filename}"
-    #     echo "Clipped $base_filename"
-    # done
+    echo "Clipping Sentinel-2 indices with WAP32 contour..."
+    for f in DataCubeS2/Indices_S2_10m_2023/*WAP${wap}_deflate.tif; do
+        base_filename=$(basename "$f")
+        gdalwarp -overwrite -of GTiff -tr 5.0 -5.0 -tap -cutline drone_treated/WAP${wap}_tiles/WAP${wap}_contour.json -crop_to_cutline "$f" "DataCubeS2/WAP${wap}_5m/clipped_indices/clipped_${base_filename}"
+        echo "Clipped $base_filename"
+    done
 
         
     # # Create directories for median calculation
-    # mkdir -p DataCubeS2/WAP${wap}/mediane_bands
-    # mkdir -p DataCubeS2/WAP${wap}/mediane_indices
+    # mkdir -p DataCubeS2/WAP${wap}_5m/mediane_bands
+    # mkdir -p DataCubeS2/WAP${wap}_5m/mediane_indices
 
     # # Compute median for clipped bands
     # echo "Computing median for clipped Sentinel-2 bands..."
-    # for f in DataCubeS2/WAP${wap}/clipped_bands/clipped_*.tif; do
+    # for f in DataCubeS2/WAP${wap}_5m/clipped_bands/clipped_*.tif; do
     #     base_filename=$(basename "$f")
-    #     python /home/lcousin/stage_cesbio/DataCubeS2/TwinLakeCubeIndex/compute_median.py "$f" "DataCubeS2/WAP${wap}/mediane_bands/mediane_${base_filename}"
+    #     python /home/lcousin/stage_cesbio/DataCubeS2/TwinLakeCubeIndex/compute_median.py "$f" "DataCubeS2/WAP${wap}_5m/mediane_bands/mediane_${base_filename}"
     #     echo "Computed median for $base_filename"
     # done
 
     # Compute median for clipped indices
     echo "Computing median for clipped Sentinel-2 indices..."
-    for f in DataCubeS2/WAP${wap}_10m/clipped_indices/clipped_*.tif; do
+    for f in DataCubeS2/WAP${wap}_5m/clipped_indices/clipped_*.tif; do
         base_filename=$(basename "$f")
-        python /home/lcousin/stage_cesbio/DataCubeS2/TwinLakeCubeIndex/compute_median.py "$f" "DataCubeS2/WAP${wap}_10m/mediane_indices/mediane_${base_filename}"
+        python /home/lcousin/stage_cesbio/DataCubeS2/TwinLakeCubeIndex/compute_median.py "$f" "DataCubeS2/WAP${wap}_5m/mediane_indices/mediane_${base_filename}"
         echo "Computed median for $base_filename"
     done
     

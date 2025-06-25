@@ -293,15 +293,15 @@ def prepare_regression_data(data_dir, wap_number=32, use_peat=False, superresolu
     
     # Set resolution and path modifiers based on parameters
     peat_suffix = "_peat" if use_peat else ""
-    resolution_suffix = "_10m" if not superresolution else ""
+    resolution_suffix = "_10m" if not superresolution else "_5m"
     file_prefix = "" if not moy5m else "10m_"
 
     # Define input paths
-    sentinel_bands_dir = f"DataCubeS2/WAP{wap_number}{peat_suffix}{resolution_suffix}/mediane_bands_10m/"
-    sentinel_indices_dir = f"DataCubeS2/WAP{wap_number}{peat_suffix}{resolution_suffix}/mediane_indices_10m/"
+    sentinel_bands_dir = f"DataCubeS2/WAP{wap_number}{peat_suffix}{resolution_suffix}/mediane_bands/"
+    sentinel_indices_dir = f"DataCubeS2/WAP{wap_number}{peat_suffix}{resolution_suffix}/mediane_indices/"
     
     # Load Sentinel features
-    print("Loading Sentinel features...")
+    print(f"Loading Sentinel features at {sentinel_bands_dir} and {sentinel_indices_dir}...")
     sentinel_features, feature_names = load_all_sentinel_features(
         indices_dir=sentinel_indices_dir, 
         bands_dir=sentinel_bands_dir
@@ -1293,8 +1293,7 @@ if __name__ == "__main__":
         { # Parameters for sqrt_through_proportion
             'max_depth': 10, 'max_features': 'sqrt', 'min_samples_leaf': 1, 'min_samples_split': 10, 'n_estimators': 100,
             "n_jobs": -1
-        }
-    ]
+        }]
     
     # run_all_regressions(
     #     data_dir=data_dir,
@@ -1332,7 +1331,7 @@ if __name__ == "__main__":
     #     rf_params=custom_rf_params
     # )
     
-    # Example 4: Run cross-validation
+    # # Example 4: Run cross-validation
     cv_results = cross_validation(
         data_dir=data_dir,
         output_dir=output_dir,
@@ -1350,3 +1349,48 @@ if __name__ == "__main__":
     print("\nRegression analysis completed successfully!")
     print(f"Results saved to {output_dir}")
 
+""" Pour WAP32_10m
+ rf_params_list = [
+        {  # Parameters for sqrt_Pure_Lichen
+            'max_depth': 10, 'max_features': 'sqrt', 'min_samples_leaf': 1, 'min_samples_split': 5, 'n_estimators': 200,
+            "n_jobs": -1
+        },
+        {  # Parameters for sqrt_Degraded_Lichen
+            'max_depth': 10, 'max_features': 'sqrt', 'min_samples_leaf': 5, 'min_samples_split': 2, 'n_estimators': 100,
+            "n_jobs": -1
+        },
+        {  # Parameters for sqrt_Green
+            'max_depth': 10, 'max_features': 'sqrt', 'min_samples_leaf': 1, 'min_samples_split': 5, 'n_estimators': 100,
+            "n_jobs": -1
+        },
+        {  # Parameters for sqrt_all_lichen
+            'max_depth': 10, 'max_features': 'sqrt', 'min_samples_leaf': 1, 'min_samples_split': 5, 'n_estimators': 200,
+            "n_jobs": -1
+        },
+        { # Parameters for sqrt_through_proportion
+            'max_depth': 10, 'max_features': 'sqrt', 'min_samples_leaf': 1, 'min_samples_split': 10, 'n_estimators': 100,
+            "n_jobs": -1
+        }]
+        """
+
+""" Pour WAP32_5m
+{  # Parameters for sqrt_Pure_Lichen
+            'max_depth': 10, 'max_features': 'sqrt', 'min_samples_leaf': 5, 'min_samples_split': 2, 'n_estimators': 200,
+            "n_jobs": -1
+        },
+        {  # Parameters for sqrt_Degraded_Lichen
+            'max_depth': 20, 'max_features': 'sqrt', 'min_samples_leaf': 1, 'min_samples_split': 2, 'n_estimators': 200,
+            "n_jobs": -1
+        },
+        {  # Parameters for sqrt_Green
+            'max_depth': 20, 'max_features': 'sqrt', 'min_samples_leaf': 1, 'min_samples_split': 5, 'n_estimators': 200,
+            "n_jobs": -1
+        },
+        {  # Parameters for sqrt_all_lichen
+            'max_depth': 10, 'max_features': 'log2', 'min_samples_leaf': 5, 'min_samples_split': 5, 'n_estimators': 200,
+            "n_jobs": -1
+        },
+        { # Parameters for sqrt_through_proportion
+            'max_depth': 20, 'max_features': 'sqrt', 'min_samples_leaf': 1, 'min_samples_split': 10, 'n_estimators': 200,
+            "n_jobs": -1
+        }"""

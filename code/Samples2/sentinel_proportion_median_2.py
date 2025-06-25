@@ -146,6 +146,7 @@ def process_wap_data(filtered_csv, output_dir):
     df = pd.read_csv(filtered_csv)
     
     n_bins = 25
+    keep_zero = False
     
     # Process Pure_Lichen class
     pure_lichen_df = create_balanced_dataset(
@@ -153,7 +154,7 @@ def process_wap_data(filtered_csv, output_dir):
         output_dir=output_dir,
         target_col='Pure_Lichen',
         n_bins=n_bins,
-        keep_zero=True,
+        keep_zero=keep_zero,
         quantile=0.5
     )
 
@@ -162,7 +163,7 @@ def process_wap_data(filtered_csv, output_dir):
         output_dir=output_dir,
         target_col='sqrt_Pure_Lichen',
         n_bins=n_bins,
-        keep_zero=True,
+        keep_zero=keep_zero,
         quantile=0.5
     )
     
@@ -172,7 +173,7 @@ def process_wap_data(filtered_csv, output_dir):
         output_dir=output_dir,
         target_col='Degraded_Lichen',
         n_bins=n_bins,
-        keep_zero=True,
+        keep_zero=keep_zero,
         quantile=0.6
     )
 
@@ -182,7 +183,7 @@ def process_wap_data(filtered_csv, output_dir):
         output_dir=output_dir,
         target_col='sqrt_Degraded_Lichen',
         n_bins=n_bins,
-        keep_zero=True,
+        keep_zero=keep_zero,
         quantile=0.6
     )
     
@@ -192,7 +193,7 @@ def process_wap_data(filtered_csv, output_dir):
         output_dir=output_dir,
         target_col='all_lichen',
         n_bins=n_bins,
-        keep_zero=True,
+        keep_zero=keep_zero,
         quantile=0.6
     )
     
@@ -202,7 +203,7 @@ def process_wap_data(filtered_csv, output_dir):
         output_dir=output_dir,
         target_col='sqrt_all_lichen',
         n_bins=n_bins,
-        keep_zero=True,
+        keep_zero=keep_zero,
         quantile=0.6
     )
 
@@ -212,7 +213,7 @@ def process_wap_data(filtered_csv, output_dir):
         output_dir=output_dir,
         target_col='Green',
         n_bins=n_bins,
-        keep_zero=True,
+        keep_zero=keep_zero,
         quantile=0.6
     )
     # Process Green class
@@ -221,7 +222,7 @@ def process_wap_data(filtered_csv, output_dir):
         output_dir=output_dir,
         target_col='sqrt_Green',
         n_bins=n_bins,
-        keep_zero=True,
+        keep_zero=keep_zero,
         quantile=0.6
     )
     
@@ -231,7 +232,7 @@ def process_wap_data(filtered_csv, output_dir):
         output_dir=output_dir,
         target_col='through_proportion',
         n_bins=n_bins,
-        keep_zero=True,
+        keep_zero=keep_zero,
         quantile=0.5
     )
 
@@ -241,7 +242,7 @@ def process_wap_data(filtered_csv, output_dir):
         output_dir=output_dir,
         target_col='sqrt_through_proportion',
         n_bins=n_bins,
-        keep_zero=True,
+        keep_zero=keep_zero,
         quantile=0.5
     )
 

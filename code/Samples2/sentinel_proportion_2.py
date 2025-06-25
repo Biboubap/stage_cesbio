@@ -380,12 +380,11 @@ def process_wap_data(wap_number, classification_path, output_dir=None, use_peat=
     
     # Set resolution and path modifiers based on superresolution flag
     resolution = 5 if superresolution else 10
-    resolution_suffix = "" if superresolution else "_10m"
+    resolution_suffix = "_5m" if superresolution else "_10m"
     mediane_dir = "mediane" if not moy5m else "mediane_10m"
     file_prefix = "" if not moy5m else "10m_"
     
     # Add resolution suffix to output directory if not using superresolution
-    resolution_suffix = "" if superresolution else "_10m"
     output_dir = f"{output_dir}"
     
     os.makedirs(output_dir, exist_ok=True)
@@ -440,7 +439,7 @@ def process_wap_data(wap_number, classification_path, output_dir=None, use_peat=
     print(f"Results saved in {output_dir}")
 
 if __name__ == "__main__":
-    wap = 23
+    wap = 32
     use_peat = False
     superresolution = False  # Use 5m resolution (True) or 10m resolution (False)
     peat_suffix = "_peat" if use_peat else ""
