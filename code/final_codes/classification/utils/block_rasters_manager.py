@@ -47,28 +47,29 @@ class BlockRastersManager:
         if self.rgb_path:
             ds = gdal.Open(self.rgb_path)
             # Note: GDAL uses (xoff, yoff, xsize, ysize) order for ReadAsArray
+            # Swapping x and y for correct orientation
             self.rast_r = ds.GetRasterBand(1).ReadAsArray(
-                self.y_start, self.x_start, self.y_size, self.x_size)
+                self.x_start, self.y_start, self.x_size, self.y_size)
             self.rast_g = ds.GetRasterBand(2).ReadAsArray(
-                self.y_start, self.x_start, self.y_size, self.x_size)
+                self.x_start, self.y_start, self.x_size, self.y_size)
             self.rast_b = ds.GetRasterBand(3).ReadAsArray(
-                self.y_start, self.x_start, self.y_size, self.x_size)
+                self.x_start, self.y_start, self.x_size, self.y_size)
             ds = None
-        
+    
         # Load DSM data
         if self.dsm_path:
             dz = gdal.Open(self.dsm_path)
             self.rast_z = dz.GetRasterBand(1).ReadAsArray(
-                self.y_start, self.x_start, self.y_size, self.x_size) * 1000
+                self.x_start, self.y_start, self.x_size, self.y_size) * 1000
             dz = None
         
         # Load thermal data
         if self.thermal_path:
             dt = gdal.Open(self.thermal_path)
             self.rast_t = dt.GetRasterBand(1).ReadAsArray(
-                self.y_start, self.x_start, self.y_size, self.x_size)
+                self.x_start, self.y_start, self.x_size, self.y_size)
             dt = None
-    
+
     def clear_rasters(self):
         """Release rasters from memory."""
         self.rast_r = None
@@ -97,11 +98,12 @@ class BlockRastersManager:
             raise ValueError(f"Patch coordinates ({x},{y}) with size {size_patch} "
                            f"exceed block bounds ({self.x_size},{self.y_size})")
         
-        r = self.rast_r[x:x + size_patch, y:y + size_patch] if self.rast_r is not None else None
-        g = self.rast_g[x:x + size_patch, y:y + size_patch] if self.rast_g is not None else None
-        b = self.rast_b[x:x + size_patch, y:y + size_patch] if self.rast_b is not None else None
-        z = self.rast_z[x:x + size_patch, y:y + size_patch] if self.rast_z is not None else None
-        t = self.rast_t[x:x + size_patch, y:y + size_patch] if self.rast_t is not None else None
+        # Invert x and y for correct orientation
+        r = self.rast_r[y:y + size_patch, x:x + size_patch] if self.rast_r is not None else None
+        g = self.rast_g[y:y + size_patch, x:x + size_patch] if self.rast_g is not None else None
+        b = self.rast_b[y:y + size_patch, x:x + size_patch] if self.rast_b is not None else None
+        z = self.rast_z[y:y + size_patch, x:x + size_patch] if self.rast_z is not None else None
+        t = self.rast_t[y:y + size_patch, x:x + size_patch] if self.rast_t is not None else None
         
         return r, g, b, z, t
     
@@ -130,11 +132,11 @@ class BlockRastersManager:
         
         stats = {}
         
-        # RGB statistics
+        # RGB statistics - invert x and y for correct orientation
         if self.rast_r is not None and self.rast_g is not None and self.rast_b is not None:
-            r_patch = self.rast_r[x:x + size_patch, y:y + size_patch]
-            g_patch = self.rast_g[x:x + size_patch, y:y + size_patch]
-            b_patch = self.rast_b[x:x + size_patch, y:y + size_patch]
+            r_patch = self.rast_r[y:y + size_patch, x:x + size_patch]
+            g_patch = self.rast_g[y:y + size_patch, x:x + size_patch]
+            b_patch = self.rast_b[y:y + size_patch, x:x + size_patch]
             
             # Handle potential NaN values
             if np.isnan(r_patch).any() or np.isnan(g_patch).any() or np.isnan(b_patch).any():
@@ -157,7 +159,7 @@ class BlockRastersManager:
             
         # Altitude (z)
         if self.rast_z is not None:
-            z_patch = self.rast_z[x:x + size_patch, y:y + size_patch]
+            z_patch = self.rast_z[y:y + size_patch, x:x + size_patch]
             if np.isnan(z_patch).any():
                 stats['z_mean'] = float(np.nanmean(z_patch)) if not np.isnan(z_patch).all() else 0
                 stats['z_var'] = float(np.nanvar(z_patch)) if not np.isnan(z_patch).all() else 0
@@ -169,7 +171,7 @@ class BlockRastersManager:
             
         # Temperature (t)
         if self.rast_t is not None:
-            t_patch = self.rast_t[x:x + size_patch, y:y + size_patch]
+            t_patch = self.rast_t[y:y + size_patch, x:x + size_patch]
             if np.isnan(t_patch).any():
                 stats['t_mean'] = float(np.nanmean(t_patch)) if not np.isnan(t_patch).all() else 0
                 stats['t_var'] = float(np.nanvar(t_patch)) if not np.isnan(t_patch).all() else 0

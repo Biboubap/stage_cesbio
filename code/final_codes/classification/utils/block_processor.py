@@ -141,63 +141,43 @@ def filter_isolated_samples(pred_map, min_group_size=3):
     
     Args:
         pred_map: Prediction map
-        min_group_size: Minimum size of a group to keep
+        min_group_size: Minimum size of a group to keep (not used in this implementation)
         
     Returns:
         Filtered prediction map
     """
-    pred_map_filtered = pred_map.copy()
-    height, width = pred_map.shape
-    visited = np.zeros_like(pred_map, dtype=bool)
-    
-    # Perform connected component labeling and filtering
-    for y in range(height):
-        for x in range(width):
-            if visited[y, x] or pred_map[y, x] == 0:
-                continue
-                
-            # BFS to find connected components
-            class_value = pred_map[y, x]
-            group = [(y, x)]
-            group_pixels = [(y, x)]
-            visited[y, x] = True
+    from scipy.ndimage import generic_filter
+
+    def filter_func(values):
+        center = values[4]  # La valeur centrale
+        if center == 0 or center == 255:  # Ne pas modifier les pixels de fond ou sans données
+            return center
+        
+        neighbors = np.delete(values, 4)  # Tous les voisins sauf le centre
+        
+        # Si aucun voisin n'a la même classe que le centre, le pixel est isolé
+        if not np.any(neighbors == center):
+            # Trouver la classe majoritaire parmi les voisins non-nuls
+            nonzero_neighbors = neighbors[neighbors > 0]
+            if len(nonzero_neighbors) == 0:
+                return center  # Si tous les voisins sont nuls, garder la valeur originale
             
-            i = 0
-            while i < len(group):
-                cy, cx = group[i]
-                i += 1
-                
-                # Check neighbors (4-connectivity)
-                for ny, nx in [(cy-1, cx), (cy+1, cx), (cy, cx-1), (cy, cx+1)]:
-                    if (0 <= ny < height and 0 <= nx < width and
-                        not visited[ny, nx] and pred_map[ny, nx] == class_value):
-                        group.append((ny, nx))
-                        group_pixels.append((ny, nx))
-                        visited[ny, nx] = True
-            
-            # If group is too small, set its pixels to the majority class of neighbors
-            if len(group_pixels) < min_group_size:
-                for py, px in group_pixels:
-                    # Collect neighbor classes (including diagonals)
-                    neighbor_classes = []
-                    for dy in [-1, 0, 1]:
-                        for dx in [-1, 0, 1]:
-                            if dy == 0 and dx == 0:
-                                continue
-                            ny, nx = py + dy, px + dx
-                            if 0 <= ny < height and 0 <= nx < width:
-                                if pred_map[ny, nx] != class_value and pred_map[ny, nx] != 0:
-                                    neighbor_classes.append(pred_map[ny, nx])
-                    
-                    # Set to most common neighbor class if any exist, otherwise keep
-                    if neighbor_classes:
-                        class_counts = defaultdict(int)
-                        for cls in neighbor_classes:
-                            class_counts[cls] += 1
-                        most_common = max(class_counts.items(), key=lambda x: x[1])[0]
-                        pred_map_filtered[py, px] = most_common
+            # Compter les occurrences de chaque classe
+            unique_vals, counts = np.unique(nonzero_neighbors, return_counts=True)
+            # Retourne la classe la plus fréquente
+            return unique_vals[np.argmax(counts)]
+        else:
+            # Le pixel n'est pas isolé, garder sa valeur originale
+            return center
+
+    # Appliquer le filtre sur chaque pixel avec un noyau 3x3
+    filtered_map = generic_filter(pred_map, filter_func, size=3, mode='constant', cval=0)
     
-    return pred_map_filtered
+    # Vérifier combien de pixels ont été modifiés
+    changed = np.sum(filtered_map != pred_map)
+    logger.info(f"Isolated pixels filtering: {changed} pixels modified ({changed/(pred_map.size)*100:.2f}%)")
+    
+    return filtered_map.astype(pred_map.dtype)
 
 def predict_samples(model, features, positions, shape_y, shape_x):
     """
@@ -394,4 +374,4 @@ def process_block_with_overlap(rgb_path, dsm_path, model1, model2,
         import traceback
         traceback.print_exc()
         return None, block
-        return None, block
+       

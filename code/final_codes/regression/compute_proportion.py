@@ -495,11 +495,11 @@ def main():
     # os.makedirs(output_dir, exist_ok=True)
     # output_base = f"{output_dir}/proportions_WAP{wap}"
 
-    site_name = "Chesnay"
+    site_name = "Belcher"
     resolution_suffix = "_10m"
 
     classification_path = f"Konstantin/{site_name}_tiles/classification_well.tif"
-    sentinel_path = f"DataCubeS2/{site_name}{resolution_suffix}/mediane_bands/mediane_clipped_STACK_2023_BandB4_{site_name}_deflate.tif"
+    sentinel_path = f"DataCubeS2/{site_name}{resolution_suffix}/mediane_bands/mediane_STACK_2023_BandB4_{site_name}_deflate.tif"
     bands_dir = f"DataCubeS2/{site_name}{resolution_suffix}/mediane_bands"
     indices_dir = f"DataCubeS2/{site_name}{resolution_suffix}/mediane_indices/"
 

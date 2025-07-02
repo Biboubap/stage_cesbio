@@ -256,3 +256,8 @@ if __name__ == "__main__":
 
 
 # python code/final_codes/classification/process_classification.py --rgb drone_treated/WAP32_tiles/rgb/WAP32_full_transparent_mosaic_group1_08_05.tif --dsm drone_treated/WAP32_tiles/dsm/WAP32_full_dsm_08_05.tif --out drone_treated/WAP32_tiles/classif_08_05_test.tif
+# python code/final_codes/classification/process_classification.py --rgb drone_treated/WAP32_tiles/rgb/WAP32_full_transparent_mosaic_group1_05_12.tif --dsm drone_treated/WAP32_tiles/dsm/WAP32_full_dsm_05_12.tif --out drone_treated/WAP32_tiles/classif_05_12_test.tif
+
+
+
+# python code/final_codes/classification/process_classification.py --rgb Konstantin/UAV_Konstantin_Tabatha/Lamprey/LampreyAugust2023_ortho_export_MonJun16161722231719_32615.tif --dsm Konstantin/UAV_Konstantin_Tabatha/Lamprey/Lamprey_DSM_Resampled.tif --out Konstantin/Lamprey_tiles/Lamprey_classif_8.tif
