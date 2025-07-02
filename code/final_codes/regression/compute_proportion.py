@@ -480,22 +480,33 @@ def merge_csv_files(features_csv, proportions_csv, output_csv, output_json):
 def main():
     """
     Main function to process classification data and create proportion outputs.
-
+    The data is processed on the classification tif, which has to be clipped to the well-classified area.
     """
 
-    # Fixed inputs (no parsing)
-    wap = 32
+    # wap = 23
+    # resolution_suffix = "_10m"
+
+    # classification_path = f"drone_treated/WAP{wap}_tiles/classification_well.tif"
+    # sentinel_path = f"DataCubeS2/WAP{wap}{resolution_suffix}/mediane_bands/mediane_clipped_STACK_2023_BandB4_WAP{wap}_deflate.tif"
+    # bands_dir = f"DataCubeS2/WAP{wap}{resolution_suffix}/mediane_bands"
+    # indices_dir = f"DataCubeS2/WAP{wap}{resolution_suffix}/mediane_indices/"
+
+    # output_dir = f"data/regressions/regression_multisite/regression_wap{wap}{resolution_suffix}"
+    # os.makedirs(output_dir, exist_ok=True)
+    # output_base = f"{output_dir}/proportions_WAP{wap}"
+
+    site_name = "Chesnay"
     resolution_suffix = "_10m"
 
-    classification_path = f"drone_treated/WAP{wap}_tiles/WAP{wap}_classif_merged.tif"
-    sentinel_path = f"DataCubeS2/WAP{wap}{resolution_suffix}/mediane_bands/mediane_clipped_STACK_2023_BandB4_WAP{wap}_deflate.tif"
-    bands_dir = f"DataCubeS2/WAP{wap}{resolution_suffix}/mediane_bands"
-    indices_dir = f"DataCubeS2/WAP{wap}{resolution_suffix}/mediane_indices/"
+    classification_path = f"Konstantin/{site_name}_tiles/classification_well.tif"
+    sentinel_path = f"DataCubeS2/{site_name}{resolution_suffix}/mediane_bands/mediane_clipped_STACK_2023_BandB4_{site_name}_deflate.tif"
+    bands_dir = f"DataCubeS2/{site_name}{resolution_suffix}/mediane_bands"
+    indices_dir = f"DataCubeS2/{site_name}{resolution_suffix}/mediane_indices/"
 
-    output_dir = f"data/regressions/regression_multisite/regression_wap{wap}{resolution_suffix}"
+    output_dir = f"data/regressions/regression_multisite/regression_{site_name}{resolution_suffix}"
     os.makedirs(output_dir, exist_ok=True)
-    output_base = f"{output_dir}/proportions_WAP{wap}"
-    
+    output_base = f"{output_dir}/proportions_{site_name}"
+
     # Class names and groupings
     class_labels = {
         1: "Pure_Lichen",
