@@ -15,6 +15,33 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from collections import defaultdict
 
+def normalize_feature_name(feature_name):
+    """
+    Normalize feature names by extracting the core band or index name.
+    
+    Args:
+        feature_name: Original feature name with site-specific information
+        
+    Returns:
+        normalized_name: Standardized feature name (e.g., "B12", "NDVI")
+    """
+    # List of all possible band/index names to extract
+    band_names = ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B11', 'B12']
+    index_names = ['CI_B7', 'NDWI', 'MSI', 'NDVI', 'GCC', 'CI_B5', 'NBR', 'GNDVI', 'MNDWI']
+    
+    # Check for band names
+    for band in band_names:
+        if band in feature_name:
+            return band
+            
+    # Check for index names
+    for index in index_names:
+        if index in feature_name:
+            return index
+            
+    # If no match found, return the original name
+    return feature_name
+
 def load_json_files(json_paths):
     """
     Load and combine multiple JSON files.
@@ -41,9 +68,17 @@ def load_json_files(json_paths):
             for j in range(len(data)):
                 source_info[base_index + j] = os.path.basename(json_path)
             
-            # Add source information to each pixel
+            # Normalize feature names and add source information to each pixel
             for pixel in data:
                 pixel['source'] = os.path.basename(json_path)
+                
+                # Normalize feature names
+                if 'features' in pixel:
+                    normalized_features = {}
+                    for feat_name, feat_value in pixel['features'].items():
+                        normalized_name = normalize_feature_name(feat_name)
+                        normalized_features[normalized_name] = feat_value
+                    pixel['features'] = normalized_features
             
             # Add to merged data
             merged_data.extend(data)

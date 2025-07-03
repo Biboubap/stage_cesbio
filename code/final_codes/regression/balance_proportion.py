@@ -16,6 +16,33 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from collections import defaultdict
 
+def normalize_feature_name(feature_name):
+    """
+    Normalize feature names by extracting the core band or index name.
+    
+    Args:
+        feature_name: Original feature name with site-specific information
+        
+    Returns:
+        normalized_name: Standardized feature name (e.g., "B12", "NDVI")
+    """
+    # List of all possible band/index names to extract
+    band_names = ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B11', 'B12']
+    index_names = ['CI_B7', 'NDWI', 'MSI', 'NDVI', 'GCC', 'CI_B5', 'NBR', 'GNDVI', 'MNDWI']
+    
+    # Check for band names
+    for band in band_names:
+        if band in feature_name:
+            return band
+            
+    # Check for index names
+    for index in index_names:
+        if index in feature_name:
+            return index
+            
+    # If no match found, return the original name
+    return feature_name
+
 def create_balanced_dataset(input_data, target_col, n_bins=25, quantile=0.5):
     """
     Create a balanced dataset by dividing the values of target_col into n_bins bins of equal size
@@ -144,6 +171,15 @@ def balance_json_proportions(json_path, output_dir, n_bins=25, quantile=0.5):
     
     print(f"Loaded {len(data)} pixels from JSON")
     
+    # Normalize feature names if not already normalized
+    for pixel in data:
+        if 'features' in pixel:
+            normalized_features = {}
+            for feat_name, feat_value in pixel['features'].items():
+                normalized_name = normalize_feature_name(feat_name)
+                normalized_features[normalized_name] = feat_value
+            pixel['features'] = normalized_features
+    
     # Convert to DataFrame for easier processing
     df = pd.json_normalize(data)
     
@@ -240,4 +276,8 @@ def main():
 if __name__ == "__main__":
     main()
 
-# python code/final_codes/regression/balance_proportion.py data/regressions/regression_multisite/merged/merged_pixels.json --output data/regressions/regression_multisite/balanced --quantile 0.5 --bins 25
+# python code/final_codes/regression/balance_proportion.py \
+#     data/regressions/regression_multisite/merged/merged_pixels.json \
+#     --output data/regressions/regression_multisite/balanced \
+#     --quantile 0.6 \
+#     --bins 25
