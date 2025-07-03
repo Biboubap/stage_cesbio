@@ -248,4 +248,11 @@ if __name__ == "__main__":
 
 #python merge_proportion.py path/to/proportions1.json path/to/proportions2.json --output merged_output.json --plots-dir plots_directory
 
-#python code/final_codes/regression/merge_proportion.py data/regressions/regression_multisite/regression_Belcher_10m/proportions_Belcher_proportions.json data/regressions/regression_multisite/regression_Chesnay_10m/proportions_Chesnay_proportions.json data/regressions/regression_multisite/regression_wap23_10m/proportions_WAP23_proportions.json data/regressions/regression_multisite/regression_wap32_10m/proportions_WAP32_proportions.json --output data/regressions/regression_multisite/merged/merged_pixels.json --plots data/regressions/regression_multisite/merged
+# python code/final_codes/regression/merge_proportion.py\
+#  data/regressions/regression_multisite/regression_Belcher_10m/proportions_Belcher_proportions.json\
+#  data/regressions/regression_multisite/regression_Chesnay_10m/proportions_Chesnay_proportions.json\
+#  data/regressions/regression_multisite/regression_wap23_10m/proportions_WAP23_proportions.json\
+#  data/regressions/regression_multisite/regression_wap32_10m/proportions_WAP32_proportions.json\
+#  data/regressions/regression_multisite/regression_Lamprey_10m/proportions_Lamprey_proportions.json\
+#  --output data/regressions/regression_multisite/merged/merged_pixels.json\
+#  --plots data/regressions/regression_multisite/merged
