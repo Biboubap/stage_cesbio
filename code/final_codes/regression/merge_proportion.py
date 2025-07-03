@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from collections import defaultdict
+import re
 
 def normalize_feature_name(feature_name):
     """
@@ -25,20 +26,24 @@ def normalize_feature_name(feature_name):
     Returns:
         normalized_name: Standardized feature name (e.g., "B12", "NDVI")
     """
-    # List of all possible band/index names to extract
-    band_names = ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B11', 'B12']
-    index_names = ['CI_B7', 'NDWI', 'MSI', 'NDVI', 'GCC', 'CI_B5', 'NBR', 'GNDVI', 'MNDWI']
+    # Extract band names (format: BandB2, BandB8A, BandB12, etc.)
+    band_match = re.search(r'Band(B[0-9]+A?)', feature_name)
+    if band_match:
+        return band_match.group(1)  # Return just the band name (B2, B8A, B12)
     
-    # Check for band names
-    for band in band_names:
-        if band in feature_name:
-            return band
-            
-    # Check for index names
-    for index in index_names:
-        if index in feature_name:
+    # Extract index names (format: _NDVI_, _MNDWI_, _CI_B7_, etc.)
+    # List all indices we're looking for
+    indices = ['NDVI', 'GNDVI', 'NDWI', 'MNDWI', 'NBR', 'GCC', 'MSI', 'CI_B5', 'CI_B7']
+    
+    for index in indices:
+        if f'_{index}_' in feature_name:
             return index
-            
+    
+    # If no match found, check for direct occurrence of band or index names
+    for name in indices + ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B11', 'B12']:
+        if re.search(r'\b' + re.escape(name) + r'\b', feature_name):
+            return name
+    
     # If no match found, return the original name
     return feature_name
 
@@ -289,5 +294,6 @@ if __name__ == "__main__":
 #  data/regressions/regression_multisite/regression_wap23_10m/proportions_WAP23_proportions.json\
 #  data/regressions/regression_multisite/regression_wap32_10m/proportions_WAP32_proportions.json\
 #  data/regressions/regression_multisite/regression_Lamprey_10m/proportions_Lamprey_proportions.json\
-#  --output data/regressions/regression_multisite/merged/merged_pixels.json\
+#  data/regressions/regression_multisite/regression_WAP12_10m/proportions_WAP12_proportions.json\
+# --output data/regressions/regression_multisite/merged/merged_pixels.json\
 #  --plots data/regressions/regression_multisite/merged

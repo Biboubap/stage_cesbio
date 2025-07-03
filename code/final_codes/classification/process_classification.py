@@ -322,4 +322,7 @@ if __name__ == "__main__":
 
 
 
-# python home/lcousin/stage_cesbio/code/final_codes/classification/process_classification.py --rgb home/lcousin/stage_cesbio/Konstantin/UAV_Konstantin_Tabatha/Lamprey/LampreyAugust2023_ortho_export_MonJun16161722231719_32615.tif --dsm home/lcousin/stage_cesbio/Konstantin/UAV_Konstantin_Tabatha/Lamprey/Lamprey_DSM_Resampled.tif --out media/lcousin/FASTBOYSLIM/Loris/KonstantinClassif/Lamprey_classif.tif
+# python home/lcousin/stage_cesbio/code/final_codes/classification/process_classification.py\
+#  --rgb home/lcousin/stage_cesbio/Konstantin/UAV_Konstantin_Tabatha/Chesnay/ChesnayAugust2023_ortho_export_MonJun16161612078476_32615.tif\
+#  --dsm home/lcousin/stage_cesbio/Konstantin/UAV_Konstantin_Tabatha/Chesnay/Chesnay_DSM_Resampled.tif \
+#  --out media/lcousin/FASTBOYSLIM/Loris/KonstantinClassif/Chesnay_classif.tif

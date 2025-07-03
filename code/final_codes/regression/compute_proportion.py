@@ -645,10 +645,17 @@ if __name__ == "__main__":
     main()
 """
  python /home/lcousin/stage_cesbio/code/final_codes/regression/compute_proportion.py \
-    --classification media/lcousin/FASTBOYSLIM/Loris/KonstantinClassif/Lamprey_classif_well.tif \
-    --sentinel-band /home/lcousin/stage_cesbio/DataCubeS2/Lamprey_10m/mediane_bands/mediane_STACK_2023_BandB4_Lamprey_deflate.tif \
-    --bands-dir /home/lcousin/stage_cesbio/DataCubeS2/Lamprey_10m/mediane_bands \
-    --indices-dir /home/lcousin/stage_cesbio/DataCubeS2/Lamprey_10m/mediane_indices \
-    --output-dir /home/lcousin/stage_cesbio/data/regressions/regression_multisite/regression_Lamprey_10m \
-    --site-name Lamprey     
+    --classification media/lcousin/FASTBOYSLIM/Loris/KonstantinClassif/Chesnay_classif_well.tif \
+    --sentinel-band /home/lcousin/stage_cesbio/DataCubeS2/Chesnay_10m/mediane_bands/mediane_STACK_2023_BandB4_Chesnay_deflate.tif \
+    --bands-dir /home/lcousin/stage_cesbio/DataCubeS2/Chesnay_10m/mediane_bands \
+    --indices-dir /home/lcousin/stage_cesbio/DataCubeS2/Chesnay_10m/mediane_indices \
+    --output-dir /home/lcousin/stage_cesbio/data/regressions/regression_multisite/regression_Chesnay_10m \
+    --site-name Chesnay     
 """
+# python /home/lcousin/stage_cesbio/code/final_codes/regression/compute_proportion.py \
+#     --classification home/lcousin/stage_cesbio/drone_treated/WAP12_tiles/wap12_classif_well.tif\
+#     --sentinel-band /home/lcousin/stage_cesbio/DataCubeS2/WAP12_10m/mediane_bands/mediane_clipped_STACK_2023_BandB4_WAP12_deflate.tif\
+#     --bands-dir /home/lcousin/stage_cesbio/DataCubeS2/WAP12_10m/mediane_bands\
+#     --indices-dir /home/lcousin/stage_cesbio/DataCubeS2/WAP12_10m/mediane_indices\
+#     --output-dir /home/lcousin/stage_cesbio/data/regressions/regression_multisite/regression_WAP12_10m \
+#     --site-name WAP12
