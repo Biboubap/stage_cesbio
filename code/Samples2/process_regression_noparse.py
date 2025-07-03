@@ -260,51 +260,25 @@ def process_regression(model_paths, target_classes, bands_dir, indices_dir, outp
     # Make predictions
     print("Making predictions...")
     for row in tqdm(range(height)):
-        # Extract features for the entire row
         row_features = []
-        row_mask = []
-        
+        valid_cols = []
         for col in range(width):
-            # If mask is provided, skip pixels outside the mask
-            if mask is not None and mask[row, col] == 0:
-                row_features.append(None)  # Placeholder
-                row_mask.append(False)
-                continue
-            
-            # Extract features for this pixel
+            # Correction : si pas de masque, traiter tous les pixels ; si masque, traiter seulement mask==1
+            if mask is not None:
+                if mask[row, col] != 1:
+                    continue  # Ne traite pas ce pixel
             pixel_features = [band[row, col] for band in features]
             row_features.append(pixel_features)
-            row_mask.append(True)
-        
-        # Skip if no valid pixels in this row
-        if not any(row_mask):
+            valid_cols.append(col)
+        if not row_features:
             continue
-        
-        # Collect only valid features
-        valid_features = [feat for feat, valid in zip(row_features, row_mask) if valid]
-        
-        # Skip if no valid features
-        if not valid_features:
-            continue
-            
-        # Convert to numpy array
-        X = np.array(valid_features)
-        
-        # Get valid column indices
-        valid_cols = [col for col, valid in enumerate(row_mask) if valid]
-        
+        X = np.array(row_features)
         # Predict for each target class
         for model_name, output_class in target_classes.items():
             model = models[model_name]
-            
-            # Make prediction
             predictions = model.predict(X)
-            
-            # Apply squared transformation for sqrt_ classes
             if model_name.startswith("sqrt_"):
-                predictions = predictions ** 2  # Convert back from sqrt space
-            
-            # Assign predictions back to the correct columns
+                predictions = predictions ** 2
             for i, col in enumerate(valid_cols):
                 prediction_arrays[output_class][row, col] = predictions[i]
     
@@ -430,7 +404,7 @@ def load_tif_bands(tif_path):
     
     return bands_data, band_names, width, height, geo_transform, projection
 
-def evaluate_regression(truth_path, pred_path, output_path, band_mapping=None, mask_path=None):
+def evaluate_regression(truth_path, pred_path, output_path, band_mapping=None, mask_path=None, csv_output=True):
     """
     Evaluate regression results by comparing theoretical proportions with predicted proportions
     
@@ -440,6 +414,7 @@ def evaluate_regression(truth_path, pred_path, output_path, band_mapping=None, m
         output_path: Path to save the output plots and metrics
         band_mapping: Dictionary mapping prediction band names to truth band names
         mask_path: Path to a mask file (optional). Only pixels where mask is not 0 will be evaluated
+        csv_output: Whether to generate a CSV file with pixel-wise results (default: True)
     
     Returns:
         results: Dictionary of dictionaries with metrics and arrays for each band
@@ -532,6 +507,64 @@ def evaluate_regression(truth_path, pred_path, output_path, band_mapping=None, m
     
     # Create plots
     plot_evaluation_results(results, output_path)
+    
+    # Generate CSV file with pixel-wise results if requested
+    if csv_output:
+        print("Generating pixel-wise comparison CSV...")
+        csv_path = output_path.replace('.png', '_pixel_data.csv')
+        
+        # Prepare data for CSV
+        csv_data = []
+        
+        # Iterate through all valid pixels
+        for y in range(min(truth_height, pred_height)):
+            for x in range(min(truth_width, pred_width)):
+                # Check if pixel is in mask (if provided)
+                if mask is not None and (y >= mask.shape[0] or x >= mask.shape[1] or mask[y, x] == 0):
+                    continue
+                
+                row_data = {'x': x, 'y': y}
+                all_valid = True
+                
+                # Add truth values
+                for truth_band_name in selected_bands:
+                    if y < truth_bands[truth_band_name].shape[0] and x < truth_bands[truth_band_name].shape[1]:
+                        value = truth_bands[truth_band_name][y, x]
+                        if np.isnan(value):
+                            all_valid = False
+                            break
+                        row_data[f'theoretical_{truth_band_name}'] = value
+                    else:
+                        all_valid = False
+                        break
+                
+                if not all_valid:
+                    continue
+                
+                # Add prediction values
+                for truth_band_name in selected_bands:
+                    pred_band_name = band_mapping[truth_band_name]
+                    if y < pred_bands[pred_band_name].shape[0] and x < pred_bands[pred_band_name].shape[1]:
+                        value = pred_bands[pred_band_name][y, x]
+                        if np.isnan(value):
+                            all_valid = False
+                            break
+                        row_data[f'predicted_{truth_band_name}'] = value
+                    else:
+                        all_valid = False
+                        break
+                
+                if all_valid:
+                    csv_data.append(row_data)
+        
+        # Create and save DataFrame
+        if csv_data:
+            import pandas as pd
+            df = pd.DataFrame(csv_data)
+            df.to_csv(csv_path, index=False)
+            print(f"Pixel-wise comparison saved to {csv_path}")
+        else:
+            print("No valid pixels for CSV generation")
     
     return results
 
@@ -632,6 +665,32 @@ def plot_evaluation_results(results, output_path):
             metrics = band_data['metrics']
             f.write(f"{band_name},{metrics['r2']:.6f},{metrics['rmse']:.6f},{metrics['pearson']:.6f}\n")
     print(f"Metrics saved to {metrics_path}")
+    
+    # --- NEW: Individual plots for each band ---
+    for band_name, band_data in results.items():
+        truth = band_data['truth']
+        pred = band_data['pred']
+        metrics = band_data['metrics']
+
+        plt.figure(figsize=(5, 5))
+        plt.scatter(truth, pred, color='#1F77B4', alpha=0.6, s=10, edgecolor='none')
+        max_val = max(np.max(truth), np.max(pred))
+        plt.plot([0, max_val], [0, max_val], 'r--', linewidth=2)
+        plt.xlabel("Actual value (original scale)", fontsize=10)
+        plt.ylabel("Predicted value (original scale)", fontsize=10)
+        plt.title(f"{band_name}\n"
+                  f"R² = {metrics['r2']:.3f}, "
+                  f"RMSE = {metrics['rmse']:.3f}, "
+                  f"r = {metrics['pearson']:.3f}", 
+                  fontsize=12)
+        plt.xlim(0, max_val * 1.05)
+        plt.ylim(0, max_val * 1.05)
+        plt.grid(alpha=0.3)
+        indiv_path = output_path.replace('.png', f'_{band_name}.png')
+        plt.tight_layout()
+        plt.savefig(indiv_path, dpi=150)
+        plt.close()
+        print(f"Individual plot for {band_name} saved to {indiv_path}")
 
 def run_regression(wap, bands_dir, indices_dir, model_paths, target_classes, 
                   output_path, reference_path=None, mask_path=None, normalise=False):
@@ -688,7 +747,7 @@ def run_regression(wap, bands_dir, indices_dir, model_paths, target_classes,
     
     return output_path
 
-def run_evaluation(truth_path, pred_path, output_path, band_mapping=None, mask_path=None):
+def run_evaluation(truth_path, pred_path, output_path, band_mapping=None, mask_path=None, csv_output=True):
     """
     Run the evaluation process to compare predicted vs theoretical proportions
     
@@ -698,6 +757,7 @@ def run_evaluation(truth_path, pred_path, output_path, band_mapping=None, mask_p
         output_path: Path for evaluation output
         band_mapping: Dictionary mapping prediction band names to truth band names
         mask_path: Path to mask file (optional)
+        csv_output: Whether to generate a CSV file with pixel-wise results (default: True)
         
     Returns:
         Path to the evaluation results plot
@@ -715,7 +775,8 @@ def run_evaluation(truth_path, pred_path, output_path, band_mapping=None, mask_p
         pred_path=pred_path,
         output_path=output_path,
         band_mapping=band_mapping,
-        mask_path=mask_path
+        mask_path=mask_path,
+        csv_output=csv_output
     )
     
     return output_path
@@ -742,36 +803,67 @@ def main():
     resolution = 5 if superresolution else 10
     resolution_suffix = "_5m" if superresolution else "_10m"
     moy5m_suffix = "_moy5m" if moy5m else ""
-    file_prefix = "" if not moy5m else "10m_"
+   
     norm_suffix = "_normalised" if normalise else ""
     
     # ===== PATH DEFINITIONS =====
     # Base directories
-    base_dir = f"data/regressions/regression_merged_model/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}"
+
+    # # WAP 23 example paths
+    # base_dir = f"data/regressions/regression_merged_model/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}"
+    # os.makedirs(base_dir, exist_ok=True)
+    
+    # # Model source directory (using WAP32 models by default)
+    # regression_dir = f"data/regressions/regression_merged_model/regression_wap32{peat_suffix}{resolution_suffix}{moy5m_suffix}/regression_results"
+    
+    # # Input/output paths
+    # reference_path = f"DataCubeS2/WAP{wap}{peat_suffix}{resolution_suffix}/mediane_bands/mediane_clipped_STACK_2023_BandB4_WAP{wap}_deflate.tif"
+    # theoretical_map_path = f"{base_dir}/well_classif_wap{wap}.tif"
+    # mask_path = f"drone_treated/WAP{wap}_tiles/mask_well_classified_2_WAP{wap}.tif"
+    # regression_map_path = f"{base_dir}/regression_predictions_WAP{wap}{output_suffix}{norm_suffix}.tif"
+    
+    # # Create evaluation directory to prevent empty path issue
+    # evaluation_dir = os.path.join(base_dir, "regression_evaluation")
+    # os.makedirs(evaluation_dir, exist_ok=True)
+    # evaluation_path = os.path.join(evaluation_dir, f"evaluation{output_suffix}.png")
+    
+    # # Check if files exist
+    # if not os.path.exists(mask_path):
+    #     print(f"Warning: Mask file not found at {mask_path}, proceeding without mask")
+    #     mask_path = None
+    
+    # # Sentinel data directories
+    # bands_dir = f"DataCubeS2/WAP{wap}{peat_suffix}{resolution_suffix}/mediane_bands/"
+    # indices_dir = f"DataCubeS2/WAP{wap}{peat_suffix}{resolution_suffix}/mediane_indices/"
+
+
+
+    #CHESNAY
+    base_dir = f"data/regressions/regression_merged_model/regression_chesnay_10m"
     os.makedirs(base_dir, exist_ok=True)
     
     # Model source directory (using WAP32 models by default)
-    regression_dir = f"data/regressions/regression_merged_model/regression_wap32{peat_suffix}{resolution_suffix}{moy5m_suffix}/regression_results"
-    
+    regression_dir = f"data/regressions/regression_merged_model/regression_wap32_10m/regression_results"
+
     # Input/output paths
-    reference_path = f"DataCubeS2/WAP{wap}{peat_suffix}{resolution_suffix}/mediane_bands/{file_prefix}mediane_clipped_STACK_2023_BandB4_WAP{wap}_deflate.tif"
-    theoretical_map_path = f"{base_dir}/proportions_WAP{wap}.tif"
-    mask_path = f"drone_treated/WAP{wap}_tiles/mask_WAP{wap}_peat.tif"
-    regression_map_path = f"{base_dir}/regression_predictions_WAP{wap}{output_suffix}{norm_suffix}.tif"
+    reference_path = None
+    theoretical_map_path = f"{base_dir}/proportions_Chesnay_well.tif"
+    mask_path = "Konstantin/Chesnay_tiles/mask_well_classified.tif"
+    regression_map_path = f"{base_dir}/regression_predictions_Chesnay.tif"
     
     # Create evaluation directory to prevent empty path issue
     evaluation_dir = os.path.join(base_dir, "regression_evaluation")
     os.makedirs(evaluation_dir, exist_ok=True)
     evaluation_path = os.path.join(evaluation_dir, f"evaluation{output_suffix}.png")
     
-    # Check if files exist
-    if not os.path.exists(mask_path):
-        print(f"Warning: Mask file not found at {mask_path}, proceeding without mask")
-        mask_path = None
+    # # Check if files exist
+    # if not os.path.exists(mask_path):
+    #     print(f"Warning: Mask file not found at {mask_path}, proceeding without mask")
+    #     mask_path = None
     
     # Sentinel data directories
-    bands_dir = f"DataCubeS2/WAP{wap}{peat_suffix}{resolution_suffix}/mediane_bands/"
-    indices_dir = f"DataCubeS2/WAP{wap}{peat_suffix}{resolution_suffix}/mediane_indices/"
+    bands_dir = f"DataCubeS2/Chesnay_10m/mediane_bands"
+    indices_dir = f"DataCubeS2/Chesnay_10m/mediane_indices/"
     
     # Model paths
     model_paths = {
@@ -833,6 +925,7 @@ def main():
                 print(f"Evaluation completed successfully. Results saved to {evaluation_path}")
         except ValueError as e:
             print(f"Evaluation could not be performed: {e}")
+
 
 if __name__ == "__main__":
     main()
