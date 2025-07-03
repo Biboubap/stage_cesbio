@@ -33,8 +33,8 @@ def parse_arguments():
     parser.add_argument('--out', required=True, help='Output path for classification result')
     
     # Processing parameters
-    parser.add_argument('--patch-size', type=int, default=16, 
-                        help='Size of patches for classification (default: 16)')
+    parser.add_argument('--patch-size', type=int, default=None, 
+                        help='Size of patches for classification (default: calculated from resolution)')
     parser.add_argument('--block-size', type=int, default=1024, 
                         help='Block size for processing (default: 1024)')
     parser.add_argument('--overlap', type=int, default=48, 
@@ -150,41 +150,56 @@ def calculate_blocks(raster_width, raster_height, block_size, overlap):
     
     return blocks
 
+def calculate_patch_size(rgb_path, target_cm=16.8):
+    """
+    Calculate the appropriate patch size based on the RGB raster resolution.
+    
+    Args:
+        rgb_path: Path to RGB raster
+        target_cm: Target ground resolution in centimeters for each patch
+        
+    Returns:
+        Calculated patch size (in pixels)
+    """
+    try:
+        # Open the raster to get its resolution
+        ds = gdal.Open(rgb_path)
+        if ds is None:
+            logger.error(f"Failed to open raster {rgb_path}")
+            return 16  # Default to 16 if we can't determine resolution
+        
+        # Get the geotransform which contains the pixel size/resolution
+        gt = ds.GetGeoTransform()
+        
+        # Resolution in map units (usually meters)
+        res_x = abs(gt[1])
+        res_y = abs(gt[5])
+        
+        # Use the average resolution
+        resolution_m = (res_x + res_y) / 2
+        
+        # Convert resolution from meters to centimeters
+        resolution_cm = resolution_m * 100
+        
+        # Calculate how many pixels needed to cover target_cm
+        patch_size = max(1, round(target_cm / resolution_cm))
+        
+        logger.info(f"Raster resolution: {resolution_cm:.2f} cm/pixel")
+        logger.info(f"Calculated patch size: {patch_size} pixels to achieve ~{target_cm} cm ground coverage")
+        
+        # Clean up
+        ds = None
+        
+        return patch_size
+    except Exception as e:
+        logger.error(f"Error calculating patch size: {e}")
+        return 16  # Default value
+
 def process_classification(args):
     """Main function to process the classification on a large raster."""
     start_time = time.time()
     
-    # Load models
-    logger.info("Loading classification models...")
-    model1_data = joblib.load(MODEL1_PATH)
-    model1 = model1_data["model"]
-    feature_names_model1 = model1_data["feature_names"]
-    
-    model2_data = joblib.load(MODEL2_PATH)
-    model2 = model2_data["model"]
-    feature_names_model2 = model2_data["feature_names"]
-    logger.info("Models loaded successfully.")
-    
-    # Open input rasters to get dimensions
-    rgb_ds = gdal.Open(args.rgb)
-    raster_width = rgb_ds.RasterXSize
-    raster_height = rgb_ds.RasterYSize
-    rgb_ds = None  # Close the dataset
-    
-    # Create output raster
-    logger.info(f"Creating output raster at {args.out}")
-    out_ds = create_output_raster(args.rgb, args.out)
-    
-    # Calculate blocks
-    blocks = calculate_blocks(
-        raster_width, 
-        raster_height,
-        args.block_size,
-        args.overlap
-    )
-    logger.info(f"Processing raster in {len(blocks)} blocks with {args.overlap}px overlap")
-    
-    # Set up Dask client
+    # Set up Dask client first (moved up in the function)
     client, cluster = setup_dask_client(
         n_workers=args.workers,
         threads_per_worker=args.threads_per_worker,
@@ -192,18 +207,65 @@ def process_classification(args):
     )
     
     try:
+        # Determine appropriate patch size
+        patch_size = args.patch_size
+        if patch_size is None:
+            logger.info("Patch size not specified, calculating from raster resolution")
+            patch_size = calculate_patch_size(args.rgb)
+            logger.info(f"Using calculated patch size: {patch_size}")
+        else:
+            logger.info(f"Using user-specified patch size: {patch_size}")
+        
+        # Load models
+        logger.info("Loading classification models...")
+        model1_data = joblib.load(MODEL1_PATH)
+        model1 = model1_data["model"]
+        feature_names_model1 = model1_data["feature_names"]
+        
+        model2_data = joblib.load(MODEL2_PATH)
+        model2 = model2_data["model"]
+        feature_names_model2 = model2_data["feature_names"]
+        logger.info("Models loaded successfully.")
+        
+        # Scatter models to workers
+        logger.info("Distributing models to workers...")
+        model1_future = client.scatter(model1)
+        model2_future = client.scatter(model2)
+        feature_names_model1_future = client.scatter(feature_names_model1)
+        feature_names_model2_future = client.scatter(feature_names_model2)
+        logger.info("Models distributed successfully.")
+        
+        # Open input rasters to get dimensions
+        rgb_ds = gdal.Open(args.rgb)
+        raster_width = rgb_ds.RasterXSize
+        raster_height = rgb_ds.RasterYSize
+        rgb_ds = None  # Close the dataset
+        
+        # Create output raster
+        logger.info(f"Creating output raster at {args.out}")
+        out_ds = create_output_raster(args.rgb, args.out)
+        
+        # Calculate blocks
+        blocks = calculate_blocks(
+            raster_width, 
+            raster_height,
+            args.block_size,
+            args.overlap
+        )
+        logger.info(f"Processing raster in {len(blocks)} blocks with {args.overlap}px overlap")
+        
         # Create delayed tasks for each block
         delayed_tasks = []
         for i, block in enumerate(blocks):
             task = dask.delayed(process_block_with_overlap)(
                 rgb_path=args.rgb,
                 dsm_path=args.dsm,
-                model1=model1,
-                model2=model2,
-                feature_names_model1=feature_names_model1,
-                feature_names_model2=feature_names_model2,
+                model1=model1_future,                   # Now using future
+                model2=model2_future,                   # Now using future
+                feature_names_model1=feature_names_model1_future,  # Now using future
+                feature_names_model2=feature_names_model2_future,  # Now using future
                 block=block,
-                patch_size=args.patch_size,
+                patch_size=patch_size,
                 block_index=i
             )
             delayed_tasks.append(task)
@@ -256,8 +318,8 @@ if __name__ == "__main__":
 
 
 # python code/final_codes/classification/process_classification.py --rgb drone_treated/WAP32_tiles/rgb/WAP32_full_transparent_mosaic_group1_08_05.tif --dsm drone_treated/WAP32_tiles/dsm/WAP32_full_dsm_08_05.tif --out drone_treated/WAP32_tiles/classif_08_05_test.tif
-# python code/final_codes/classification/process_classification.py --rgb drone_treated/WAP32_tiles/rgb/WAP32_full_transparent_mosaic_group1_05_12.tif --dsm drone_treated/WAP32_tiles/dsm/WAP32_full_dsm_05_12.tif --out drone_treated/WAP32_tiles/classif_05_12_test.tif
+# python home/lcousin/stage_cesbio/code/final_codes/classification/process_classification.py --rgb home/lcousin/stage_cesbio/drone_treated/WAP32_tiles/rgb/WAP32_full_transparent_mosaic_group1_05_12.tif --dsm home/lcousin/stage_cesbio/drone_treated/WAP32_tiles/dsm/WAP32_full_dsm_05_12.tif --out media/lcousin/FASTBOYSLIM/Loris/test.tif
 
 
 
-# python code/final_codes/classification/process_classification.py --rgb Konstantin/UAV_Konstantin_Tabatha/Lamprey/LampreyAugust2023_ortho_export_MonJun16161722231719_32615.tif --dsm Konstantin/UAV_Konstantin_Tabatha/Lamprey/Lamprey_DSM_Resampled.tif --out Konstantin/Lamprey_tiles/Lamprey_classif_8.tif
+# python home/lcousin/stage_cesbio/code/final_codes/classification/process_classification.py --rgb home/lcousin/stage_cesbio/Konstantin/UAV_Konstantin_Tabatha/Lamprey/LampreyAugust2023_ortho_export_MonJun16161722231719_32615.tif --dsm home/lcousin/stage_cesbio/Konstantin/UAV_Konstantin_Tabatha/Lamprey/Lamprey_DSM_Resampled.tif --out media/lcousin/FASTBOYSLIM/Loris/KonstantinClassif/Lamprey_classif.tif
