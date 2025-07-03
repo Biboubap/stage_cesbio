@@ -160,13 +160,20 @@ def train_with_grid_search(X, y, feature_names):
     """
     print("\nPerforming grid search to find best parameters using 70/30 split...")
     
-    # Parameter grid
+    # # Parameter grid
+    # param_grid = {
+    #     'n_estimators': [100, 200, 300],               # 100 for speed, 300 for stability
+    #     'max_depth': [None, 15, 30, 50],               # None = no limit, also try controlled depths
+    #     'min_samples_split': [2, 5, 10],               # 2 is default, 5-10 to limit overfitting
+    #     'min_samples_leaf': [1, 2, 4],                 # more leaves = less overfitting
+    #     'max_features': ['sqrt', 'log2', 0.8]          # sqrt or log2 to reduce complexity, 0.8 for wider testing
+    # }
     param_grid = {
-        'n_estimators': [100, 200, 300],               # 100 for speed, 300 for stability
-        'max_depth': [None, 15, 30, 50],               # None = no limit, also try controlled depths
-        'min_samples_split': [2, 5, 10],               # 2 is default, 5-10 to limit overfitting
-        'min_samples_leaf': [1, 2, 4],                 # more leaves = less overfitting
-        'max_features': ['sqrt', 'log2', 0.8]          # sqrt or log2 to reduce complexity, 0.8 for wider testing
+        'n_estimators': [100],               # 100 for speed, 300 for stability
+        'max_depth': [15],               # None = no limit, also try controlled depths
+        'min_samples_split': [2, 5],               # 2 is default, 5-10 to limit overfitting
+        'min_samples_leaf': [2, 4],                 # more leaves = less overfitting
+        'max_features': ['sqrt', 'log2']          # sqrt or log2 to reduce complexity, 0.8 for wider testing
     }
         
     # Split data for validation
@@ -217,8 +224,8 @@ def train_with_grid_search(X, y, feature_names):
     
     search_time = time.time() - start_time
     
-    # Sort results by score (descending)
-    all_results.sort(reverse=True)
+    # Sort results by score (descending) - using only the first element (score) for sorting
+    all_results.sort(key=lambda x: x[0], reverse=True)
     
     # Display top 3 results
     print("\nTop 3 parameter combinations:")
@@ -443,23 +450,28 @@ def plot_regression_results(y_true, y_pred, output_path, title=None, metrics=Non
     
     # Add metrics to title if provided
     if metrics:
-        if 'r2' in metrics:
-            title += f"\nR² = {metrics['r2']:.3f}"
-        if 'rmse' in metrics:
-            title += f", RMSE = {metrics['rmse']:.3f}"
-        if 'pearson' in metrics:
-            title += f", r = {metrics['pearson']:.3f}"
+        # Handle both regular metrics and cross-validation metrics (which use 'avg_' prefix)
+        r2_key = 'avg_r2' if 'avg_r2' in metrics else 'r2'
+        rmse_key = 'avg_rmse' if 'avg_rmse' in metrics else 'rmse'
+        pearson_key = 'avg_pearson' if 'avg_pearson' in metrics else 'pearson'
+        
+        if r2_key in metrics:
+            title += f"\nR² = {metrics[r2_key]:.3f}"
+        if rmse_key in metrics:
+            title += f", RMSE = {metrics[rmse_key]:.3f}"
+        if pearson_key in metrics:
+            title += f", r = {metrics[pearson_key]:.3f}"
         
         # Add standard deviations if provided (for cross-validation)
-        if 'std_r2' in metrics:
-            title = title.replace(f"R² = {metrics['r2']:.3f}", 
-                                 f"R² = {metrics['r2']:.3f} ± {metrics['std_r2']:.3f}")
-        if 'std_rmse' in metrics:
-            title = title.replace(f"RMSE = {metrics['rmse']:.3f}", 
-                                 f"RMSE = {metrics['rmse']:.3f} ± {metrics['std_rmse']:.3f}")
-        if 'std_pearson' in metrics:
-            title = title.replace(f"r = {metrics['pearson']:.3f}", 
-                                 f"r = {metrics['pearson']:.3f} ± {metrics['std_pearson']:.3f}")
+        if 'std_r2' in metrics and r2_key in metrics:
+            title = title.replace(f"R² = {metrics[r2_key]:.3f}", 
+                                 f"R² = {metrics[r2_key]:.3f} ± {metrics['std_r2']:.3f}")
+        if 'std_rmse' in metrics and rmse_key in metrics:
+            title = title.replace(f"RMSE = {metrics[rmse_key]:.3f}", 
+                                 f"RMSE = {metrics[rmse_key]:.3f} ± {metrics['std_rmse']:.3f}")
+        if 'std_pearson' in metrics and pearson_key in metrics:
+            title = title.replace(f"r = {metrics[pearson_key]:.3f}", 
+                                 f"r = {metrics[pearson_key]:.3f} ± {metrics['std_pearson']:.3f}")
     
     plt.title(title)
     plt.grid(alpha=0.3)
@@ -719,6 +731,5 @@ if __name__ == "__main__":
 # python code/final_codes/regression/train_regression_model.py \
 #     data/regressions/regression_multisite/balanced/balanced_lichen_proportion.json \
 #     data/regressions/regression_multisite/results/lichen \
-#    --grid-search \
+#    --grid-search 
 
-   
