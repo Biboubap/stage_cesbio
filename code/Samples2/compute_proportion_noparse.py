@@ -7,19 +7,14 @@ within Sentinel-2 pixels. It's focused on three specific merged classes:
 2. Green
 3. Trough (Sphagnum + Depression + Water)
 
-Usage:
-  python compute_proportion.py --classification path/to/classification.tif 
-                              --sentinel-band path/to/sentinel_band.tif 
-                              --bands-dir path/to/bands_directory
-                              --indices-dir path/to/indices_directory
-                              --output-dir path/to/output_directory
-                              [--keep-csv]
+It exports results to CSV including:
+- Pixel coordinates
+- Feature values (bands and indices)
+- Calculated proportions for each merged class
 """
 import os
 import numpy as np
 import pandas as pd
-import argparse
-import json
 from tqdm import tqdm
 from osgeo import gdal
 import matplotlib.pyplot as plt
@@ -77,9 +72,6 @@ def compute_class_proportions(classification_path, sentinel_path, output_csv, cl
         lichen_class_labels: List of class names to merge into "Lichen"
         trough_class_labels: List of class names to merge into "Trough"
         green_class_labels: List of class names to merge into "Green"
-        
-    Returns:
-        DataFrame with pixel class proportions
     """
     # Load rasters
     ds_class = gdal.Open(classification_path)
@@ -189,17 +181,11 @@ def extract_sentinel_values(sentinel_bands_dir, sentinel_indices_dir, proportion
     Args:
         sentinel_bands_dir: Directory containing Sentinel-2 band rasters
         sentinel_indices_dir: Directory containing Sentinel-2 indices rasters
-        proportions_csv: Path to the CSV with class proportions or DataFrame
+        proportions_csv: Path to the CSV with class proportions
         output_csv: Path to save the merged CSV with Sentinel values
-        
-    Returns:
-        DataFrame with extracted Sentinel values
     """
-    # Check if proportions_csv is a DataFrame or path
-    if isinstance(proportions_csv, pd.DataFrame):
-        df = proportions_csv
-    else:
-        df = pd.read_csv(proportions_csv)
+    # Load proportions data
+    df = pd.read_csv(proportions_csv)
     
     # Find all band and index files
     band_files = [f for f in os.listdir(sentinel_bands_dir) if f.endswith('.tif')]
@@ -282,19 +268,11 @@ def filter_by_valid_proportion(input_csv, output_csv, min_valid_proportion=0.95)
     Filter the CSV to keep only pixels with at least the specified proportion of valid data.
     
     Args:
-        input_csv: Path to the input CSV or DataFrame
+        input_csv: Path to the input CSV
         output_csv: Path to save the filtered CSV
         min_valid_proportion: Minimum proportion of valid (non-NoData) pixels required
-        
-    Returns:
-        DataFrame with filtered pixels
     """
-    # Check if input_csv is a DataFrame or path
-    if isinstance(input_csv, pd.DataFrame):
-        df = input_csv
-    else:
-        df = pd.read_csv(input_csv)
-        
+    df = pd.read_csv(input_csv)
     total_rows = len(df)
     
     # Filter by valid proportion directly
@@ -314,15 +292,12 @@ def plot_class_proportions(csv_path, output_dir, purcent_exclusion=0.05):
     Create histograms of class proportions from the CSV file.
     
     Args:
-        csv_path: Path to the CSV file with class proportions or DataFrame
+        csv_path: Path to the CSV file with class proportions
         output_dir: Directory to save the plots
         purcent_exclusion: Threshold below which samples are excluded (default: 0.05 = 5%)
     """
-    # Check if csv_path is a DataFrame or path
-    if isinstance(csv_path, pd.DataFrame):
-        df = csv_path
-    else:
-        df = pd.read_csv(csv_path)
+    # Load data
+    df = pd.read_csv(csv_path)
     
     # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
@@ -373,20 +348,14 @@ def create_proportion_tif(filtered_csv, output_tif, sentinel_path):
     Create a multi-band TIFF file with class proportions from filtered CSV data.
     
     Args:
-        filtered_csv: Path to the filtered CSV with proportions or DataFrame
+        filtered_csv: Path to the filtered CSV with proportions
         output_tif: Path to save the output multi-band TIFF
         sentinel_path: Path to the Sentinel reference image for georeference
-        
-    Returns:
-        Path to the created TIF file
     """
     print(f"Creating proportion TIF from filtered CSV data...")
     
-    # Check if filtered_csv is a DataFrame or path
-    if isinstance(filtered_csv, pd.DataFrame):
-        df = filtered_csv
-    else:
-        df = pd.read_csv(filtered_csv)
+    # Load the filtered data
+    df = pd.read_csv(filtered_csv)
     
     # Open sentinel reference for dimensions and georeference
     sentinel_ds = gdal.Open(sentinel_path)
@@ -449,26 +418,16 @@ def merge_csv_files(features_csv, proportions_csv, output_csv, output_json):
     Merge features CSV and proportions CSV into a single CSV file and also create a JSON file.
     
     Args:
-        features_csv: Path to CSV with Sentinel features or DataFrame
-        proportions_csv: Path to CSV with class proportions or DataFrame
+        features_csv: Path to CSV with Sentinel features
+        proportions_csv: Path to CSV with class proportions
         output_csv: Path to save the merged CSV
         output_json: Path to save the JSON file with sentinel features and proportions
-        
-    Returns:
-        tuple: (path to merged CSV, path to JSON file)
     """
     print(f"Merging CSV files...")
     
-    # Check if inputs are DataFrames or paths
-    if isinstance(features_csv, pd.DataFrame):
-        features_df = features_csv
-    else:
-        features_df = pd.read_csv(features_csv)
-        
-    if isinstance(proportions_csv, pd.DataFrame):
-        proportions_df = proportions_csv
-    else:
-        proportions_df = pd.read_csv(proportions_csv)
+    # Load both CSV files
+    features_df = pd.read_csv(features_csv)
+    proportions_df = pd.read_csv(proportions_csv)
     
     # Merge on col_s and row_s (pixel position)
     merged_df = pd.merge(
@@ -510,6 +469,7 @@ def merge_csv_files(features_csv, proportions_csv, output_csv, output_json):
         json_data.append(pixel_data)
     
     # Save the JSON file
+    import json
     with open(output_json, 'w') as f:
         json.dump(json_data, f, indent=2)
     
@@ -522,28 +482,28 @@ def main():
     Main function to process classification data and create proportion outputs.
     The data is processed on the classification tif, which has to be clipped to the well-classified area.
     """
-    # Set up argument parser
-    parser = argparse.ArgumentParser(description="Compute class proportions for Sentinel-2 pixels.")
-    parser.add_argument('--classification', required=True, help="Path to the classification raster")
-    parser.add_argument('--sentinel-band', required=True, help="Path to the Sentinel-2 band for projection reference")
-    parser.add_argument('--bands-dir', required=True, help="Directory containing Sentinel-2 band rasters")
-    parser.add_argument('--indices-dir', required=True, help="Directory containing Sentinel-2 indices rasters")
-    parser.add_argument('--output-dir', required=True, help="Directory to save output files")
-    parser.add_argument('--keep-csv', action='store_true', help="Keep intermediate CSV files (default: delete them)")
-    parser.add_argument('--site-name', default="Site", help="Name of the site (used in output filenames)")
-    
-    args = parser.parse_args()
-    
-    # Set paths from arguments
-    classification_path = args.classification
-    sentinel_path = args.sentinel_band
-    bands_dir = args.bands_dir
-    indices_dir = args.indices_dir
-    output_dir = args.output_dir
-    site_name = args.site_name
-    keep_csv = args.keep_csv
-    
-    # Create output directory
+
+    # wap = 23
+    # resolution_suffix = "_10m"
+
+    # classification_path = f"drone_treated/WAP{wap}_tiles/classification_well.tif"
+    # sentinel_path = f"DataCubeS2/WAP{wap}{resolution_suffix}/mediane_bands/mediane_clipped_STACK_2023_BandB4_WAP{wap}_deflate.tif"
+    # bands_dir = f"DataCubeS2/WAP{wap}{resolution_suffix}/mediane_bands"
+    # indices_dir = f"DataCubeS2/WAP{wap}{resolution_suffix}/mediane_indices/"
+
+    # output_dir = f"data/regressions/regression_multisite/regression_wap{wap}{resolution_suffix}"
+    # os.makedirs(output_dir, exist_ok=True)
+    # output_base = f"{output_dir}/proportions_WAP{wap}"
+
+    site_name = "Belcher"
+    resolution_suffix = "_10m"
+
+    classification_path = f"Konstantin/{site_name}_tiles/classification_well.tif"
+    sentinel_path = f"DataCubeS2/{site_name}{resolution_suffix}/mediane_bands/mediane_STACK_2023_BandB4_{site_name}_deflate.tif"
+    bands_dir = f"DataCubeS2/{site_name}{resolution_suffix}/mediane_bands"
+    indices_dir = f"DataCubeS2/{site_name}{resolution_suffix}/mediane_indices/"
+
+    output_dir = f"data/regressions/regression_multisite/regression_{site_name}{resolution_suffix}"
     os.makedirs(output_dir, exist_ok=True)
     output_base = f"{output_dir}/proportions_{site_name}"
 
@@ -562,11 +522,13 @@ def main():
     trough_class_labels = ["Sphagnum", "Depression", "Water"]
     lichen_class_labels = ["Pure_Lichen", "Degraded_Lichen"]
     green_class_labels = ["Green"]
+
+    keep_csv = False  # Set to False to delete CSV files after processing
     
     # Step 1: Compute class proportions
     print("Step 1: Computing class proportions...")
     proportions_csv = f"{output_base}_all.csv"
-    proportions_df = compute_class_proportions(
+    compute_class_proportions(
         classification_path=classification_path,
         sentinel_path=sentinel_path,
         output_csv=proportions_csv,
@@ -579,7 +541,7 @@ def main():
     # Step 2: Filter by valid proportion
     print("Step 2: Filtering by valid proportion...")
     filtered_csv = f"{output_base}_filtered.csv"
-    filtered_df = filter_by_valid_proportion(
+    filter_by_valid_proportion(
         input_csv=proportions_csv,
         output_csv=filtered_csv,
         min_valid_proportion=0.95  # Keep pixels with at least 95% valid data
@@ -588,7 +550,7 @@ def main():
     # Step 3: Extract Sentinel band and index values
     print("Step 3: Extracting Sentinel values...")
     features_csv = f"{output_base}_features.csv"
-    features_df = extract_sentinel_values(
+    extract_sentinel_values(
         sentinel_bands_dir=bands_dir,
         sentinel_indices_dir=indices_dir,
         proportions_csv=filtered_csv,
@@ -617,7 +579,7 @@ def main():
     print("Step 6: Merging feature and proportion data...")
     merged_csv = f"{output_base}_merged.csv"
     output_json = f"{output_base}_proportions.json"
-    merged_csv, output_json = merge_csv_files(
+    merge_csv_files(
         features_csv=features_csv,
         proportions_csv=filtered_csv,
         output_csv=merged_csv,
@@ -643,12 +605,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-"""
- python /home/lcousin/stage_cesbio/code/final_codes/regression/compute_proportion.py \
-    --classification media/lcousin/FASTBOYSLIM/Loris/KonstantinClassif/Lamprey_classif_well.tif \
-    --sentinel-band /home/lcousin/stage_cesbio/DataCubeS2/Lamprey_10m/mediane_bands/mediane_STACK_2023_BandB4_Lamprey_deflate.tif \
-    --bands-dir /home/lcousin/stage_cesbio/DataCubeS2/Lamprey_10m/mediane_bands \
-    --indices-dir /home/lcousin/stage_cesbio/DataCubeS2/Lamprey_10m/mediane_indices \
-    --output-dir /home/lcousin/stage_cesbio/data/regressions/regression_multisite/regression_Lamprey_10m \
-    --site-name Lamprey     
-"""
