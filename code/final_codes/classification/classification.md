@@ -74,6 +74,25 @@ To use the classification system, you need:
    - Machine learning: joblib
    - System: os, psutil, logging
 
+4. **Code Environment Specifications**:
+   - Python 3.7 or newer
+   - GDAL 3.0+ with Python bindings
+   - Required packages (install via pip):
+     ```
+     numpy>=1.19.0
+     gdal>=3.0.0
+     dask>=2021.3.0
+     distributed>=2021.3.0
+     joblib>=1.0.0
+     scikit-learn>=0.24.0
+     psutil>=5.8.0
+     ```
+   - Recommended: Conda environment for easier management of GDAL dependencies
+   - Memory: At least 8GB RAM, 16GB+ recommended for large datasets
+   - Storage: SSD storage recommended for faster I/O operations
+   - CPU: Multi-core processor recommended (the code parallelizes well)
+   - GPU: Not required (the current implementation is CPU-based)
+
 ## Usage
 
 ### Basic Command

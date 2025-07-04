@@ -710,7 +710,7 @@ if __name__ == "__main__":
     main()
 """
 # Command line examples:
-"""
+
 Linux example:
  python /home/lcousin/stage_cesbio/code/final_codes/regression/compute_proportion.py \
     --classification media/lcousin/FASTBOYSLIM/Loris/KonstantinClassif/Chesnay_classif_well.tif \
