@@ -1,8 +1,12 @@
 """
 Merge Proportion
 
-This script merges multiple JSON files containing Sentinel-2 pixel proportions and features
-from different sites/locations and creates plots showing the distribution of proportions.
+This script combines multiple proportion JSON files from different sites into a
+unified dataset for training regression models. It standardizes feature names
+across different sites and creates visualizations to help understand the combined dataset.
+
+This is a key step in building a multi-site regression model, as it brings together
+data from different geographic locations with potentially different distributions.
 
 Usage:
   python merge_proportion.py json_file1.json json_file2.json ... --output merged_output.json
@@ -18,7 +22,11 @@ import re
 
 def normalize_feature_name(feature_name):
     """
-    Normalize feature names by extracting the core band or index name.
+    Normalize feature names to ensure consistency across different sites.
+    
+    Different sites may have slightly different naming conventions for the same
+    spectral bands or indices. This function extracts the core band/index name
+    to enable proper merging of data from different sources.
     
     Args:
         feature_name: Original feature name with site-specific information
@@ -26,30 +34,28 @@ def normalize_feature_name(feature_name):
     Returns:
         normalized_name: Standardized feature name (e.g., "B12", "NDVI")
     """
-    # Extract band names (format: BandB2, BandB8A, BandB12, etc.)
-    band_match = re.search(r'Band(B[0-9]+A?)', feature_name)
-    if band_match:
-        return band_match.group(1)  # Return just the band name (B2, B8A, B12)
-    
-    # Extract index names (format: _NDVI_, _MNDWI_, _CI_B7_, etc.)
-    # List all indices we're looking for
+   
     indices = ['NDVI', 'GNDVI', 'NDWI', 'MNDWI', 'NBR', 'GCC', 'MSI', 'CI_B5', 'CI_B7']
+    bands = ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B11', 'B12']
     
     for index in indices:
         if f'_{index}_' in feature_name:
             return index
-    
-    # If no match found, check for direct occurrence of band or index names
-    for name in indices + ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B11', 'B12']:
-        if re.search(r'\b' + re.escape(name) + r'\b', feature_name):
-            return name
-    
-    # If no match found, return the original name
+    for band in bands : 
+        if f'Band{band}_' in feature_name:
+            return band
+   
     return feature_name
 
 def load_json_files(json_paths):
     """
-    Load and combine multiple JSON files.
+    Load and combine multiple JSON files containing proportion data.
+    
+    This function:
+    1. Reads each JSON file
+    2. Normalizes feature names for consistency
+    3. Adds source information to each pixel
+    4. Combines all pixels into a single dataset
     
     Args:
         json_paths: List of paths to JSON files to load
@@ -97,7 +103,10 @@ def load_json_files(json_paths):
 
 def convert_to_dataframe(merged_data):
     """
-    Convert merged JSON data to a pandas DataFrame with flattened structure.
+    Convert merged JSON data to a pandas DataFrame for easier analysis.
+    
+    This flattens the nested JSON structure into a tabular format where
+    each row is a pixel and columns include features and proportions.
     
     Args:
         merged_data: List of pixel data dictionaries
@@ -133,12 +142,15 @@ def convert_to_dataframe(merged_data):
 
 def plot_proportion_distributions(df, output_dir, purcent_exclusion=0.05):
     """
-    Create histograms showing the distribution of class proportions.
+    Create histograms showing distribution of proportions in the merged dataset.
+    
+    These visualizations help understand the overall distribution of classes
+    and identify potential biases or imbalances that might need correction.
     
     Args:
         df: DataFrame containing proportion data
         output_dir: Directory to save the plots
-        purcent_exclusion: Threshold below which samples are excluded (default: 0.05 = 5%)
+        purcent_exclusion: Threshold below which samples are excluded from visualization
     """
     # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
@@ -218,12 +230,21 @@ def plot_proportion_distributions(df, output_dir, purcent_exclusion=0.05):
 
 def merge_proportions(json_paths, output_json, plots_dir):
     """
-    Merge multiple JSON files containing proportions and create plots.
+    Main function to merge proportion files and create analysis plots.
+    
+    This function orchestrates the entire merging process:
+    1. Load and combine multiple JSON files
+    2. Save the merged data to a new JSON file
+    3. Create visualizations of the merged data
+    4. Generate summary statistics
     
     Args:
         json_paths: List of paths to JSON files to merge
         output_json: Path to save the merged JSON file
         plots_dir: Directory to save distribution plots
+        
+    Returns:
+        tuple: (merged JSON data, pandas DataFrame of merged data)
     """
     # Step 1: Load and merge JSON files
     merged_data, source_info = load_json_files(json_paths)
@@ -268,6 +289,9 @@ def merge_proportions(json_paths, output_json, plots_dir):
     return merged_data, df
 
 def main():
+    """
+    Parse command line arguments and execute the merging process.
+    """
     # Set up argument parser
     parser = argparse.ArgumentParser(description="Merge multiple JSON files containing Sentinel pixel proportions.")
     parser.add_argument('json_files', nargs='+', help="JSON files to merge")
@@ -286,14 +310,20 @@ def main():
 if __name__ == "__main__":
     main()
 
-#python merge_proportion.py path/to/proportions1.json path/to/proportions2.json --output merged_output.json --plots-dir plots_directory
+# Command line examples:
+"""
+Linux example:
+python code/final_codes/regression/merge_proportion.py \
+ data/regressions/regression_multisite/regression_Belcher_10m/proportions_Belcher_proportions.json \
+ data/regressions/regression_multisite/regression_Chesnay_10m/proportions_Chesnay_proportions.json \
+ data/regressions/regression_multisite/regression_wap23_10m/proportions_WAP23_proportions.json \
+ --output data/regressions/regression_multisite/merged/merged_pixels.json \
+ --plots-dir data/regressions/regression_multisite/merged
 
-# python code/final_codes/regression/merge_proportion.py\
-#  data/regressions/regression_multisite/regression_Belcher_10m/proportions_Belcher_proportions.json\
-#  data/regressions/regression_multisite/regression_Chesnay_10m/proportions_Chesnay_proportions.json\
-#  data/regressions/regression_multisite/regression_wap23_10m/proportions_WAP23_proportions.json\
-#  data/regressions/regression_multisite/regression_wap32_10m/proportions_WAP32_proportions.json\
-#  data/regressions/regression_multisite/regression_Lamprey_10m/proportions_Lamprey_proportions.json\
-#  data/regressions/regression_multisite/regression_WAP12_10m/proportions_WAP12_proportions.json\
-# --output data/regressions/regression_multisite/merged/merged_pixels.json\
-#  --plots data/regressions/regression_multisite/merged
+PowerShell example:
+python code/final_codes/regression/merge_proportion.py `
+ data/regressions/regression_multisite/regression_Belcher_10m/proportions_Belcher_proportions.json `
+ data/regressions/regression_multisite/regression_Chesnay_10m/proportions_Chesnay_proportions.json `
+ --output data/regressions/regression_multisite/merged/merged_pixels.json `
+ --plots-dir data/regressions/regression_multisite/merged
+"""

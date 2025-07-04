@@ -1,12 +1,20 @@
 """
 Train Regression Model
 
-This script trains a Random Forest regression model on balanced proportion data in JSON format.
-It adapts code from sentinel_regression_median_2 and sentinel_regression_median_gridsearch
-to work with JSON proportion data.
+This script trains a Random Forest regression model on balanced proportion data.
+It's the final step in the regression model creation pipeline and includes:
+- Automatic detection of the target variable from the input data
+- Optional grid search for parameter optimization
+- Cross-validation to evaluate model performance
+- Site-specific performance evaluation
+- Feature importance analysis
+- Comprehensive visualization and reporting
 
 Usage:
   python train_regression_model.py input.json output_path [--grid-search]
+
+Example:
+  python train_regression_model.py balanced_lichen_proportion.json ./results --grid-search
 """
 import os
 import json
@@ -24,7 +32,12 @@ from datetime import datetime
 import time
 
 def parse_arguments():
-    """Parse command line arguments"""
+    """
+    Parse command line arguments for the regression model training script.
+    
+    Returns:
+        Parsed command line arguments
+    """
     parser = argparse.ArgumentParser(description="Train a Random Forest regression model on balanced proportion data")
     parser.add_argument("input_json", help="Path to the balanced JSON file")
     parser.add_argument("output_path", help="Directory to save the outputs")
@@ -33,7 +46,15 @@ def parse_arguments():
     return parser.parse_args()
 
 def load_json_data(json_path):
-    """Load data from JSON file and prepare for regression"""
+    """
+    Load proportion data from a JSON file.
+    
+    Args:
+        json_path: Path to the input JSON file
+        
+    Returns:
+        List of dictionaries containing features and proportions
+    """
     print(f"Loading data from {json_path}...")
     
     with open(json_path, 'r') as f:
@@ -44,13 +65,16 @@ def load_json_data(json_path):
 
 def detect_category(json_data):
     """
-    Detect category to predict from the JSON data
+    Automatically detect which proportion category to predict from the JSON data.
+    
+    This allows the script to work with different proportion types (lichen, green, trough)
+    without requiring manual specification.
     
     Args:
         json_data: List of dictionaries with features and proportions
         
     Returns:
-        category: Target category name
+        category: Target category name (e.g., 'lichen_proportion')
     """
     # Find first item with proportions
     category = None
@@ -72,15 +96,20 @@ def detect_category(json_data):
 
 def extract_features_and_target(json_data, category):
     """
-    Extract features and target values from JSON data
+    Extract features and target values from JSON data.
+    
+    This function:
+    1. Extracts feature values and target proportions
+    2. Creates consistent feature ordering
+    3. Identifies and counts samples from different sources (sites)
     
     Args:
         json_data: List of dictionaries with features and proportions
-        category: Target category to predict
+        category: Target category to predict (e.g., 'lichen_proportion')
         
     Returns:
         X: Features array
-        y: Target array
+        y: Target values array
         feature_names: List of feature names
         sources: List of source names for each sample
         site_names: List of unique site names
@@ -146,7 +175,13 @@ def extract_features_and_target(json_data, category):
 
 def train_with_grid_search(X, y, feature_names):
     """
-    Train a Random Forest regressor using grid search with 70/30 split to find best parameters
+    Train a Random Forest regressor using grid search to find optimal parameters.
+    
+    This function:
+    1. Splits data into train (70%) and validation (30%) sets
+    2. Tests different parameter combinations
+    3. Finds the combination that yields the best performance
+    4. Returns the trained model with the best parameters
     
     Args:
         X: Features array
@@ -161,20 +196,8 @@ def train_with_grid_search(X, y, feature_names):
     print("\nPerforming grid search to find best parameters using 70/30 split...")
     
     # # Parameter grid
-    # param_grid = {
-    #     'n_estimators': [100, 200, 300],               # 100 for speed, 300 for stability
-    #     'max_depth': [None, 15, 30, 50],               # None = no limit, also try controlled depths
-    #     'min_samples_split': [2, 5, 10],               # 2 is default, 5-10 to limit overfitting
-    #     'min_samples_leaf': [1, 2, 4],                 # more leaves = less overfitting
-    #     'max_features': ['sqrt', 'log2', 0.8]          # sqrt or log2 to reduce complexity, 0.8 for wider testing
-    # }
-    param_grid = {
-        'n_estimators': [100],               # 100 for speed, 300 for stability
-        'max_depth': [15],               # None = no limit, also try controlled depths
-        'min_samples_split': [2, 5],               # 2 is default, 5-10 to limit overfitting
-        'min_samples_leaf': [2, 4],                 # more leaves = less overfitting
-        'max_features': ['sqrt', 'log2']          # sqrt or log2 to reduce complexity, 0.8 for wider testing
-    }
+   
+    param_grid = PARAM_GRID
         
     # Split data for validation
     X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.3, random_state=42)
@@ -240,7 +263,10 @@ def train_with_grid_search(X, y, feature_names):
 
 def train_with_default_params(X, y):
     """
-    Train a Random Forest regressor using default parameters
+    Train a Random Forest regressor using default parameters.
+    
+    Used when grid search is not requested or for the final model training
+    after parameters are determined.
     
     Args:
         X: Features array
@@ -254,15 +280,7 @@ def train_with_default_params(X, y):
     print("\nTraining Random Forest model with default parameters...")
     
     # Default parameters
-    params = {
-        'n_estimators': 200,
-        'max_depth': 15,
-        'min_samples_split': 10,
-        'min_samples_leaf': 5,
-        'max_features': 'sqrt',
-        'random_state': 42,
-        'n_jobs': -1
-    }
+    params = DEFAULT_PARAMS 
     
     # Create and train the model
     rf = RandomForestRegressor(**params)
@@ -270,14 +288,21 @@ def train_with_default_params(X, y):
     
     return rf, params, rf.feature_importances_
 
-def perform_cross_validation(X, y, rf_params):
+def perform_cross_validation(X, y, rf_params, sources):
     """
-    Perform 5-fold cross-validation
+    Perform 5-fold cross-validation and track performance by site.
+    
+    This function:
+    1. Splits data into 5 folds
+    2. Trains and evaluates on each fold
+    3. Collects predictions and sources for site-specific evaluation
+    4. Calculates performance metrics with standard deviations
     
     Args:
         X: Features array
         y: Target array
         rf_params: RandomForest parameters
+        sources: Array of source names for each sample
         
     Returns:
         cv_results: Dictionary with cross-validation results
@@ -293,6 +318,7 @@ def perform_cross_validation(X, y, rf_params):
     pearson_values = []
     y_test_all = []
     y_pred_all = []
+    sources_test_all = []  # Track the source for each test sample
     feature_importances = np.zeros(X.shape[1])
     
     # Run cross-validation
@@ -303,6 +329,7 @@ def perform_cross_validation(X, y, rf_params):
         # Split data for this fold
         X_train, X_test = X[train_idx], X[test_idx]
         y_train, y_test = y[train_idx], y[test_idx]
+        sources_test = sources[test_idx]  # Get sources for test samples
         
         # Train model
         rf = RandomForestRegressor(**rf_params)
@@ -321,9 +348,10 @@ def perform_cross_validation(X, y, rf_params):
         rmse_values.append(rmse)
         pearson_values.append(pearson)
         
-        # Store predictions for later plotting
+        # Store predictions and sources for later site-specific analysis
         y_test_all.extend(y_test)
         y_pred_all.extend(y_pred)
+        sources_test_all.extend(sources_test)
         
         # Accumulate feature importance
         feature_importances += rf.feature_importances_
@@ -344,6 +372,7 @@ def perform_cross_validation(X, y, rf_params):
     # Convert lists to arrays for plotting
     y_test_all = np.array(y_test_all)
     y_pred_all = np.array(y_pred_all)
+    sources_test_all = np.array(sources_test_all)
     
     print(f"Cross-validation results:")
     print(f"  R²: {avg_r2:.3f} ± {std_r2:.3f}")
@@ -363,26 +392,31 @@ def perform_cross_validation(X, y, rf_params):
         'std_pearson': std_pearson,
         'y_test': y_test_all,
         'y_pred': y_pred_all,
+        'sources_test': sources_test_all,
         'feature_importances': feature_importances
     }
     
     return cv_results
 
-def evaluate_per_site(rf, X, y, sources, site_names):
+def compute_site_metrics_from_cv(cv_results, site_names):
     """
-    Evaluate model performance separately for each site
+    Compute site-specific metrics from cross-validation results.
+    
+    This provides insight into how the model performs on different geographic sites,
+    helping identify potential biases or weaknesses.
     
     Args:
-        rf: Trained RandomForest model
-        X: Feature array
-        y: Target array
-        sources: Array of source names for each sample
+        cv_results: Dictionary with cross-validation results
         site_names: List of unique site names
         
     Returns:
-        site_metrics: Dictionary with metrics for each site
+        site_metrics: Dictionary with metrics for each site based on CV predictions
     """
-    print("\nEvaluating model performance per site:")
+    print("\nCalculating site-specific metrics from cross-validation results:")
+    
+    y_test = cv_results['y_test']
+    y_pred = cv_results['y_pred']
+    sources = cv_results['sources_test']
     
     site_metrics = {}
     
@@ -392,38 +426,38 @@ def evaluate_per_site(rf, X, y, sources, site_names):
         
         # Skip if not enough samples
         if len(site_indices) < 10:
-            print(f"  Skipping {site}: not enough samples ({len(site_indices)})")
+            print(f"  Skipping {site}: not enough test samples ({len(site_indices)})")
             continue
         
         # Extract site data
-        X_site = X[site_indices]
-        y_site = y[site_indices]
-        
-        # Make predictions
-        y_pred_site = rf.predict(X_site)
+        y_site_true = y_test[site_indices]
+        y_site_pred = y_pred[site_indices]
         
         # Calculate metrics
-        r2 = r2_score(y_site, y_pred_site)
-        rmse = np.sqrt(mean_squared_error(y_site, y_pred_site))
-        pearson_coef, _ = pearsonr(y_site, y_pred_site)
+        r2 = r2_score(y_site_true, y_site_pred)
+        rmse = np.sqrt(mean_squared_error(y_site_true, y_site_pred))
+        pearson_coef, _ = pearsonr(y_site_true, y_site_pred)
         
-        print(f"  {site}: R²={r2:.3f}, RMSE={rmse:.3f}, r={pearson_coef:.3f}")
+        print(f"  {site}: R²={r2:.3f}, RMSE={rmse:.3f}, r={pearson_coef:.3f}, n={len(y_site_true)}")
         
         # Store metrics
         site_metrics[site] = {
             'r2': r2,
             'rmse': rmse,
             'pearson': pearson_coef,
-            'y_true': y_site,
-            'y_pred': y_pred_site,
-            'n_samples': len(y_site)
+            'y_true': y_site_true,
+            'y_pred': y_site_pred,
+            'n_samples': len(y_site_true)
         }
     
     return site_metrics
 
 def plot_regression_results(y_true, y_pred, output_path, title=None, metrics=None):
     """
-    Create scatter plot of predicted vs. actual values
+    Create scatter plot comparing predicted vs. actual values.
+    
+    This visualization helps assess the model's accuracy and identify any
+    systematic errors or biases.
     
     Args:
         y_true: True target values
@@ -482,7 +516,10 @@ def plot_regression_results(y_true, y_pred, output_path, title=None, metrics=Non
 
 def plot_feature_importance(feature_importance, feature_names, output_path, top_n=20):
     """
-    Create bar plot of feature importance
+    Create bar plot of feature importance.
+    
+    This visualization helps identify which features (bands or indices)
+    are most useful for predicting the target variable.
     
     Args:
         feature_importance: Array of feature importance values
@@ -506,14 +543,18 @@ def plot_feature_importance(feature_importance, feature_names, output_path, top_
     plt.savefig(output_path)
     plt.close()
 
-def plot_site_comparisons(site_metrics, output_path, category_name):
+def plot_site_comparisons(site_metrics, output_path, category_name, is_cv=False):
     """
-    Create a grid of scatter plots showing model performance for each site
+    Create a grid of scatter plots showing model performance for each site.
+    
+    This visualization helps identify differences in model performance
+    across different geographic locations.
     
     Args:
         site_metrics: Dictionary with metrics for each site
         output_path: Path to save the plot
         category_name: Name of the target category
+        is_cv: Whether metrics are from cross-validation (default: False)
     """
     # Determine grid size based on number of sites
     n_sites = len(site_metrics)
@@ -564,7 +605,8 @@ def plot_site_comparisons(site_metrics, output_path, category_name):
         axes[row, col].axis('off')
     
     # Add overall title
-    fig.suptitle(f"Per-site performance for {category_name}", fontsize=16)
+    cv_text = "(Cross-Validation)" if is_cv else ""
+    fig.suptitle(f"Per-site performance for {category_name} {cv_text}", fontsize=16)
     plt.tight_layout(rect=[0, 0, 1, 0.97])
     
     # Save and close
@@ -573,12 +615,18 @@ def plot_site_comparisons(site_metrics, output_path, category_name):
 
 def create_stats_report(category, n_samples, site_counts, metrics, model_params, output_path, site_metrics=None, cv_results=None):
     """
-    Create a text report with statistics and model information
+    Create a comprehensive text report with statistics and model information.
+    
+    This report summarizes:
+    1. Dataset composition and sample distribution
+    2. Model parameters
+    3. Overall performance metrics
+    4. Site-specific performance metrics
     
     Args:
         category: Target category name
         n_samples: Total number of samples
-        site_counts: Dictionary with counts per site
+        site_counts: Dictionary with counts per source
         metrics: Dictionary with model metrics
         model_params: Dictionary with model parameters
         output_path: Path to save the report
@@ -638,7 +686,18 @@ def create_stats_report(category, n_samples, site_counts, metrics, model_params,
         f.write("End of Report\n")
 
 def main():
-    """Main function to run the regression pipeline"""
+    """
+    Main function orchestrating the regression model training process.
+    
+    Workflow:
+    1. Load and prepare data
+    2. Train model (with grid search if requested)
+    3. Perform cross-validation
+    4. Evaluate site-specific performance
+    5. Generate visualizations
+    6. Create statistics report
+    7. Save the final model
+    """
     # Parse command line arguments
     args = parse_arguments()
     
@@ -666,10 +725,10 @@ def main():
         # Train with default parameters on all data
         rf, model_params, feature_importance = train_with_default_params(X, y)
     
-    # Always perform cross-validation with the selected parameters
-    cv_results = perform_cross_validation(X, y, model_params)
+    # Perform cross-validation with the selected parameters
+    cv_results = perform_cross_validation(X, y, model_params, sources)
     
-    # Plot CV results
+    # Plot CV results for all sites combined
     plot_regression_results(
         cv_results['y_test'], 
         cv_results['y_pred'],
@@ -678,13 +737,20 @@ def main():
         metrics=cv_results
     )
     
+    # Calculate site-specific metrics from cross-validation results
+    site_metrics_cv = compute_site_metrics_from_cv(cv_results, site_names)
+    
+    # Plot per-site comparisons based on cross-validation
+    plot_site_comparisons(
+        site_metrics_cv,
+        os.path.join(args.output_path, f"{category}_site_comparison_cv.png"),
+        category,
+        is_cv=True
+    )
+    
     # Use CV feature importance
     feature_importance = cv_results['feature_importances']
     
-    # Evaluate per-site performance (using model with best parameters)
-    site_metrics = evaluate_per_site(rf, X, y, sources, site_names)
-    
-    # Create visualizations
     # Plot feature importance
     plot_feature_importance(
         feature_importance,
@@ -692,12 +758,8 @@ def main():
         os.path.join(args.output_path, f"{category}_feature_importance.png")
     )
     
-    # Plot per-site comparisons
-    plot_site_comparisons(
-        site_metrics,
-        os.path.join(args.output_path, f"{category}_site_comparison.png"),
-        category
-    )
+    # Train final model on all data (for deployment purposes)
+    rf, _, _ = train_with_default_params(X, y) if not args.grid_search else (rf, model_params, feature_importance)
     
     # Save model
     model_path = os.path.join(args.output_path, f"{category}_model.joblib")
@@ -718,12 +780,39 @@ def main():
         metrics=cv_results,
         model_params=model_params,
         output_path=stats_path,
-        site_metrics=site_metrics,
+        site_metrics=site_metrics_cv,  # Use CV-based site metrics
         cv_results=cv_results
     )
     print(f"Statistics report saved to {stats_path}")
     
     print(f"\nRegression analysis for {category} completed successfully!")
+
+
+
+PARAM_GRID = {
+#         'n_estimators': [100],               # 100 for speed, 300 for stability
+#         'max_depth': [15],               # None = no limit, also try controlled depths
+#         'min_samples_split': [2, 5],               # 2 is default, 5-10 to limit overfitting
+#         'min_samples_leaf': [2, 4],                 # more leaves = less overfitting
+#         'max_features': ['sqrt', 'log2']          # sqrt or log2 to reduce complexity, 0.8 for wider testing
+#     }
+#  # param_grid = {
+        'n_estimators': [100, 200, 300],               # 100 for speed, 300 for stability
+        'max_depth': [None, 15, 30, 50],               # None = no limit, also try controlled depths
+        'min_samples_split': [2, 5, 10],               # 2 is default, 5-10 to limit overfitting
+        'min_samples_leaf': [1, 2, 4],                 # more leaves = less overfitting
+        'max_features': ['sqrt', 'log2', 0.8]          # sqrt or log2 to reduce complexity, 0.8 for wider testing
+    }
+
+DEFAULT_PARAMS = {
+        'n_estimators': 300, 
+        'max_depth': 30, 
+        'min_samples_split': 2, 
+        'min_samples_leaf': 2, 
+        'max_features': 0.8,
+        'random_state': 42,
+        'n_jobs': -1
+}
 
 if __name__ == "__main__":
     main()
@@ -732,4 +821,10 @@ if __name__ == "__main__":
 #     data/regressions/regression_multisite/balanced/balanced_lichen_proportion.json \
 #     data/regressions/regression_multisite/results/lichen \
 #    --grid-search 
+
+# python code/final_codes/regression/train_regression_model.py `
+#     data/regressions/regression_multisite/balanced/balanced_lichen_proportion.json `
+#     data/regressions/regression_multisite/results2/lichen `
+#    --grid-search
+
 

@@ -1,9 +1,14 @@
 """
 Balance Proportion
 
-This script applies median-based balancing to proportion data from JSON files
-(typically output from merge_proportion.py) and creates balanced datasets for
-each category (Lichen, Green, Through) in both normal and sqrt-transformed versions.
+This script creates balanced datasets from proportion data for regression model training.
+It addresses the problem of imbalanced data distribution that can bias regression models.
+
+The script:
+1. Divides the proportion values into equal-width bins
+2. Samples from each bin to ensure an even distribution across the full range
+3. Creates separate balanced datasets for each target variable
+4. Generates histograms to visualize the balanced distribution
 
 Usage:
   python balance_proportion.py input.json --output output_dir --quantile 0.5 --bins 25
@@ -18,7 +23,7 @@ from collections import defaultdict
 
 def normalize_feature_name(feature_name):
     """
-    Normalize feature names by extracting the core band or index name.
+    Normalize feature names by extracting core band or index identifiers.
     
     Args:
         feature_name: Original feature name with site-specific information
@@ -45,12 +50,19 @@ def normalize_feature_name(feature_name):
 
 def create_balanced_dataset(input_data, target_col, n_bins=25, quantile=0.5):
     """
-    Create a balanced dataset by dividing the values of target_col into n_bins bins of equal size
-    and sampling to ensure each bin has approximately the same number of samples.
+    Create a balanced dataset by ensuring even representation across the value range.
+    
+    This is a crucial function for regression model training as it helps prevent
+    bias toward the most common values in the dataset. It:
+    
+    1. Divides the target variable range into equal-width bins
+    2. Counts samples in each bin
+    3. Determines a target count based on the specified quantile
+    4. Samples from each bin to achieve more balanced representation
     
     Args:
         input_data: DataFrame containing the input data
-        target_col: Target column to balance (e.g., 'lichen_proportion', 'green_proportion')
+        target_col: Target column to balance (e.g., 'lichen_proportion')
         n_bins: Number of bins to divide the data into
         quantile: Quantile to use for determining the number of samples per bin
     
@@ -126,6 +138,9 @@ def plot_balanced_histogram(data, column, output_path, n_bins=25):
     """
     Create a histogram showing the distribution of values in a column.
     
+    This visualization helps verify that the balancing process worked correctly
+    and that the data is now more evenly distributed.
+    
     Args:
         data: DataFrame containing the data
         column: Column to plot
@@ -154,6 +169,12 @@ def balance_json_proportions(json_path, output_dir, n_bins=25, quantile=0.5):
     """
     Balance proportions in a JSON file and save balanced outputs.
     
+    This function:
+    1. Loads proportion data from a JSON file
+    2. For each target variable (lichen, green, trough), creates a balanced dataset
+    3. Saves each balanced dataset as a separate JSON file
+    4. Generates histograms to visualize the balanced distributions
+    
     Args:
         json_path: Path to input JSON file (from merge_proportion.py)
         output_dir: Directory to save outputs
@@ -170,15 +191,6 @@ def balance_json_proportions(json_path, output_dir, n_bins=25, quantile=0.5):
         data = json.load(f)
     
     print(f"Loaded {len(data)} pixels from JSON")
-    
-    # Normalize feature names if not already normalized
-    for pixel in data:
-        if 'features' in pixel:
-            normalized_features = {}
-            for feat_name, feat_value in pixel['features'].items():
-                normalized_name = normalize_feature_name(feat_name)
-                normalized_features[normalized_name] = feat_value
-            pixel['features'] = normalized_features
     
     # Convert to DataFrame for easier processing
     df = pd.json_normalize(data)
@@ -220,25 +232,22 @@ def balance_json_proportions(json_path, output_dir, n_bins=25, quantile=0.5):
         # Create output JSON
         output_json = []
         
-        # Keep only the proportion column we're balancing
-        for _, row in balanced_df.iterrows():
-            pixel = {}
-            
-            # Add features
-            if 'features' in row:
-                pixel['features'] = row['features']
-            else:
-                pixel['features'] = {feat_col.replace('features.', ''): row[feat_col] 
-                                    for feat_col in row.index if feat_col.startswith('features.')}
-            
-            # Add the specific proportion we're balancing
-            pixel['proportions'] = {col_name: row[col]}
+        # Get the indices of the selected rows in the original data
+        selected_indices = balanced_df.index.tolist()
+        
+        # Use the original data structure to maintain all features exactly as they were
+        for idx in selected_indices:
+            original_pixel = data[idx]
+            new_pixel = {
+                'features': original_pixel['features'],
+                'proportions': {col_name: original_pixel['proportions'][col_name]}
+            }
             
             # Add source if available
-            if 'source' in row:
-                pixel['source'] = row['source']
+            if 'source' in original_pixel:
+                new_pixel['source'] = original_pixel['source']
             
-            output_json.append(pixel)
+            output_json.append(new_pixel)
         
         # Save balanced JSON
         output_json_path = os.path.join(output_dir, f"balanced_{col_name}.json")
@@ -255,6 +264,9 @@ def balance_json_proportions(json_path, output_dir, n_bins=25, quantile=0.5):
     print("\nAll processing completed!")
 
 def main():
+    """
+    Parse command line arguments and execute the balancing process.
+    """
     # Set up argument parser
     parser = argparse.ArgumentParser(description="Balance proportions in JSON files.")
     parser.add_argument('json_file', help="Input JSON file (from merge_proportion.py)")
@@ -276,8 +288,19 @@ def main():
 if __name__ == "__main__":
     main()
 
-# python code/final_codes/regression/balance_proportion.py \
-#     data/regressions/regression_multisite/merged/merged_pixels.json \
-#     --output data/regressions/regression_multisite/balanced \
-#     --quantile 0.6 \
-#     --bins 25
+# Command line examples:
+"""
+Linux example:
+python code/final_codes/regression/balance_proportion.py \
+    data/regressions/regression_multisite/merged/merged_pixels.json \
+    --output data/regressions/regression_multisite/balanced \
+    --quantile 0.6 \
+    --bins 25
+
+PowerShell example:
+python code/final_codes/regression/balance_proportion.py `
+    data/regressions/regression_multisite/merged/merged_pixels.json `
+    --output data/regressions/regression_multisite/balanced `
+    --quantile 0.6 `
+    --bins 25
+"""

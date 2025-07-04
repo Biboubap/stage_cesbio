@@ -1,11 +1,16 @@
 """
-Sentinel Proportion 4
+Compute Proportion
 
 This script processes classification data to calculate proportions of merged classes
-within Sentinel-2 pixels. It's focused on three specific merged classes:
-1. Lichen (Pure_Lichen + Degraded_Lichen)
-2. Green
-3. Trough (Sphagnum + Depression + Water)
+within Sentinel-2 pixels. It's the first step in the regression model workflow.
+
+The script:
+1. Takes a high-resolution drone classification map and a Sentinel-2 pixel grid
+2. Computes the proportion of each class within each Sentinel-2 pixel
+3. Merges classes into three main categories (Lichen, Green, Trough)
+4. Extracts Sentinel-2 spectral bands and indices for each pixel
+5. Generates a JSON file with pixel features and proportions for model training
+6. Creates a TIF map of the calculated proportions
 
 Usage:
   python compute_proportion.py --classification path/to/classification.tif 
@@ -13,7 +18,7 @@ Usage:
                               --bands-dir path/to/bands_directory
                               --indices-dir path/to/indices_directory
                               --output-dir path/to/output_directory
-                              [--keep-csv]
+                              [--keep-csv] [--site-name SITE_NAME]
 """
 import os
 import numpy as np
@@ -25,13 +30,31 @@ from osgeo import gdal
 import matplotlib.pyplot as plt
 
 def pixel_to_geo(transform, px, py):
-    """Convert pixel coordinates to geo coordinates"""
+    """
+    Convert pixel coordinates to geographic coordinates.
+    
+    Args:
+        transform: GDAL geotransform array
+        px, py: Pixel coordinates
+        
+    Returns:
+        (x, y): Geographic coordinates in the projection of the raster
+    """
     x = transform[0] + px * transform[1] + py * transform[2]
     y = transform[3] + px * transform[4] + py * transform[5]
     return x, y
 
 def geo_to_pixel(transform, x, y):
-    """Convert geo coordinates to pixel coordinates"""
+    """
+    Convert geographic coordinates to pixel coordinates.
+    
+    Args:
+        transform: GDAL geotransform array
+        x, y: Geographic coordinates
+        
+    Returns:
+        (px, py): Pixel coordinates (rounded to nearest integer)
+    """
     inv_det = 1 / (transform[1] * transform[5] - transform[2] * transform[4])
     px = inv_det * (transform[5] * (x - transform[0]) - transform[2] * (y - transform[3]))
     py = inv_det * (-transform[4] * (x - transform[0]) + transform[1] * (y - transform[3]))
@@ -39,8 +62,18 @@ def geo_to_pixel(transform, x, y):
 
 def sentinel_to_drone_bounds(col_s, row_s, sentinel_path, drone_path):
     """
-    For a Sentinel pixel (col_s, row_s), return the bounds xmin, xmax, ymin, ymax
-    of drone pixels covered by this Sentinel pixel.
+    Calculate the drone pixel boundaries that correspond to a Sentinel-2 pixel.
+    
+    This is a critical function that maps between the coarse Sentinel-2 grid
+    and the high-resolution drone imagery by converting between coordinate systems.
+    
+    Args:
+        col_s, row_s: Column and row indices of the Sentinel-2 pixel
+        sentinel_path: Path to Sentinel-2 raster
+        drone_path: Path to drone classification raster
+        
+    Returns:
+        (xmin, xmax, ymin, ymax): Bounds of drone pixels within the Sentinel-2 pixel
     """
     ds_sentinel = gdal.Open(sentinel_path)
     ds_drone = gdal.Open(drone_path)
@@ -69,9 +102,17 @@ def compute_class_proportions(classification_path, sentinel_path, output_csv, cl
     """
     Compute the proportion of merged classes within each Sentinel-2 pixel.
     
+    This is the core function that calculates what percentage of each Sentinel-2 pixel
+    is covered by each land cover class in the high-resolution classification map.
+    
+    The proportions are calculated for three merged class groups:
+    - Lichen: Pure_Lichen + Degraded_Lichen
+    - Green: Green vegetation
+    - Trough: Sphagnum + Depression + Water
+    
     Args:
-        classification_path: Path to the classification raster
-        sentinel_path: Path to the Sentinel-2 raster
+        classification_path: Path to the high-resolution classification raster
+        sentinel_path: Path to the Sentinel-2 raster (for pixel grid reference)
         output_csv: Path to save the CSV results
         class_names: Dictionary mapping class values to names
         lichen_class_labels: List of class names to merge into "Lichen"
@@ -79,7 +120,7 @@ def compute_class_proportions(classification_path, sentinel_path, output_csv, cl
         green_class_labels: List of class names to merge into "Green"
         
     Returns:
-        DataFrame with pixel class proportions
+        DataFrame with pixel class proportions for each Sentinel-2 pixel
     """
     # Load rasters
     ds_class = gdal.Open(classification_path)
@@ -184,7 +225,12 @@ def compute_class_proportions(classification_path, sentinel_path, output_csv, cl
 
 def extract_sentinel_values(sentinel_bands_dir, sentinel_indices_dir, proportions_csv, output_csv):
     """
-    Extract values from multiple Sentinel-2 bands and indices for each pixel in the proportions CSV.
+    Extract spectral values from Sentinel-2 bands and indices for each pixel.
+    
+    This function:
+    1. Loads all Sentinel-2 band and index rasters from the specified directories
+    2. For each pixel in the proportions CSV, extracts the corresponding values
+    3. Creates a comprehensive dataset that combines class proportions with spectral data
     
     Args:
         sentinel_bands_dir: Directory containing Sentinel-2 band rasters
@@ -193,7 +239,7 @@ def extract_sentinel_values(sentinel_bands_dir, sentinel_indices_dir, proportion
         output_csv: Path to save the merged CSV with Sentinel values
         
     Returns:
-        DataFrame with extracted Sentinel values
+        DataFrame with extracted Sentinel values and class proportions
     """
     # Check if proportions_csv is a DataFrame or path
     if isinstance(proportions_csv, pd.DataFrame):
@@ -279,15 +325,18 @@ def extract_sentinel_values(sentinel_bands_dir, sentinel_indices_dir, proportion
 
 def filter_by_valid_proportion(input_csv, output_csv, min_valid_proportion=0.95):
     """
-    Filter the CSV to keep only pixels with at least the specified proportion of valid data.
+    Filter the dataset to keep only pixels with sufficient valid (non-NoData) coverage.
+    
+    This removes pixels that are partially outside the classified area or contain
+    too many NoData values, which could bias the regression model.
     
     Args:
         input_csv: Path to the input CSV or DataFrame
         output_csv: Path to save the filtered CSV
-        min_valid_proportion: Minimum proportion of valid (non-NoData) pixels required
+        min_valid_proportion: Minimum proportion of valid pixels required (default: 0.95)
         
     Returns:
-        DataFrame with filtered pixels
+        DataFrame with filtered pixels that meet the validity threshold
     """
     # Check if input_csv is a DataFrame or path
     if isinstance(input_csv, pd.DataFrame):
@@ -311,12 +360,15 @@ def filter_by_valid_proportion(input_csv, output_csv, min_valid_proportion=0.95)
 
 def plot_class_proportions(csv_path, output_dir, purcent_exclusion=0.05):
     """
-    Create histograms of class proportions from the CSV file.
+    Create histograms showing the distribution of class proportions.
+    
+    These visualizations help understand the distribution of different land cover types
+    in the dataset and identify potential imbalances.
     
     Args:
         csv_path: Path to the CSV file with class proportions or DataFrame
         output_dir: Directory to save the plots
-        purcent_exclusion: Threshold below which samples are excluded (default: 0.05 = 5%)
+        purcent_exclusion: Threshold below which samples are excluded from visualization
     """
     # Check if csv_path is a DataFrame or path
     if isinstance(csv_path, pd.DataFrame):
@@ -370,12 +422,15 @@ def plot_class_proportions(csv_path, output_dir, purcent_exclusion=0.05):
 
 def create_proportion_tif(filtered_csv, output_tif, sentinel_path):
     """
-    Create a multi-band TIFF file with class proportions from filtered CSV data.
+    Create a multi-band GeoTIFF file showing the spatial distribution of class proportions.
+    
+    This creates a visualization of the calculated proportions that can be displayed
+    in GIS software, with each band representing a different class proportion.
     
     Args:
         filtered_csv: Path to the filtered CSV with proportions or DataFrame
         output_tif: Path to save the output multi-band TIFF
-        sentinel_path: Path to the Sentinel reference image for georeference
+        sentinel_path: Path to the Sentinel reference image for georeferencing
         
     Returns:
         Path to the created TIF file
@@ -446,7 +501,10 @@ def create_proportion_tif(filtered_csv, output_tif, sentinel_path):
 
 def merge_csv_files(features_csv, proportions_csv, output_csv, output_json):
     """
-    Merge features CSV and proportions CSV into a single CSV file and also create a JSON file.
+    Merge features CSV and proportions CSV into a single CSV file and a JSON file.
+    
+    The resulting JSON file is the primary output of the compute_proportion script
+    and will be used for training regression models.
     
     Args:
         features_csv: Path to CSV with Sentinel features or DataFrame
@@ -520,7 +578,14 @@ def merge_csv_files(features_csv, proportions_csv, output_csv, output_json):
 def main():
     """
     Main function to process classification data and create proportion outputs.
-    The data is processed on the classification tif, which has to be clipped to the well-classified area.
+    
+    Workflow:
+    1. Compute class proportions for each Sentinel pixel
+    2. Filter out pixels with insufficient valid data
+    3. Extract Sentinel spectral values for each pixel
+    4. Create visualization plots
+    5. Generate proportion TIF map
+    6. Merge features and proportions into CSV and JSON files
     """
     # Set up argument parser
     parser = argparse.ArgumentParser(description="Compute class proportions for Sentinel-2 pixels.")
@@ -644,6 +709,9 @@ def main():
 if __name__ == "__main__":
     main()
 """
+# Command line examples:
+"""
+Linux example:
  python /home/lcousin/stage_cesbio/code/final_codes/regression/compute_proportion.py \
     --classification media/lcousin/FASTBOYSLIM/Loris/KonstantinClassif/Chesnay_classif_well.tif \
     --sentinel-band /home/lcousin/stage_cesbio/DataCubeS2/Chesnay_10m/mediane_bands/mediane_STACK_2023_BandB4_Chesnay_deflate.tif \
@@ -651,11 +719,13 @@ if __name__ == "__main__":
     --indices-dir /home/lcousin/stage_cesbio/DataCubeS2/Chesnay_10m/mediane_indices \
     --output-dir /home/lcousin/stage_cesbio/data/regressions/regression_multisite/regression_Chesnay_10m \
     --site-name Chesnay     
+
+PowerShell example:
+ python C:/Loris/CESBIO/stage_cesbio/code/final_codes/regression/compute_proportion.py `
+    --classification D:/Loris/KonstantinClassif/Chesnay_classif_well.tif `
+    --sentinel-band D:/Loris/SentinelBands/Chesnay_10m/mediane_bands/mediane_STACK_2023_BandB4_Chesnay_deflate.tif `
+    --bands-dir D:/Loris/SentinelBands/Chesnay_10m/mediane_bands `
+    --indices-dir D:/Loris/SentinelBands/Chesnay_10m/mediane_indices `
+    --output-dir C:/Loris/CESBIO/stage_cesbio/data/regressions/regression_multisite/regression_Chesnay_10m `
+    --site-name Chesnay
 """
-# python /home/lcousin/stage_cesbio/code/final_codes/regression/compute_proportion.py \
-#     --classification home/lcousin/stage_cesbio/drone_treated/WAP12_tiles/wap12_classif_well.tif\
-#     --sentinel-band /home/lcousin/stage_cesbio/DataCubeS2/WAP12_10m/mediane_bands/mediane_clipped_STACK_2023_BandB4_WAP12_deflate.tif\
-#     --bands-dir /home/lcousin/stage_cesbio/DataCubeS2/WAP12_10m/mediane_bands\
-#     --indices-dir /home/lcousin/stage_cesbio/DataCubeS2/WAP12_10m/mediane_indices\
-#     --output-dir /home/lcousin/stage_cesbio/data/regressions/regression_multisite/regression_WAP12_10m \
-#     --site-name WAP12
