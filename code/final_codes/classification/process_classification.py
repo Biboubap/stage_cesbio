@@ -102,17 +102,18 @@ def setup_dask_client(n_workers=None, threads_per_worker=1, memory_limit=None):
     logger.info(f"Dask dashboard available at: {client.dashboard_link}")
     return client, cluster
 
-def create_output_raster(rgb_path, output_path, dtype=gdal.GDT_Byte):
+def create_output_raster(rgb_path, output_path, patch_size=1, dtype=gdal.GDT_Byte):
     """
-    Create an output raster with the same dimensions and georeferencing as the input.
+    Create an output raster with dimensions adjusted by patch_size while preserving georeferencing.
     
-    This function initializes a new GeoTIFF file that will store the classification result.
-    It copies the georeferencing information from the input RGB file to ensure that
-    the output maintains the same spatial reference and coordinates.
+    This function creates a new GeoTIFF at a lower resolution (based on patch_size) than the
+    input RGB file, but with proper georeferencing so that each pixel in the output corresponds
+    to a patch in the input.
     
     Args:
         rgb_path: Path to the input RGB raster
         output_path: Path where the output raster will be saved
+        patch_size: Size of classification patches in pixels
         dtype: GDAL data type for the output raster (default: Byte for class labels)
         
     Returns:
@@ -123,13 +124,32 @@ def create_output_raster(rgb_path, output_path, dtype=gdal.GDT_Byte):
     width = src_ds.RasterXSize
     height = src_ds.RasterYSize
     
-    # Create the output raster with compression and tiling options for better performance
+    # Calculate dimensions of the output raster (at patch resolution)
+    out_width = width // patch_size
+    out_height = height // patch_size
+    logger.info(f"Creating output raster with dimensions {out_width}x{out_height} (patch size: {patch_size})")
+    
+    # Get the original geotransform
+    gt = src_ds.GetGeoTransform()
+    
+    # Create a new geotransform with adjusted pixel size
+    # [0]: top-left x, [1]: pixel width, [2]: rotation, [3]: top-left y, [4]: rotation, [5]: pixel height
+    new_gt = (
+        gt[0],                  # Same top-left x coordinate
+        gt[1] * patch_size,     # Pixel width multiplied by patch_size
+        gt[2],                  # Same rotation (typically 0)
+        gt[3],                  # Same top-left y coordinate
+        gt[4],                  # Same rotation (typically 0)
+        gt[5] * patch_size      # Pixel height multiplied by patch_size (note: typically negative)
+    )
+    
+    # Create the output raster with compression and tiling options
     driver = gdal.GetDriverByName('GTiff')
-    out_ds = driver.Create(output_path, width, height, 1, dtype,
+    out_ds = driver.Create(output_path, out_width, out_height, 1, dtype,
                            options=['COMPRESS=LZW', 'TILED=YES', 'BLOCKXSIZE=256', 'BLOCKYSIZE=256'])
     
-    # Copy georeferencing information from input to output
-    out_ds.SetGeoTransform(src_ds.GetGeoTransform())
+    # Set the adjusted geotransform and projection
+    out_ds.SetGeoTransform(new_gt)
     out_ds.SetProjection(src_ds.GetProjection())
     
     # Initialize with nodata (0 = background/no classification)
@@ -141,24 +161,27 @@ def create_output_raster(rgb_path, output_path, dtype=gdal.GDT_Byte):
     out_ds.FlushCache()
     return out_ds
 
-def calculate_blocks(raster_width, raster_height, block_size, overlap):
+def calculate_blocks(raster_width, raster_height, block_size, overlap, patch_size=1):
     """
     Calculate block coordinates with overlap for processing large rasters in chunks.
     
-    This function divides a large raster into smaller blocks for processing, with
-    overlapping regions to avoid edge artifacts in the classification. It calculates
-    the coordinates of each block and the valid (non-overlap) region within each block.
+    Adjusted to account for patch_size, so that block coordinates align with patch boundaries.
     
     Args:
         raster_width: Width of the entire raster in pixels
         raster_height: Height of the entire raster in pixels
         block_size: Size of each processing block in pixels
         overlap: Size of the overlap between adjacent blocks in pixels
+        patch_size: Size of classification patches in pixels
         
     Returns:
         List of dictionaries containing block coordinates and valid regions
     """
     blocks = []
+    
+    # Adjust block_size and overlap to be multiples of patch_size if needed
+    block_size = (block_size // patch_size) * patch_size
+    overlap = (overlap // patch_size) * patch_size
     
     # Calculate effective block sizes (block_size - overlap on each side)
     effective_block = block_size - 2 * overlap
@@ -257,12 +280,8 @@ def process_classification(args):
     """
     Main function to process the classification on a large raster.
     
-    This function orchestrates the entire classification process:
-    1. Sets up the parallel processing environment using Dask
-    2. Loads the classification models
-    3. Divides the input raster into blocks with overlap
-    4. Processes each block in parallel using the models
-    5. Combines the results into a final classification raster
+    This function orchestrates the entire classification process and now produces
+    a classification map at patch resolution instead of the full RGB resolution.
     
     Args:
         args: Command line arguments containing all processing parameters
@@ -313,16 +332,17 @@ def process_classification(args):
         raster_height = rgb_ds.RasterYSize
         rgb_ds = None  # Close the dataset to free resources
         
-        # Create output raster with the same dimensions and georeferencing
-        logger.info(f"Creating output raster at {args.out}")
-        out_ds = create_output_raster(args.rgb, args.out)
+        # Create output raster with the adjusted patch-level resolution
+        logger.info(f"Creating output raster at {args.out} with patch size {patch_size}")
+        out_ds = create_output_raster(args.rgb, args.out, patch_size=patch_size)
         
-        # Calculate processing blocks with overlap to avoid edge effects
+        # Calculate processing blocks with overlap, aligned with patch boundaries
         blocks = calculate_blocks(
             raster_width, 
             raster_height,
             args.block_size,
-            args.overlap
+            args.overlap,
+            patch_size=patch_size
         )
         logger.info(f"Processing raster in {len(blocks)} blocks with {args.overlap}px overlap")
         
@@ -350,23 +370,27 @@ def process_classification(args):
         out_band = out_ds.GetRasterBand(1)
         for i, result in enumerate(results):
             if result is not None:
-                # Unpack the result
+                # Unpack the result (now at patch resolution)
                 block_data, block = result
                 
-                # Write only the valid (non-overlapping) part to the output
-                x_offset = block['out_x_start']
-                y_offset = block['out_y_start']
-                x_size = block['valid_x_end'] - block['valid_x_start']
-                y_size = block['valid_y_end'] - block['valid_y_start']
+                # Calculate valid region indices in patch units
+                valid_x_start_patches = block['valid_x_start'] // patch_size
+                valid_y_start_patches = block['valid_y_start'] // patch_size
+                valid_x_size_patches = (block['valid_x_end'] - block['valid_x_start']) // patch_size
+                valid_y_size_patches = (block['valid_y_end'] - block['valid_y_start']) // patch_size
                 
-                # Extract valid data from the block result
+                # Calculate output positions in patch units
+                out_x_start_patches = block['out_x_start'] // patch_size
+                out_y_start_patches = block['out_y_start'] // patch_size
+                
+                # Extract valid data from the block result (already at patch resolution)
                 valid_data = block_data[
-                    block['valid_y_start']:block['valid_y_end'],
-                    block['valid_x_start']:block['valid_x_end']
+                    valid_y_start_patches:valid_y_start_patches + valid_y_size_patches,
+                    valid_x_start_patches:valid_x_start_patches + valid_x_size_patches
                 ]
                 
-                # Write to the output raster
-                out_band.WriteArray(valid_data, xoff=x_offset, yoff=y_offset)
+                # Write to the output raster (already at patch resolution)
+                out_band.WriteArray(valid_data, xoff=out_x_start_patches, yoff=out_y_start_patches)
         
         # Clean up and save the final output
         out_ds.FlushCache()
@@ -374,7 +398,7 @@ def process_classification(args):
         
         elapsed_time = time.time() - start_time
         logger.info(f"Processing completed in {elapsed_time:.2f} seconds")
-        logger.info(f"Output saved to {args.out}")
+        logger.info(f"Output saved to {args.out} at patch resolution ({patch_size}x{patch_size} pixels per patch)")
     
     finally:
         # Clean up Dask resources

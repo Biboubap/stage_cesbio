@@ -34,7 +34,8 @@ The classification process follows these steps:
    - Parse command line arguments
    - Set up parallel processing environment with Dask
    - Load classification models
-   - Create output raster file
+   - Calculate appropriate patch size based on image resolution
+   - Create output raster file at patch resolution (much smaller than input)
 
 2. **Block Processing**:
    - Divide input raster into overlapping blocks to avoid edge effects
@@ -46,12 +47,13 @@ The classification process follows these steps:
      - Extract features for machine learning models
      - Apply both classification models
      - Merge predictions from both models
-     - Filter isolated pixels to reduce noise
-     - Upsample to full resolution
+     - Filter isolated pixels to smooth the classification
+     - Return classification at patch resolution
 
 3. **Merging Results**:
    - Combine valid portions of each processed block
-   - Write final classification to output raster
+   - Write final classification to output raster at patch resolution
+   - Apply proper georeferencing to maintain geographic accuracy
 
 ## Requirements
 
@@ -110,7 +112,18 @@ python process_classification.py \
 
 ## Output
 
-The system produces a GeoTIFF raster where each pixel value represents a specific land cover class:
+The system produces a GeoTIFF raster where each pixel represents a patch from the original image:
+
+1. **Resolution**: The output resolution is determined by the patch size:
+   - Each pixel in the output represents a patch_size × patch_size area in the input
+   - For example, with a patch_size of 16, the output is 1/16th the width and height of the input
+   - This significantly reduces file size while maintaining classification quality
+
+2. **Georeferencing**: The output maintains correct geographic positioning:
+   - The pixel size in the output geotransform is adjusted based on the patch_size
+   - This ensures each pixel in the output correctly aligns with the corresponding patch in the input
+
+3. **Classification Values**: Each pixel value represents a specific land cover class:
 
 | Value | Class | Description |
 |-------|-------|-------------|
@@ -122,7 +135,13 @@ The system produces a GeoTIFF raster where each pixel value represents a specifi
 | 5 | Depression | Dry or non-vegetated depression areas |
 | 6 | Water | Areas covered by water |
 
-The output raster has the same georeferencing, projection, and dimensions as the input RGB raster, ensuring it aligns perfectly with the source data.
+This patch-based resolution approach provides several advantages:
+- Significantly reduced output file size (potentially 100-400x smaller)
+- Lower memory usage during processing
+- Faster processing times
+- Compatibility with the regression code for proportion calculations
+
+The regression code can still accurately calculate proportions because the output maintains proper geographic coordinates, even at the lower resolution.
 
 ## Adapting the System
 
@@ -168,7 +187,12 @@ The system can be adapted to use different types of input data:
 
 - **Memory Usage**: Adjust the `--block-size` parameter based on available memory. Smaller blocks use less memory but increase processing overhead.
 - **Parallelism**: The `--workers` parameter controls how many blocks are processed simultaneously. More workers increase speed but require more memory.
-- **Patch Size**: The `--patch-size` parameter should be set according to the scale of features you're trying to classify. The system can calculate this automatically based on raster resolution.
+- **Patch Size**: The `--patch-size` parameter is critical as it determines:
+  - The resolution of the output classification
+  - The scale of features detected in the classification
+  - Memory usage during processing
+  
+  The system calculates an appropriate patch size automatically based on input resolution, targeting roughly 16.8cm ground coverage per patch. You can override this with a specific value if needed.
 
 ## Troubleshooting
 

@@ -277,7 +277,7 @@ def process_block_with_overlap(rgb_path, dsm_path, model1, model2,
     2. Divides it into patches and calculates features for each patch
     3. Applies both classification models and merges their predictions
     4. Filters isolated pixels to smooth the classification
-    5. Upsamples the result to full resolution
+    5. Returns the classification at patch resolution (not upsampled)
     
     Args:
         rgb_path: Path to RGB raster
@@ -291,7 +291,7 @@ def process_block_with_overlap(rgb_path, dsm_path, model1, model2,
         block_index: Index of the current block for logging
         
     Returns:
-        Tuple of (classification array, block info)
+        Tuple of (classification array at patch resolution, block info)
     """
     try:
         logger.info(f"Processing block {block_index}: {block['x_start']}:{block['x_end']}, {block['y_start']}:{block['y_end']}")
@@ -387,30 +387,15 @@ def process_block_with_overlap(rgb_path, dsm_path, model1, model2,
         logger.info("Filtering isolated samples")
         merged_map_filtered = filter_isolated_samples(merged_map)
         
-        # Upsample to full resolution (from patch-level to pixel-level)
-        logger.info("Upsampling to full resolution")
-        full_res_map = np.zeros((block_height, block_width), dtype=np.uint8)
-        
-        # Expand each patch's classification to all pixels in that patch
-        for i_y in range(n_samples_y):
-            for i_x in range(n_samples_x):
-                if i_y < merged_map_filtered.shape[0] and i_x < merged_map_filtered.shape[1]:
-                    y_start = i_y * patch_size
-                    x_start = i_x * patch_size
-                    y_end = min(y_start + patch_size, block_height)
-                    x_end = min(x_start + patch_size, block_width)
-                    
-                    # Assign the patch's class to all pixels within the patch
-                    full_res_map[y_start:y_end, x_start:x_end] = merged_map_filtered[i_y, i_x]
-        
         # Clean up resources
         block_rasters.clear_rasters()
         
-        return full_res_map, block
+        # Return the classification map at patch resolution (not upsampled)
+        return merged_map_filtered, block
         
     except Exception as e:
         logger.error(f"Error processing block {block_index}: {e}")
         import traceback
         traceback.print_exc()
         return None, block
-
+      
