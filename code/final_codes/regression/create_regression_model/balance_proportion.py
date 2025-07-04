@@ -291,14 +291,14 @@ if __name__ == "__main__":
 # Command line examples:
 """
 Linux example:
-python code/final_codes/regression/balance_proportion.py \
+python code/final_codes/regression/create_regression_model/balance_proportion.py \
     data/regressions/regression_multisite/merged/merged_pixels.json \
     --output data/regressions/regression_multisite/balanced \
     --quantile 0.6 \
     --bins 25
 
 PowerShell example:
-python code/final_codes/regression/balance_proportion.py `
+python code/final_codes/regression/create_regression_model/balance_proportion.py `
     data/regressions/regression_multisite/merged/merged_pixels.json `
     --output data/regressions/regression_multisite/balanced `
     --quantile 0.6 `

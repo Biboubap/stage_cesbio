@@ -398,4 +398,3 @@ def process_block_with_overlap(rgb_path, dsm_path, model1, model2,
         import traceback
         traceback.print_exc()
         return None, block
-      

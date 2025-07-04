@@ -712,8 +712,8 @@ if __name__ == "__main__":
 # Command line examples:
 
 Linux example:
- python /home/lcousin/stage_cesbio/code/final_codes/regression/compute_proportion.py \
-    --classification media/lcousin/FASTBOYSLIM/Loris/KonstantinClassif/Chesnay_classif_well.tif \
+ python /home/lcousin/stage_cesbio/code/final_codes/regression/create_regression_model/compute_proportion.py \
+    --classification /media/lcousin/FASTBOYSLIM/Loris/KonstantinClassif/Chesnay_classif_well.tif \
     --sentinel-band /home/lcousin/stage_cesbio/DataCubeS2/Chesnay_10m/mediane_bands/mediane_STACK_2023_BandB4_Chesnay_deflate.tif \
     --bands-dir /home/lcousin/stage_cesbio/DataCubeS2/Chesnay_10m/mediane_bands \
     --indices-dir /home/lcousin/stage_cesbio/DataCubeS2/Chesnay_10m/mediane_indices \
@@ -721,7 +721,7 @@ Linux example:
     --site-name Chesnay     
 
 PowerShell example:
- python C:/Loris/CESBIO/stage_cesbio/code/final_codes/regression/compute_proportion.py `
+ python C:/Loris/CESBIO/stage_cesbio/code/final_codes/regression/create_regression_model/compute_proportion.py `
     --classification D:/Loris/KonstantinClassif/Chesnay_classif_well.tif `
     --sentinel-band D:/Loris/SentinelBands/Chesnay_10m/mediane_bands/mediane_STACK_2023_BandB4_Chesnay_deflate.tif `
     --bands-dir D:/Loris/SentinelBands/Chesnay_10m/mediane_bands `

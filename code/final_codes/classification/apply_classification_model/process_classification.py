@@ -13,9 +13,9 @@ import time
 from pathlib import Path
 
 # Use relative imports for modules in the same directory tree
-from utils.block_rasters_manager import BlockRastersManager
-from utils.block_processor import process_block_with_overlap
-from utils.block_sample import BlockSample
+from ..utils.block_rasters_manager import BlockRastersManager
+from ..utils.block_processor import process_block_with_overlap
+from ..utils.block_sample import BlockSample
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -414,14 +414,9 @@ if __name__ == "__main__":
     args = parse_arguments()
     process_classification(args)
 
-# Example command (Linux):
-# python code/final_codes/classification/process_classification.py --rgb drone_treated/WAP32_tiles/rgb/WAP32_full_transparent_mosaic_group1_08_05.tif --dsm drone_treated/WAP32_tiles/dsm/WAP32_full_dsm_08_05.tif --out drone_treated/WAP32_tiles/classif_08_05_test.tif
-
-# Example command (paths with full path):
-# python home/lcousin/stage_cesbio/code/final_codes/classification/process_classification.py --rgb home/lcousin/stage_cesbio/drone_treated/WAP32_tiles/rgb/WAP32_full_transparent_mosaic_group1_05_12.tif --dsm home/lcousin/stage_cesbio/drone_treated/WAP32_tiles/dsm/WAP32_full_dsm_05_12.tif --out media/lcousin/FASTBOYSLIM/Loris/test.tif
 
 # Example using multi-line command (Linux):
-# python home/lcousin/stage_cesbio/code/final_codes/classification/process_classification.py\
+# python home/lcousin/stage_cesbio/code/final_codes/classification/apply_classification_model/process_classification.py\
 #  --rgb home/lcousin/stage_cesbio/Konstantin/UAV_Konstantin_Tabatha/Chesnay/ChesnayAugust2023_ortho_export_MonJun16161612078476_32615.tif\
 #  --dsm home/lcousin/stage_cesbio/Konstantin/UAV_Konstantin_Tabatha/Chesnay/Chesnay_DSM_Resampled.tif \
 #  --out media/lcousin/FASTBOYSLIM/Loris/KonstantinClassif/Chesnay_classif.tif

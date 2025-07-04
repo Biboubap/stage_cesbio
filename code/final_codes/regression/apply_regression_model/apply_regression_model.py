@@ -19,7 +19,7 @@ import numpy as np
 import joblib
 from osgeo import gdal
 from tqdm import tqdm
-from merge_proportion import normalize_feature_name
+from ..create_regression_model.merge_proportion import normalize_feature_name
 
 def parse_arguments():
     """
