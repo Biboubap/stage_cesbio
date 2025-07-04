@@ -21,43 +21,65 @@ from utils.block_sample import BlockSample
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Hard-coded paths to the model files
-MODEL1_PATH = "/home/lcousin/stage_cesbio/data/samples/selection14/model_wap32_no_chicoutai.joblib"
-MODEL2_PATH = "/home/lcousin/stage_cesbio/data/samples/selection16/classifs/model_16_7/model_16_7.joblib"
 
 def parse_arguments():
-    """Parse command line arguments."""
+    """
+    Parse command line arguments for the classification process.
+    
+    This function defines and processes all command line arguments that control
+    how the classification is performed, including input/output paths, processing
+    parameters, and resource allocation settings.
+    
+    Returns:
+        Parsed command line arguments
+    """
     parser = argparse.ArgumentParser(description='Process classification on large raster images')
     parser.add_argument('--rgb', required=True, help='Path to RGB raster')
-    parser.add_argument('--dsm', required=True, help='Path to DSM raster')
+    parser.add_argument('--dsm', required=True, help='Path to Digital Surface Model (DSM) raster')
     parser.add_argument('--out', required=True, help='Output path for classification result')
     
     # Processing parameters
     parser.add_argument('--patch-size', type=int, default=None, 
                         help='Size of patches for classification (default: calculated from resolution)')
     parser.add_argument('--block-size', type=int, default=1024, 
-                        help='Block size for processing (default: 1024)')
+                        help='Block size for processing in pixels (default: 1024)')
     parser.add_argument('--overlap', type=int, default=48, 
-                        help='Overlap size between blocks (default: 48)')
+                        help='Overlap size between blocks in pixels (default: 48)')
     
     # Resource management
     parser.add_argument('--memory-limit', type=float, default=None, 
                         help='Memory limit per worker in GB (default: auto)')
     parser.add_argument('--workers', type=int, default=None, 
-                        help='Number of workers (default: auto)')
+                        help='Number of worker processes (default: auto)')
     parser.add_argument('--threads-per-worker', type=int, default=1, 
                         help='Threads per worker (default: 1)')
     
     return parser.parse_args()
 
 def setup_dask_client(n_workers=None, threads_per_worker=1, memory_limit=None):
-    """Set up a Dask client for parallel processing."""
+    """
+    Set up a Dask client for parallel processing.
+    
+    This function configures a Dask LocalCluster and Client for distributed processing
+    of the classification tasks. It automatically determines appropriate resource
+    allocation if not specified by the user.
+    
+    Args:
+        n_workers: Number of worker processes to use (default: auto-detect)
+        threads_per_worker: Number of threads per worker (default: 1)
+        memory_limit: Memory limit per worker in GB (default: auto-detect)
+        
+    Returns:
+        Tuple of (client, cluster) for the Dask distributed system
+    """
+    # Auto-detect number of workers if not specified
     if n_workers is None:
         n_workers = max(1, psutil.cpu_count() - 1)  # Leave one CPU for system
     
+    # Auto-determine memory limit if not specified
     if memory_limit is None:
-        total_mem = psutil.virtual_memory().total / (1024**3)  # GB
-        memory_limit = f"{max(2, total_mem / n_workers * 0.7):.1f}GB"
+        total_mem = psutil.virtual_memory().total / (1024**3)  # Convert to GB
+        memory_limit = f"{max(2, total_mem / n_workers * 0.7):.1f}GB"  # 70% of available memory per worker
     else:
         memory_limit = f"{memory_limit}GB"
     
@@ -69,40 +91,73 @@ def setup_dask_client(n_workers=None, threads_per_worker=1, memory_limit=None):
                 f"{threads_per_worker} threads per worker, "
                 f"and {memory_limit} memory per worker")
     
+    # Create the Dask cluster and client
     cluster = LocalCluster(
         n_workers=n_workers,
         threads_per_worker=threads_per_worker,
         memory_limit=memory_limit,
-        processes=True
+        processes=True  # Use separate processes for better isolation
     )
     client = Client(cluster)
     logger.info(f"Dask dashboard available at: {client.dashboard_link}")
     return client, cluster
 
 def create_output_raster(rgb_path, output_path, dtype=gdal.GDT_Byte):
-    """Create an output raster with the same dimensions and georeferencing as the input."""
+    """
+    Create an output raster with the same dimensions and georeferencing as the input.
+    
+    This function initializes a new GeoTIFF file that will store the classification result.
+    It copies the georeferencing information from the input RGB file to ensure that
+    the output maintains the same spatial reference and coordinates.
+    
+    Args:
+        rgb_path: Path to the input RGB raster
+        output_path: Path where the output raster will be saved
+        dtype: GDAL data type for the output raster (default: Byte for class labels)
+        
+    Returns:
+        GDAL dataset object for the output raster
+    """
+    # Open the input raster to get its dimensions and geotransform
     src_ds = gdal.Open(rgb_path)
     width = src_ds.RasterXSize
     height = src_ds.RasterYSize
     
+    # Create the output raster with compression and tiling options for better performance
     driver = gdal.GetDriverByName('GTiff')
     out_ds = driver.Create(output_path, width, height, 1, dtype,
                            options=['COMPRESS=LZW', 'TILED=YES', 'BLOCKXSIZE=256', 'BLOCKYSIZE=256'])
     
-    # Copy georeferencing information
+    # Copy georeferencing information from input to output
     out_ds.SetGeoTransform(src_ds.GetGeoTransform())
     out_ds.SetProjection(src_ds.GetProjection())
     
-    # Initialize with nodata
+    # Initialize with nodata (0 = background/no classification)
     out_band = out_ds.GetRasterBand(1)
     out_band.SetNoDataValue(0)
     out_band.Fill(0)
     
+    # Write changes to disk
     out_ds.FlushCache()
     return out_ds
 
 def calculate_blocks(raster_width, raster_height, block_size, overlap):
-    """Calculate block coordinates with overlap."""
+    """
+    Calculate block coordinates with overlap for processing large rasters in chunks.
+    
+    This function divides a large raster into smaller blocks for processing, with
+    overlapping regions to avoid edge artifacts in the classification. It calculates
+    the coordinates of each block and the valid (non-overlap) region within each block.
+    
+    Args:
+        raster_width: Width of the entire raster in pixels
+        raster_height: Height of the entire raster in pixels
+        block_size: Size of each processing block in pixels
+        overlap: Size of the overlap between adjacent blocks in pixels
+        
+    Returns:
+        List of dictionaries containing block coordinates and valid regions
+    """
     blocks = []
     
     # Calculate effective block sizes (block_size - overlap on each side)
@@ -141,11 +196,10 @@ def calculate_blocks(raster_width, raster_height, block_size, overlap):
                 'y_end': y_end,
                 'valid_x_start': valid_x_start - x_start,  # Relative to block
                 'valid_y_start': valid_y_start - y_start,  # Relative to block
-                'valid_x_end': valid_x_end - x_start,     # Relative to block
-                'valid_x_end': valid_x_end - x_start,     # Relative to block
-                'valid_y_end': valid_y_end - y_start,     # Relative to block
-                'out_x_start': valid_x_start,             # Absolute coordinates for output
-                'out_y_start': valid_y_start,             # Absolute coordinates for output
+                'valid_x_end': valid_x_end - x_start,      # Relative to block
+                'valid_y_end': valid_y_end - y_start,      # Relative to block
+                'out_x_start': valid_x_start,              # Absolute coordinates for output
+                'out_y_start': valid_y_start,              # Absolute coordinates for output
             })
     
     return blocks
@@ -153,6 +207,10 @@ def calculate_blocks(raster_width, raster_height, block_size, overlap):
 def calculate_patch_size(rgb_path, target_cm=16.8):
     """
     Calculate the appropriate patch size based on the RGB raster resolution.
+    
+    This function determines the optimal patch size to use for classification based on
+    the spatial resolution of the input raster. It aims to maintain a consistent
+    ground sample area regardless of the input resolution.
     
     Args:
         rgb_path: Path to RGB raster
@@ -196,10 +254,22 @@ def calculate_patch_size(rgb_path, target_cm=16.8):
         return 16  # Default value
 
 def process_classification(args):
-    """Main function to process the classification on a large raster."""
+    """
+    Main function to process the classification on a large raster.
+    
+    This function orchestrates the entire classification process:
+    1. Sets up the parallel processing environment using Dask
+    2. Loads the classification models
+    3. Divides the input raster into blocks with overlap
+    4. Processes each block in parallel using the models
+    5. Combines the results into a final classification raster
+    
+    Args:
+        args: Command line arguments containing all processing parameters
+    """
     start_time = time.time()
     
-    # Set up Dask client first (moved up in the function)
+    # Set up Dask client for parallel processing
     client, cluster = setup_dask_client(
         n_workers=args.workers,
         threads_per_worker=args.threads_per_worker,
@@ -207,7 +277,7 @@ def process_classification(args):
     )
     
     try:
-        # Determine appropriate patch size
+        # Determine appropriate patch size based on raster resolution
         patch_size = args.patch_size
         if patch_size is None:
             logger.info("Patch size not specified, calculating from raster resolution")
@@ -216,7 +286,8 @@ def process_classification(args):
         else:
             logger.info(f"Using user-specified patch size: {patch_size}")
         
-        # Load models
+        # Load classification models - these contain both the trained models and
+        # the feature names required by each model
         logger.info("Loading classification models...")
         model1_data = joblib.load(MODEL1_PATH)
         model1 = model1_data["model"]
@@ -227,7 +298,8 @@ def process_classification(args):
         feature_names_model2 = model2_data["feature_names"]
         logger.info("Models loaded successfully.")
         
-        # Scatter models to workers
+        # Distribute models to workers to avoid reloading for each block
+        # This improves efficiency by making the models available to all workers
         logger.info("Distributing models to workers...")
         model1_future = client.scatter(model1)
         model2_future = client.scatter(model2)
@@ -235,17 +307,17 @@ def process_classification(args):
         feature_names_model2_future = client.scatter(feature_names_model2)
         logger.info("Models distributed successfully.")
         
-        # Open input rasters to get dimensions
+        # Open input raster to get dimensions
         rgb_ds = gdal.Open(args.rgb)
         raster_width = rgb_ds.RasterXSize
         raster_height = rgb_ds.RasterYSize
-        rgb_ds = None  # Close the dataset
+        rgb_ds = None  # Close the dataset to free resources
         
-        # Create output raster
+        # Create output raster with the same dimensions and georeferencing
         logger.info(f"Creating output raster at {args.out}")
         out_ds = create_output_raster(args.rgb, args.out)
         
-        # Calculate blocks
+        # Calculate processing blocks with overlap to avoid edge effects
         blocks = calculate_blocks(
             raster_width, 
             raster_height,
@@ -254,23 +326,23 @@ def process_classification(args):
         )
         logger.info(f"Processing raster in {len(blocks)} blocks with {args.overlap}px overlap")
         
-        # Create delayed tasks for each block
+        # Create delayed tasks for processing each block in parallel
         delayed_tasks = []
         for i, block in enumerate(blocks):
             task = dask.delayed(process_block_with_overlap)(
                 rgb_path=args.rgb,
                 dsm_path=args.dsm,
-                model1=model1_future,                   # Now using future
-                model2=model2_future,                   # Now using future
-                feature_names_model1=feature_names_model1_future,  # Now using future
-                feature_names_model2=feature_names_model2_future,  # Now using future
+                model1=model1_future,                      # Using future reference to shared model
+                model2=model2_future,                      # Using future reference to shared model
+                feature_names_model1=feature_names_model1_future,  # Using future reference
+                feature_names_model2=feature_names_model2_future,  # Using future reference
                 block=block,
                 patch_size=patch_size,
                 block_index=i
             )
             delayed_tasks.append(task)
         
-        # Execute tasks in parallel
+        # Execute all block processing tasks in parallel
         logger.info(f"Starting parallel processing of {len(delayed_tasks)} blocks...")
         results = dask.compute(*delayed_tasks)
         
@@ -282,7 +354,6 @@ def process_classification(args):
                 block_data, block = result
                 
                 # Write only the valid (non-overlapping) part to the output
-                # Ensure correct coordinate ordering for GDAL
                 x_offset = block['out_x_start']
                 y_offset = block['out_y_start']
                 x_size = block['valid_x_end'] - block['valid_x_start']
@@ -294,11 +365,10 @@ def process_classification(args):
                     block['valid_x_start']:block['valid_x_end']
                 ]
                 
-                # Write to the output raster - ensure correct coordinate ordering for WriteArray
+                # Write to the output raster
                 out_band.WriteArray(valid_data, xoff=x_offset, yoff=y_offset)
         
-        
-        # Clean up
+        # Clean up and save the final output
         out_ds.FlushCache()
         out_ds = None
         
@@ -312,16 +382,21 @@ def process_classification(args):
         cluster.close()
         logger.info("Dask resources released")
 
+# Hard-coded paths to the model files
+MODEL1_PATH = "/home/lcousin/stage_cesbio/data/samples/selection14/model_wap32_no_chicoutai.joblib"
+MODEL2_PATH = "/home/lcousin/stage_cesbio/data/samples/selection16/classifs/model_16_7/model_16_7.joblib"
+
 if __name__ == "__main__":
     args = parse_arguments()
     process_classification(args)
 
-
+# Example command (Linux):
 # python code/final_codes/classification/process_classification.py --rgb drone_treated/WAP32_tiles/rgb/WAP32_full_transparent_mosaic_group1_08_05.tif --dsm drone_treated/WAP32_tiles/dsm/WAP32_full_dsm_08_05.tif --out drone_treated/WAP32_tiles/classif_08_05_test.tif
+
+# Example command (paths with full path):
 # python home/lcousin/stage_cesbio/code/final_codes/classification/process_classification.py --rgb home/lcousin/stage_cesbio/drone_treated/WAP32_tiles/rgb/WAP32_full_transparent_mosaic_group1_05_12.tif --dsm home/lcousin/stage_cesbio/drone_treated/WAP32_tiles/dsm/WAP32_full_dsm_05_12.tif --out media/lcousin/FASTBOYSLIM/Loris/test.tif
 
-
-
+# Example using multi-line command (Linux):
 # python home/lcousin/stage_cesbio/code/final_codes/classification/process_classification.py\
 #  --rgb home/lcousin/stage_cesbio/Konstantin/UAV_Konstantin_Tabatha/Chesnay/ChesnayAugust2023_ortho_export_MonJun16161612078476_32615.tif\
 #  --dsm home/lcousin/stage_cesbio/Konstantin/UAV_Konstantin_Tabatha/Chesnay/Chesnay_DSM_Resampled.tif \

@@ -12,9 +12,13 @@ def extract_features(samples_dict, feature_names_ref=None):
     """
     Extract features from samples for model prediction.
     
+    This function transforms the collection of sample objects into a feature matrix
+    that can be used as input to the machine learning models. It extracts all available
+    features from the samples and optionally filters them based on a reference list.
+    
     Args:
-        samples_dict: Dictionary of samples indexed by position
-        feature_names_ref: Optional list of feature names to include
+        samples_dict: Dictionary of samples indexed by position (i_x, i_y)
+        feature_names_ref: Optional list of feature names to include (for filtering)
         
     Returns:
         Tuple of (features array, positions list, feature names list)
@@ -29,12 +33,15 @@ def extract_features(samples_dict, feature_names_ref=None):
     # Get first sample to determine available features
     first_sample = next(iter(samples_dict.values()))
     
-    # Get available feature names
+    # Get available feature names from sample attributes
     feature_names = []
     for attr in [
+        # Basic RGB statistics
         'r_mean', 'g_mean', 'b_mean', 't_mean', 'z_mean',
         'r_var', 'g_var', 'b_var', 't_var', 'z_var',
+        # Immediate neighborhood statistics
         'r_n_mean', 'g_n_mean', 'b_n_mean', 't_n_mean', 'z_moins_z_n',
+        # Large neighborhood statistics
         'r_large_mean', 'g_large_mean', 'b_large_mean', 't_large_mean', 'z_moins_z_large'
     ]:
         if hasattr(first_sample, attr) and getattr(first_sample, attr) is not None:
@@ -44,11 +51,11 @@ def extract_features(samples_dict, feature_names_ref=None):
     if feature_names_ref is not None:
         feature_names = [name for name in feature_names if name in feature_names_ref]
     
-    # Create feature array
+    # Create feature array with appropriate dimensions
     n_features = len(feature_names)
     features = np.zeros((n_samples, n_features))
     
-    # Fill feature array
+    # Fill feature array with values from each sample
     for i, (pos, sample) in enumerate(samples_dict.items()):
         for j, feat_name in enumerate(feature_names):
             features[i, j] = getattr(sample, feat_name, 0)
@@ -59,35 +66,47 @@ def filter_features(features, all_feature_names, required_feature_names):
     """
     Filter features to include only those required by the model.
     
+    This function selects specific columns from the feature matrix based on the
+    feature names required by the model. This ensures compatibility with models
+    that were trained using specific feature sets.
+    
     Args:
-        features: Feature array
-        all_feature_names: List of all feature names
+        features: Feature array with all available features
+        all_feature_names: List of all feature names in the feature array
         required_feature_names: List of feature names required by the model
         
     Returns:
-        Filtered feature array
+        Filtered feature array containing only the required features
     """
+    # Find the indices of required features in the all_feature_names list
     indices = [all_feature_names.index(name) for name in required_feature_names 
                if name in all_feature_names]
     
+    # Log warning if some required features are missing
     if len(indices) != len(required_feature_names):
         missing = [name for name in required_feature_names if name not in all_feature_names]
         logger.warning(f"Missing features: {missing}")
     
+    # Return the feature array with only the required columns
     return features[:, indices]
 
 def merge_predictions(pred_map1, pred_map2):
     """
     Merge predictions from the two models according to specified rules.
     
+    This function combines the output of two different classification models,
+    using specific rules to determine the final class for each pixel. The first model 
+    (no_chicoutai) provides a general classification, while the second model (16_7)
+    is used to refine certain classes from the first model.
+    
     Args:
-        pred_map1: Predictions from the no_chicoutai model
-        pred_map2: Predictions from the 16_7 model
+        pred_map1: Predictions from the no_chicoutai model (general classification)
+        pred_map2: Predictions from the 16_7 model (detailed classes for refinement)
         
     Returns:
-        Merged prediction map
+        Merged prediction map with final classifications
     """
-    # Create the merged prediction map
+    # Create the merged prediction map with the same dimensions
     n_samples_y, n_samples_x = pred_map1.shape
     merged_map = np.zeros((n_samples_y, n_samples_x), dtype=np.uint8)
     
@@ -103,9 +122,9 @@ def merge_predictions(pred_map1, pred_map2):
                 continue
                 
             # For classes 1 (Chicoutai) and 4 (Lichen) from no_chicoutai model,
-            # use the predictions from the 16_7 model
+            # use the predictions from the 16_7 model to get more detailed classification
             if val1 == 1 or val1 == 4:  # Chicoutai or Lichen
-                # Map 16_7 model classes
+                # Map 16_7 model classes to final output classes
                 if val2 == 8:  # peat_pure_lichen
                     merged_map[i_y, i_x] = 1  # Pure_Lichen
                 elif val2 == 6:  # peat_degraded_lichen
@@ -121,7 +140,7 @@ def merge_predictions(pred_map1, pred_map2):
                 else:
                     merged_map[i_y, i_x] = 0  # Default to No Data
             else:
-                # For other classes from no_chicoutai model, map them directly
+                # For other classes from no_chicoutai model, map them directly to output classes
                 if val1 == 3:  # green_depression
                     merged_map[i_y, i_x] = 3  # Green
                 elif val1 == 5:  # sphaignes
@@ -139,41 +158,47 @@ def filter_isolated_samples(pred_map, min_group_size=3):
     """
     Filter out isolated samples to reduce noise in the classification.
     
+    This function applies a 3x3 filter that replaces isolated pixels (those whose class
+    doesn't match any of their neighbors) with the most common class among their neighbors.
+    This helps to smooth the classification and remove scattered, isolated pixels.
+    
     Args:
-        pred_map: Prediction map
+        pred_map: Prediction map to filter
         min_group_size: Minimum size of a group to keep (not used in this implementation)
         
     Returns:
-        Filtered prediction map
+        Filtered prediction map with isolated pixels replaced
     """
     from scipy.ndimage import generic_filter
 
     def filter_func(values):
-        center = values[4]  # La valeur centrale
-        if center == 0 or center == 255:  # Ne pas modifier les pixels de fond ou sans données
+        """Filter function applied to each 3x3 window in the image"""
+        center = values[4]  # The center value (current pixel)
+        
+        # Don't modify background (0) or no data (255) pixels
+        if center == 0 or center == 255:
             return center
         
-        neighbors = np.delete(values, 4)  # Tous les voisins sauf le centre
+        neighbors = np.delete(values, 4)  # All neighbors except the center
         
-        # Si aucun voisin n'a la même classe que le centre, le pixel est isolé
+        # Check if the pixel is isolated (no neighbors of the same class)
         if not np.any(neighbors == center):
-            # Trouver la classe majoritaire parmi les voisins non-nuls
+            # Find the most common class among non-zero neighbors
             nonzero_neighbors = neighbors[neighbors > 0]
             if len(nonzero_neighbors) == 0:
-                return center  # Si tous les voisins sont nuls, garder la valeur originale
+                return center  # If all neighbors are background, keep original value
             
-            # Compter les occurrences de chaque classe
+            # Count occurrences of each class and return the most frequent
             unique_vals, counts = np.unique(nonzero_neighbors, return_counts=True)
-            # Retourne la classe la plus fréquente
             return unique_vals[np.argmax(counts)]
         else:
-            # Le pixel n'est pas isolé, garder sa valeur originale
+            # The pixel is not isolated, keep its original value
             return center
 
-    # Appliquer le filtre sur chaque pixel avec un noyau 3x3
+    # Apply the filter to each pixel using a 3x3 window
     filtered_map = generic_filter(pred_map, filter_func, size=3, mode='constant', cval=0)
     
-    # Vérifier combien de pixels ont été modifiés
+    # Log how many pixels were modified
     changed = np.sum(filtered_map != pred_map)
     logger.info(f"Isolated pixels filtering: {changed} pixels modified ({changed/(pred_map.size)*100:.2f}%)")
     
@@ -183,24 +208,28 @@ def predict_samples(model, features, positions, shape_y, shape_x):
     """
     Predict classes using the provided model and features.
     
+    This function applies the classification model to the feature matrix and
+    creates a 2D prediction map with the results.
+    
     Args:
-        model: Trained model
-        features: Feature array
-        positions: List of (i_x, i_y) positions
+        model: Trained classification model
+        features: Feature array for prediction
+        positions: List of (i_x, i_y) positions corresponding to each feature row
         shape_y, shape_x: Shape of the output prediction map
         
     Returns:
-        Prediction map as numpy array
+        Prediction map as numpy array with class values
     """
-    # Predict classes
+    # Predict classes using the model
     predictions = model.predict(features)
     
-    # Create prediction map
+    # Create an empty prediction map
     pred_map = np.zeros((shape_y, shape_x), dtype=np.uint8)
     
-    # Check if predictions are strings and map them to integers if necessary
+    # Check if predictions are strings (class names) and map them to integers if necessary
     if len(predictions) > 0 and isinstance(predictions[0], str):
-        # Define mapping based on expected values in merge_predictions
+        # Define mapping from string class names to integer values
+        # This mapping is used to convert text classes to numeric codes
         label_map = {
             'chicoutai': 1,           # Chicoutai
             'dry_depression': 2,      # dry_depression
@@ -209,7 +238,7 @@ def predict_samples(model, features, positions, shape_y, shape_x):
             'sphaignes': 5,           # sphaignes
             'watered_depression': 6,  # watered_depression
             'black_depression': 7,    # black_depression
-            # Add other string labels that might be encountered
+            # Additional classes for the second model
             'peat_pure_lichen': 8,    # peat_pure_lichen
             'peat_degraded_lichen': 6, # peat_degraded_lichen
             'depression_green': 2,    # depression_green
@@ -222,7 +251,7 @@ def predict_samples(model, features, positions, shape_y, shape_x):
             'depression_water': 5,    # depression_water
         }
         
-        # Fill prediction map using the mapping
+        # Fill prediction map using the mapping from strings to integers
         for i, (i_x, i_y) in enumerate(positions):
             if predictions[i] in label_map:
                 pred_map[i_y, i_x] = label_map[predictions[i]]
@@ -231,7 +260,7 @@ def predict_samples(model, features, positions, shape_y, shape_x):
                 logger.warning(f"Unknown class label: {predictions[i]}, using default value 0")
                 pred_map[i_y, i_x] = 0
     else:
-        # Fill prediction map directly with numeric predictions
+        # If predictions are already numeric, fill the map directly
         for i, (i_x, i_y) in enumerate(positions):
             pred_map[i_y, i_x] = predictions[i]
     
@@ -243,15 +272,22 @@ def process_block_with_overlap(rgb_path, dsm_path, model1, model2,
     """
     Process a single block of raster data with overlap handling.
     
+    This function is the main processing function for each raster block:
+    1. It loads a block of data from the input rasters
+    2. Divides it into patches and calculates features for each patch
+    3. Applies both classification models and merges their predictions
+    4. Filters isolated pixels to smooth the classification
+    5. Upsamples the result to full resolution
+    
     Args:
         rgb_path: Path to RGB raster
         dsm_path: Path to DSM raster
-        model1: First classification model
-        model2: Second classification model
+        model1: First classification model (no_chicoutai model)
+        model2: Second classification model (16_7 model)
         feature_names_model1: Features required by model1
         feature_names_model2: Features required by model2
         block: Dictionary with block coordinates and valid region
-        patch_size: Size of patches for classification
+        patch_size: Size of patches for classification in pixels
         block_index: Index of the current block for logging
         
     Returns:
@@ -267,7 +303,7 @@ def process_block_with_overlap(rgb_path, dsm_path, model1, model2,
         # Get block dimensions
         block_height, block_width = block_rasters.get_block_shape()
         
-        # Calculate number of samples in each dimension
+        # Calculate number of samples (patches) in each dimension
         n_samples_y = block_height // patch_size
         n_samples_x = block_width // patch_size
         
@@ -275,8 +311,9 @@ def process_block_with_overlap(rgb_path, dsm_path, model1, model2,
         
         # Create samples for this block
         samples = {}
-        nan_positions = []
+        nan_positions = []  # Track positions with NaN values
         
+        # Loop through all possible patch positions in the block
         for i_y in range(n_samples_y):
             for i_x in range(n_samples_x):
                 # Calculate coordinates relative to the block
@@ -287,7 +324,7 @@ def process_block_with_overlap(rgb_path, dsm_path, model1, model2,
                 if y + patch_size > block_height or x + patch_size > block_width:
                     continue
                 
-                # Create sample
+                # Create sample for this patch
                 sample = BlockSample(
                     i_x=i_x, 
                     i_y=i_y, 
@@ -297,12 +334,12 @@ def process_block_with_overlap(rgb_path, dsm_path, model1, model2,
                     block_rasters=block_rasters
                 )
                 
-                # Check for NaN values
+                # Check for NaN values in RGB data (usually transparent areas)
                 if (sample.r_mean is None or np.isnan(sample.r_mean) or
                     sample.g_mean is None or np.isnan(sample.g_mean) or
                     sample.b_mean is None or np.isnan(sample.b_mean)):
                     nan_positions.append((i_x, i_y))
-                    # Fix NaN values
+                    # Fix NaN values by replacing with zeros
                     sample.r_mean = 0.0 if sample.r_mean is None or np.isnan(sample.r_mean) else sample.r_mean
                     sample.g_mean = 0.0 if sample.g_mean is None or np.isnan(sample.g_mean) else sample.g_mean
                     sample.b_mean = 0.0 if sample.b_mean is None or np.isnan(sample.b_mean) else sample.b_mean
@@ -312,15 +349,15 @@ def process_block_with_overlap(rgb_path, dsm_path, model1, model2,
                     sample.z_mean = 0.0 if sample.z_mean is None or np.isnan(sample.z_mean) else sample.z_mean
                     sample.z_var = 0.0 if sample.z_var is None or np.isnan(sample.z_var) else sample.z_var
                 
-                # Store sample
+                # Store sample in dictionary
                 samples[(i_x, i_y)] = sample
         
-        # Compute neighborhood statistics
+        # Compute neighborhood statistics for all samples
         logger.info(f"Computing neighborhood statistics for {len(samples)} samples")
         for sample in samples.values():
             sample.compute_neighbors(samples, block_rasters, distance_large=3)
         
-        # Extract features
+        # Extract features from all samples
         logger.info("Extracting features")
         features, positions, all_feature_names = extract_features(samples)
         
@@ -328,7 +365,7 @@ def process_block_with_overlap(rgb_path, dsm_path, model1, model2,
             logger.warning("No valid samples found in this block")
             return None, block
         
-        # Filter features for each model
+        # Filter features to match what each model requires
         features_model1 = filter_features(features, all_feature_names, feature_names_model1)
         features_model2 = filter_features(features, all_feature_names, feature_names_model2)
         
@@ -342,7 +379,7 @@ def process_block_with_overlap(rgb_path, dsm_path, model1, model2,
             pred_map1[i_y, i_x] = 0
             pred_map2[i_y, i_x] = 0
         
-        # Merge predictions
+        # Merge predictions from both models
         logger.info("Merging predictions")
         merged_map = merge_predictions(pred_map1, pred_map2)
         
@@ -350,10 +387,11 @@ def process_block_with_overlap(rgb_path, dsm_path, model1, model2,
         logger.info("Filtering isolated samples")
         merged_map_filtered = filter_isolated_samples(merged_map)
         
-        # Upsample to full resolution
+        # Upsample to full resolution (from patch-level to pixel-level)
         logger.info("Upsampling to full resolution")
         full_res_map = np.zeros((block_height, block_width), dtype=np.uint8)
         
+        # Expand each patch's classification to all pixels in that patch
         for i_y in range(n_samples_y):
             for i_x in range(n_samples_x):
                 if i_y < merged_map_filtered.shape[0] and i_x < merged_map_filtered.shape[1]:
@@ -362,6 +400,7 @@ def process_block_with_overlap(rgb_path, dsm_path, model1, model2,
                     y_end = min(y_start + patch_size, block_height)
                     x_end = min(x_start + patch_size, block_width)
                     
+                    # Assign the patch's class to all pixels within the patch
                     full_res_map[y_start:y_end, x_start:x_end] = merged_map_filtered[i_y, i_x]
         
         # Clean up resources
@@ -374,4 +413,4 @@ def process_block_with_overlap(rgb_path, dsm_path, model1, model2,
         import traceback
         traceback.print_exc()
         return None, block
-       
+
