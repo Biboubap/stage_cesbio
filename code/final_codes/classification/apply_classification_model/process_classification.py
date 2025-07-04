@@ -13,9 +13,11 @@ import time
 from pathlib import Path
 
 # Use relative imports for modules in the same directory tree
-from ..utils.block_rasters_manager import BlockRastersManager
-from ..utils.block_processor import process_block_with_overlap
-from ..utils.block_sample import BlockSample
+# Add parent directory to path to import utility modules
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.block_rasters_manager import BlockRastersManager
+from utils.block_processor import process_block_with_overlap
+from utils.block_sample import BlockSample
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
