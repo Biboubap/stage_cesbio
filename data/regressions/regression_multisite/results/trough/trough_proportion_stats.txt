@@ -1,0 +1,51 @@
+Regression Analysis Report
+Generated on: 2025-07-03 14:39:14
+================================================================================
+
+Target Category: trough_proportion
+Total Samples: 25164
+
+Sample Distribution:
+  proportions_Belcher_proportions.json: 6938 samples (27.6%)
+  proportions_Chesnay_proportions.json: 8977 samples (35.7%)
+  proportions_WAP23_proportions.json: 610 samples (2.4%)
+  proportions_WAP32_proportions.json: 1289 samples (5.1%)
+  proportions_Lamprey_proportions.json: 7350 samples (29.2%)
+
+Random Forest Parameters:
+  n_estimators: 100
+  max_depth: 15
+  min_samples_split: 5
+  min_samples_leaf: 2
+  max_features: sqrt
+
+Overall Model Performance:
+  [Cross-Validation Results, 5 folds]
+  R²: 0.7396 ± 0.0093
+  RMSE: 0.1479 ± 0.0025
+  Pearson r: 0.8602 ± 0.0054
+
+Performance by Site:
+  proportions_Belcher_proportions.json (n=6938):
+    R²: 0.8878
+    RMSE: 0.1042
+    Pearson r: 0.9446
+  proportions_Chesnay_proportions.json (n=8977):
+    R²: 0.7989
+    RMSE: 0.1225
+    Pearson r: 0.8965
+  proportions_Lamprey_proportions.json (n=7350):
+    R²: 0.8548
+    RMSE: 0.1055
+    Pearson r: 0.9272
+  proportions_WAP23_proportions.json (n=610):
+    R²: 0.9220
+    RMSE: 0.0731
+    Pearson r: 0.9605
+  proportions_WAP32_proportions.json (n=1289):
+    R²: 0.8512
+    RMSE: 0.1187
+    Pearson r: 0.9249
+
+================================================================================
+End of Report

@@ -1,0 +1,6 @@
+Grid search completed for through_proportion
+Best parameters: {'max_depth': 10, 'max_features': 'sqrt', 'min_samples_leaf': 1, 'min_samples_split': 10, 'n_estimators': 200}
+Best CV r2 score: 0.890
+Validation set R² score: 0.713
+Validation set RMSE: 0.156
+Validation set Pearson r: 0.846

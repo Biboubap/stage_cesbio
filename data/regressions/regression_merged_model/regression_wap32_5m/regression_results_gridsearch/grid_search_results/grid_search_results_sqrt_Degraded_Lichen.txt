@@ -1,0 +1,6 @@
+Grid search completed for sqrt_Degraded_Lichen
+Best parameters: {'max_depth': 20, 'max_features': 'sqrt', 'min_samples_leaf': 1, 'min_samples_split': 2, 'n_estimators': 200}
+Best CV r2 score: 0.980
+Validation set R² score: 0.849
+Validation set RMSE: 0.093
+Validation set Pearson r: 0.921
