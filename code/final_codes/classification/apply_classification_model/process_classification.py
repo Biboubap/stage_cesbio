@@ -19,9 +19,12 @@ from utils.block_rasters_manager import BlockRastersManager
 from utils.block_processor import process_block_with_overlap
 from utils.block_sample import BlockSample
 
-# Configure logging
+# Configure logging - reduce verbosity
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# Reduce verbosity of block processor logs
+logging.getLogger('utils.block_processor').setLevel(logging.WARNING)
 
 
 def parse_arguments():
@@ -346,7 +349,8 @@ def process_classification(args):
             args.overlap,
             patch_size=patch_size
         )
-        logger.info(f"Processing raster in {len(blocks)} blocks with {args.overlap}px overlap")
+        total_blocks = len(blocks)
+        logger.info(f"Processing raster in {total_blocks} blocks with {args.overlap}px overlap")
         
         # Create delayed tasks for processing each block in parallel
         delayed_tasks = []
@@ -354,22 +358,48 @@ def process_classification(args):
             task = dask.delayed(process_block_with_overlap)(
                 rgb_path=args.rgb,
                 dsm_path=args.dsm,
-                model1=model1_future,                      # Using future reference to shared model
-                model2=model2_future,                      # Using future reference to shared model
-                feature_names_model1=feature_names_model1_future,  # Using future reference
-                feature_names_model2=feature_names_model2_future,  # Using future reference
+                model1=model1_future,
+                model2=model2_future,
+                feature_names_model1=feature_names_model1_future,
+                feature_names_model2=feature_names_model2_future,
                 block=block,
                 patch_size=patch_size,
                 block_index=i
             )
             delayed_tasks.append(task)
         
-        # Execute all block processing tasks in parallel
-        logger.info(f"Starting parallel processing of {len(delayed_tasks)} blocks...")
-        results = dask.compute(*delayed_tasks)
+        # Execute all block processing tasks in parallel with progress tracking
+        logger.info(f"Starting parallel processing of {total_blocks} blocks...")
+        
+        # Set up progress tracking
+        processed_blocks = 0
+        results = []
+        
+        # Group tasks for batch processing
+        batch_size = min(10, total_blocks)  # Process 10 blocks at a time, or fewer if total_blocks < 10
+        for i in range(0, total_blocks, batch_size):
+            batch_end = min(i + batch_size, total_blocks)
+            batch_tasks = delayed_tasks[i:batch_end]
+            
+            # Process batch
+            batch_start_time = time.time()
+            batch_results = dask.compute(*batch_tasks)
+            batch_elapsed = time.time() - batch_start_time
+            
+            # Update progress
+            results.extend(batch_results)
+            processed_blocks += len(batch_results)
+            percentage = (processed_blocks / total_blocks) * 100
+            elapsed_total = time.time() - start_time
+            
+            # Print progress similar to train_regression_model.py
+            logger.info(f"Classified {processed_blocks}/{total_blocks} blocks ({percentage:.1f}%) in {elapsed_total:.1f}s")
         
         # Write results to output raster
+        logger.info("Writing classification results to output raster...")
         out_band = out_ds.GetRasterBand(1)
+        blocks_written = 0
+        
         for i, result in enumerate(results):
             if result is not None:
                 # Unpack the result (now at patch resolution)
@@ -393,13 +423,14 @@ def process_classification(args):
                 
                 # Write to the output raster (already at patch resolution)
                 out_band.WriteArray(valid_data, xoff=out_x_start_patches, yoff=out_y_start_patches)
+                blocks_written += 1
         
         # Clean up and save the final output
         out_ds.FlushCache()
         out_ds = None
         
         elapsed_time = time.time() - start_time
-        logger.info(f"Processing completed in {elapsed_time:.2f} seconds")
+        logger.info(f"Classification completed: {blocks_written}/{total_blocks} blocks processed in {elapsed_time:.2f} seconds")
         logger.info(f"Output saved to {args.out} at patch resolution ({patch_size}x{patch_size} pixels per patch)")
     
     finally:
@@ -415,10 +446,34 @@ MODEL2_PATH = "/home/lcousin/stage_cesbio/data/samples/selection16/classifs/mode
 if __name__ == "__main__":
     args = parse_arguments()
     process_classification(args)
-
+"""
 
 # Example using multi-line command (Linux):
-# python home/lcousin/stage_cesbio/code/final_codes/classification/apply_classification_model/process_classification.py\
-#  --rgb home/lcousin/stage_cesbio/Konstantin/UAV_Konstantin_Tabatha/Chesnay/ChesnayAugust2023_ortho_export_MonJun16161612078476_32615.tif\
-#  --dsm home/lcousin/stage_cesbio/Konstantin/UAV_Konstantin_Tabatha/Chesnay/Chesnay_DSM_Resampled.tif \
-#  --out media/lcousin/FASTBOYSLIM/Loris/KonstantinClassif/Chesnay_classif.tif
+python home/lcousin/stage_cesbio/code/final_codes/classification/apply_classification_model/process_classification.py\
+ --rgb home/lcousin/stage_cesbio/Konstantin/UAV_Konstantin_Tabatha/Chesnay/ChesnayAugust2023_ortho_export_MonJun16161612078476_32615.tif\
+ --dsm home/lcousin/stage_cesbio/Konstantin/UAV_Konstantin_Tabatha/Chesnay/Chesnay_DSM_Resampled.tif \
+ --out media/lcousin/FASTBOYSLIM/Loris/KonstantinClassif/Chesnay_classif.tif
+
+python home/lcousin/stage_cesbio/code/final_codes/classification/apply_classification_model/process_classification.py \
+ --rgb /home/lcousin/stage_cesbio/drone_treated/Wap23_main_transparent_mosaic_group1.tif\
+ --dsm /home/lcousin/stage_cesbio/drone_treated/Wap23_main_dsm.tif\
+ --out /home/lcousin/stage_cesbio/drone_treated/WAP23_tiles/classif_well_16.tif
+
+
+
+python home/lcousin/stage_cesbio/code/final_codes/classification/apply_classification_model/process_classification.py\
+ --rgb home/lcousin/stage_cesbio/Konstantin/UAV_Konstantin_Tabatha/Belcher/BelcherAugust2023_ortho_export_TueJun17212958144821_32615.tif\
+ --dsm home/lcousin/stage_cesbio/Konstantin/UAV_Konstantin_Tabatha/Belcher/Belcher_DSM_Resampled.tif \
+ --out media/lcousin/FASTBOYSLIM/Loris/KonstantinClassif/Belcher_classif_16px.tif \
+; python home/lcousin/stage_cesbio/code/final_codes/classification/apply_classification_model/process_classification.py\
+ --rgb home/lcousin/stage_cesbio/Konstantin/UAV_Konstantin_Tabatha/Chesnay/ChesnayAugust2023_ortho_export_MonJun16161612078476_32615.tif\
+ --dsm home/lcousin/stage_cesbio/Konstantin/UAV_Konstantin_Tabatha/Chesnay/Chesnay_DSM_Resampled.tif \
+ --out media/lcousin/FASTBOYSLIM/Loris/KonstantinClassif/Chesnay_classif_16px.tif
+
+ python home/lcousin/stage_cesbio/code/final_codes/classification/apply_classification_model/process_classification.py \
+ --rgb /home/lcousin/stage_cesbio/drone_treated/WAP32_full_transparent_mosaic_group1.tif\
+ --dsm /home/lcousin/stage_cesbio/drone_treated/WAP32_full_dsm.tif\
+ --out /home/lcousin/stage_cesbio/drone_treated/WAP32_tiles/wap32_classif_16px.tif
+
+
+"""

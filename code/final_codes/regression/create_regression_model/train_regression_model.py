@@ -797,10 +797,10 @@ PARAM_GRID = {
 #         'max_features': ['sqrt', 'log2']          # sqrt or log2 to reduce complexity, 0.8 for wider testing
 #     }
 #  # param_grid = {
-        'n_estimators': [100, 200, 300],               # 100 for speed, 300 for stability
-        'max_depth': [None, 15, 30, 50],               # None = no limit, also try controlled depths
+        'n_estimators': [200, 300],               # 100 for speed, 300 for stability
+        'max_depth': [15, 30, 50],               # None = no limit, also try controlled depths
         'min_samples_split': [2, 5, 10],               # 2 is default, 5-10 to limit overfitting
-        'min_samples_leaf': [1, 2, 4],                 # more leaves = less overfitting
+        'min_samples_leaf': [2, 4],                 # more leaves = less overfitting
         'max_features': ['sqrt', 'log2', 0.8]          # sqrt or log2 to reduce complexity, 0.8 for wider testing
     }
 
@@ -816,15 +816,17 @@ DEFAULT_PARAMS = {
 
 if __name__ == "__main__":
     main()
+"""
+python code/final_codes/regression/create_regression_model/train_regression_model.py \
+    data/regressions/regression_multisite/balanced_5/balanced_lichen_proportion.json \
+    data/regressions/regression_multisite/results_7/lichen \
+   --grid-search 
 
-# python code/final_codes/regression/train_regression_model.py \
-#     data/regressions/regression_multisite/balanced/balanced_lichen_proportion.json \
-#     data/regressions/regression_multisite/results/lichen \
-#    --grid-search 
+python code/final_codes/regression/create_regression_model/train_regression_model.py \
+    data/regressions/regression_multisite/balanced_5/balanced_trough_proportion.json \
+    data/regressions/regression_multisite/results_7/trough \
+   --grid-search
 
-# python code/final_codes/regression/train_regression_model.py `
-#     data/regressions/regression_multisite/balanced/balanced_lichen_proportion.json `
-#     data/regressions/regression_multisite/results2/lichen `
-#    --grid-search
+"""
 
 

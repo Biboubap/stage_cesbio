@@ -10,7 +10,7 @@ Usage:
                                         --classes "Class1,Class2,Class3" 
                                         --output path/to/output_dir
                                         --sample-size 32
-                                        --start-x 0 --start-y 0
+                                        --distance-start-horizontal 0 --distance-start-vertical 0
                                         --blocks-x 4 --blocks-y 4
 """
 
@@ -22,6 +22,7 @@ import matplotlib.pyplot as plt
 import shutil
 import json
 from collections import Counter
+from osgeo import gdal
 
 # Add parent directory to path to import utility modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -30,16 +31,54 @@ from utils.sample_set import SampleSet
 # Global constants
 SAMPLES_PER_WINDOW = 12  # Fixed number of samples in each dimension per window
 
-def plot_rgb(xmin, ymin, xmax, ymax, ds_path, output_path):
+def meters_to_pixels(raster_path, distance_horizontal, distance_vertical):
+    """
+    Convert distances in meters to pixel coordinates based on the raster's resolution.
+    
+    Args:
+        raster_path: Path to the raster file
+        distance_horizontal: Distance in meters from left edge
+        distance_vertical: Distance in meters from top edge
+        
+    Returns:
+        Tuple of (pixel_x, pixel_y) coordinates
+    """
+    ds = gdal.Open(raster_path)
+    if ds is None:
+        raise ValueError(f"Could not open raster file: {raster_path}")
+    
+    # Get geotransform: (originX, pixelWidth, 0, originY, 0, pixelHeight)
+    geotransform = ds.GetGeoTransform()
+    
+    # Extract origin and pixel dimensions
+    origin_x = geotransform[0]
+    origin_y = geotransform[3]
+    pixel_width = geotransform[1]
+    pixel_height = abs(geotransform[5])  # Usually negative, need absolute value
+    
+    # Calculate pixel coordinates
+    pixel_x = int(distance_horizontal / pixel_width)
+    pixel_y = int(distance_vertical / pixel_height)
+    
+    print(f"Converting: {distance_horizontal}m horizontal, {distance_vertical}m vertical")
+    print(f"Raster resolution: {pixel_width}m × {pixel_height}m per pixel")
+    print(f"Converted to pixel coordinates: ({pixel_x}, {pixel_y})")
+    
+    # Close the dataset
+    ds = None
+    
+    return pixel_x, pixel_y
+
+def plot_rgb(xmin, ymin, xmax, ymax, ds_path, output_path, show=False):
     """Plot RGB image with the given boundaries and save it to the path."""
     from osgeo import gdal
     
     ds = gdal.Open(ds_path)
     
     # Read the three bands
-    r = ds.GetRasterBand(1).ReadAsArray()[xmin:xmax, ymin:ymax]
-    g = ds.GetRasterBand(2).ReadAsArray()[xmin:xmax, ymin:ymax]
-    b = ds.GetRasterBand(3).ReadAsArray()[xmin:xmax, ymin:ymax]
+    r = ds.GetRasterBand(1).ReadAsArray(xmin, ymin, xmax - xmin, ymax - ymin)
+    g = ds.GetRasterBand(2).ReadAsArray(xmin, ymin, xmax - xmin, ymax - ymin)
+    b = ds.GetRasterBand(3).ReadAsArray(xmin, ymin, xmax - xmin, ymax - ymin)
     
     # Normalize values for proper display
     r_norm = np.clip(r / 255.0, 0, 1)
@@ -51,6 +90,8 @@ def plot_rgb(xmin, ymin, xmax, ymax, ds_path, output_path):
     plt.imshow(rgb)
     plt.title("Fenêtre samples")
     plt.savefig(os.path.join(output_path, "fenetre_selection.png"))
+    if show:
+        plt.show()  
     plt.close()
 
 def parse_args():
@@ -66,8 +107,10 @@ def parse_args():
     parser.add_argument("--dsm", help="Path to Digital Surface Model (GeoTIFF)")
     parser.add_argument("--thermal", help="Path to thermal image (GeoTIFF)")
     parser.add_argument("--sample-size", type=int, default=32, help="Size of each sample patch in pixels")
-    parser.add_argument("--start-x", type=int, default=0, help="Starting X coordinate in pixels")
-    parser.add_argument("--start-y", type=int, default=0, help="Starting Y coordinate in pixels")
+    parser.add_argument("--distance-start-horizontal", type=float, default=0, 
+                        help="Distance in meters from the left edge of the image")
+    parser.add_argument("--distance-start-vertical", type=float, default=0, 
+                        help="Distance in meters from the top edge of the image")
     parser.add_argument("--blocks-x", type=int, default=4, help="Number of blocks to process in X direction")
     parser.add_argument("--blocks-y", type=int, default=4, help="Number of blocks to process in Y direction")
     
@@ -103,7 +146,8 @@ def pop_selection_adapted(x_start, y_start, n_samples_x, n_samples_y, size_patch
     
     # Show selection window preview
     if rgb_path:
-        plot_rgb(x_start, y_start, x_max, y_max, rgb_path, output_path)
+        plot_rgb(x_start, y_start, x_max, y_max, rgb_path, output_path, show=True)
+        
     
     # Create samples set
     all_samples_set = SampleSet(
@@ -393,6 +437,10 @@ def pop_selection_adapted(x_start, y_start, n_samples_x, n_samples_y, size_patch
                     ax = axes[dx, dy]
                     sample = samples_matrix[i_y][i_x]
                     r, g, b, _, _ = sample.get_RGBZT()
+                    r = r.T
+                    g = g.T
+                    b = b.T
+
                     if r is not None and g is not None and b is not None:
                         rgb = np.dstack((r, g, b)).astype(np.uint8)
                         ax.imshow(rgb)
@@ -594,10 +642,17 @@ def main():
     n_samples_x = args.blocks_x * SAMPLES_PER_WINDOW
     n_samples_y = args.blocks_y * SAMPLES_PER_WINDOW
     
+    # Convert distances in meters to pixel coordinates
+    start_column, start_row = meters_to_pixels(
+        args.rgb, 
+        args.distance_start_horizontal, 
+        args.distance_start_vertical
+    )
+    
     # Run interactive selection
     pop_selection_adapted(
-        x_start=args.start_x,
-        y_start=args.start_y,
+        x_start=start_column,
+        y_start=start_row,
         n_samples_x=n_samples_x,
         n_samples_y=n_samples_y,
         size_patch=args.sample_size,
@@ -616,15 +671,15 @@ if __name__ == "__main__":
 #                                        --classes "Class1,Class2,Class3" 
 #                                        --output path/to/output_dir
 #                                        --sample-size 32
-#                                        --start-x 0 --start-y 0
+#                                        --distance-start-horizontal 0 --distance-start-vertical 0
 #                                        --blocks-x 4 --blocks-y 4
-
-# #Powershell command
-# python code/final_codes/classification/create_classification_model/interactive_sample_selection.py `
-#     --rgb data/twin_lake_mosaïc.tif `
-#     --dsm data/twin_lake_dsm.tif `
-#     --classes "Lichen, Green, Through" `
-#     --output data/selection17 `
-#     --sample-size 16 `
-#     --start-x 10000 --start-y 10000 `
-#     --blocks-x 2 --blocks-y 1
+"""
+python code/final_codes/classification/create_classification_model/interactive_sample_selection.py \
+    --rgb drone_treated/WAP32_full_transparent_mosaic_group1.tif \
+    --dsm drone_treated/WAP32_full_dsm.tif \
+    --classes "Lichen, Green, Through" \
+    --output data/selection_test \
+    --sample-size 64 \
+    --distance-start-horizontal 214 --distance-start-vertical 418 \
+    --blocks-x 2 --blocks-y 2
+"""

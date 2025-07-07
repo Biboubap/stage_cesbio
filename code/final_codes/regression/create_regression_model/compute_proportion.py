@@ -713,19 +713,27 @@ if __name__ == "__main__":
 
 Linux example:
  python /home/lcousin/stage_cesbio/code/final_codes/regression/create_regression_model/compute_proportion.py \
-    --classification /media/lcousin/FASTBOYSLIM/Loris/KonstantinClassif/Chesnay_classif_well.tif \
-    --sentinel-band /home/lcousin/stage_cesbio/DataCubeS2/Chesnay_10m/mediane_bands/mediane_STACK_2023_BandB4_Chesnay_deflate.tif \
-    --bands-dir /home/lcousin/stage_cesbio/DataCubeS2/Chesnay_10m/mediane_bands \
-    --indices-dir /home/lcousin/stage_cesbio/DataCubeS2/Chesnay_10m/mediane_indices \
-    --output-dir /home/lcousin/stage_cesbio/data/regressions/regression_multisite/regression_Chesnay_10m \
-    --site-name Chesnay     
+    --classification /media/lcousin/FASTBOYSLIM/Loris/KonstantinClassif/Belcher_tiles/Belcher_classif_16px_well.tif \
+    --sentinel-band /home/lcousin/stage_cesbio/DataCubeS2/Belcher_10m/mediane_bands/mediane_STACK_2023_BandB4_Belcher_deflate.tif \
+    --bands-dir /home/lcousin/stage_cesbio/DataCubeS2/Belcher_10m/mediane_bands \
+    --indices-dir /home/lcousin/stage_cesbio/DataCubeS2/Belcher_10m/mediane_indices \
+    --output-dir /home/lcousin/stage_cesbio/data/regressions/regression_multisite/regression_Belcher_10m_16px \
+    --site-name Belcher     
 
-PowerShell example:
- python C:/Loris/CESBIO/stage_cesbio/code/final_codes/regression/create_regression_model/compute_proportion.py `
-    --classification D:/Loris/KonstantinClassif/Chesnay_classif_well.tif `
-    --sentinel-band D:/Loris/SentinelBands/Chesnay_10m/mediane_bands/mediane_STACK_2023_BandB4_Chesnay_deflate.tif `
-    --bands-dir D:/Loris/SentinelBands/Chesnay_10m/mediane_bands `
-    --indices-dir D:/Loris/SentinelBands/Chesnay_10m/mediane_indices `
-    --output-dir C:/Loris/CESBIO/stage_cesbio/data/regressions/regression_multisite/regression_Chesnay_10m `
-    --site-name Chesnay
+ python /home/lcousin/stage_cesbio/code/final_codes/regression/create_regression_model/compute_proportion.py \
+    --classification /home/lcousin/stage_cesbio/drone_treated/WAP23_tiles/wap23_classif_well_16px.tif \
+    --sentinel-band /home/lcousin/stage_cesbio/DataCubeS2/WAP23_10m/mediane_bands/mediane_clipped_STACK_2023_BandB4_WAP23_deflate.tif \
+    --bands-dir /home/lcousin/stage_cesbio/DataCubeS2/WAP23_10m/mediane_bands \
+    --indices-dir /home/lcousin/stage_cesbio/DataCubeS2/WAP23_10m/mediane_indices \
+    --output-dir /home/lcousin/stage_cesbio/data/regressions/regression_multisite/regression_WAP23_10m_16 \
+    --site-name WAP23
+
+python /home/lcousin/stage_cesbio/code/final_codes/regression/create_regression_model/compute_proportion.py \
+    --classification /home/lcousin/stage_cesbio/drone_treated/WAP12_tiles/wap12_classif_well.tif \
+    --sentinel-band /home/lcousin/stage_cesbio/DataCubeS2/WAP12_10m/mediane_bands/mediane_clipped_STACK_2023_BandB4_WAP12_deflate.tif \
+    --bands-dir /home/lcousin/stage_cesbio/DataCubeS2/WAP12_10m/mediane_bands \
+    --indices-dir /home/lcousin/stage_cesbio/DataCubeS2/WAP12_10m/mediane_indices \
+    --output-dir /home/lcousin/stage_cesbio/data/regressions/regression_multisite/regression_WAP12_10m \
+    --site-name WAP12
 """
+

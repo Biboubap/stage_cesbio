@@ -93,6 +93,9 @@ def create_balanced_dataset(input_data, target_col, n_bins=25, quantile=0.5):
     balanced_dfs = []
     
     print(f"Creating {n_bins} bins of equal size from {min_val:.4f} to {max_val:.4f}...")
+    total_bin_samples = 0
+    non_empty_bins = 0
+    
     for i in range(n_bins):
         lower = bin_edges[i]
         upper = bin_edges[i + 1]
@@ -104,9 +107,14 @@ def create_balanced_dataset(input_data, target_col, n_bins=25, quantile=0.5):
             bin_samples = df_clean[(df_clean[target_col] >= lower) & (df_clean[target_col] < upper)]
         
         bin_count = len(bin_samples)
+        total_bin_samples += bin_count
         
-        print(f"Bin {i+1}/{n_bins}: {lower:.4f} to {upper:.4f}, {bin_count} samples")
+        if bin_count > 0:
+            non_empty_bins += 1
+        
         balanced_dfs.append(bin_samples)
+    
+    print(f"Distribution: {non_empty_bins}/{n_bins} non-empty bins, {total_bin_samples} total samples")
     
     # Calculate median number of samples per bin (excluding empty bins)
     non_empty_counts = [len(df) for df in balanced_dfs if len(df) > 0]
@@ -115,6 +123,9 @@ def create_balanced_dataset(input_data, target_col, n_bins=25, quantile=0.5):
     
     # Sample each bin to have at most quantile_count samples
     final_dfs = []
+    total_sampled = 0
+    total_kept = 0
+    
     for i, bin_df in enumerate(balanced_dfs):
         if len(bin_df) == 0:
             continue
@@ -122,14 +133,15 @@ def create_balanced_dataset(input_data, target_col, n_bins=25, quantile=0.5):
         if len(bin_df) > quantile_count:
             # Random sample without replacement
             sampled_df = bin_df.sample(n=quantile_count, random_state=42)
-            print(f"Bin {i+1}: Sampled from {len(bin_df)} to {len(sampled_df)} samples")
+            total_sampled += len(sampled_df)
             final_dfs.append(sampled_df)
         else:
-            print(f"Bin {i+1}: Kept all {len(bin_df)} samples")
+            total_kept += len(bin_df)
             final_dfs.append(bin_df)
     
     # Concatenate all bins
     balanced_df = pd.concat(final_dfs)
+    print(f"Sampling summary: kept {total_kept} samples, sampled {total_sampled} samples")
     print(f"Balanced dataset: {len(balanced_df)} samples")
     
     return balanced_df
@@ -292,8 +304,8 @@ if __name__ == "__main__":
 """
 Linux example:
 python code/final_codes/regression/create_regression_model/balance_proportion.py \
-    data/regressions/regression_multisite/merged/merged_pixels.json \
-    --output data/regressions/regression_multisite/balanced \
+    data/regressions/regression_multisite/merged_5/merged_pixels_5.json \
+    --output data/regressions/regression_multisite/balanced_5 \
     --quantile 0.6 \
     --bins 25
 
