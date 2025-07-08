@@ -681,7 +681,7 @@ def main():
     # Step 6: Merge features CSV with proportions CSV and create JSON
     print("Step 6: Merging feature and proportion data...")
     merged_csv = f"{output_base}_merged.csv"
-    output_json = f"{output_base}_proportions.json"
+    output_json = f"{output_base}.json"
     merged_csv, output_json = merge_csv_files(
         features_csv=features_csv,
         proportions_csv=filtered_csv,
@@ -712,28 +712,37 @@ if __name__ == "__main__":
 # Command line examples:
 
 Linux example:
+
  python /home/lcousin/stage_cesbio/code/final_codes/regression/create_regression_model/compute_proportion.py \
-    --classification /media/lcousin/FASTBOYSLIM/Loris/KonstantinClassif/Belcher_tiles/Belcher_classif_16px_well.tif \
-    --sentinel-band /home/lcousin/stage_cesbio/DataCubeS2/Belcher_10m/mediane_bands/mediane_STACK_2023_BandB4_Belcher_deflate.tif \
-    --bands-dir /home/lcousin/stage_cesbio/DataCubeS2/Belcher_10m/mediane_bands \
-    --indices-dir /home/lcousin/stage_cesbio/DataCubeS2/Belcher_10m/mediane_indices \
-    --output-dir /home/lcousin/stage_cesbio/data/regressions/regression_multisite/regression_Belcher_10m_16px \
+    --classification /media/lcousin/FASTBOYSLIM/Loris/final_data/drone_classif_peatcut/Belcher_classif_cut.tif \
+    --sentinel-band /media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/Belcher_10m/mediane_bands/mediane_STACK_2023_BandB4_Belcher_deflate.tif \
+    --bands-dir /media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/Belcher_10m/mediane_bands \
+    --indices-dir /media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/Belcher_10m/mediane_indices \
+    --output-dir /media/lcousin/FASTBOYSLIM/Loris/final_data/regression_population/site_proportion/Belcher \
     --site-name Belcher     
 
  python /home/lcousin/stage_cesbio/code/final_codes/regression/create_regression_model/compute_proportion.py \
-    --classification /home/lcousin/stage_cesbio/drone_treated/WAP23_tiles/wap23_classif_well_16px.tif \
-    --sentinel-band /home/lcousin/stage_cesbio/DataCubeS2/WAP23_10m/mediane_bands/mediane_clipped_STACK_2023_BandB4_WAP23_deflate.tif \
-    --bands-dir /home/lcousin/stage_cesbio/DataCubeS2/WAP23_10m/mediane_bands \
-    --indices-dir /home/lcousin/stage_cesbio/DataCubeS2/WAP23_10m/mediane_indices \
-    --output-dir /home/lcousin/stage_cesbio/data/regressions/regression_multisite/regression_WAP23_10m_16 \
+    --classification /media/lcousin/FASTBOYSLIM/Loris/final_data/drone_classif_peatcut/Chesnay_classif_cut.tif \
+    --sentinel-band /media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/Chesnay_10m/mediane_bands/mediane_STACK_2023_BandB4_Chesnay_deflate.tif \
+    --bands-dir /media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/Chesnay_10m/mediane_bands \
+    --indices-dir /media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/Chesnay_10m/mediane_indices \
+    --output-dir /media/lcousin/FASTBOYSLIM/Loris/final_data/regression_population/site_proportion/Chesnay \
+    --site-name Chesnay       
+
+ python /home/lcousin/stage_cesbio/code/final_codes/regression/create_regression_model/compute_proportion.py \
+    --classification /media/lcousin/FASTBOYSLIM/Loris/final_data/drone_classif_peatcut/wap23_classif_cut.tif \
+    --sentinel-band /media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/WAP23_10m/mediane_bands/mediane_STACK_2023_BandB4_WAP23_deflate.tif \
+    --bands-dir /media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/WAP23_10m/mediane_bands \
+    --indices-dir /media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/WAP23_10m/mediane_indices \
+    --output-dir /media/lcousin/FASTBOYSLIM/Loris/final_data/regression_population/site_proportion/WAP23_10m \
     --site-name WAP23
 
-python /home/lcousin/stage_cesbio/code/final_codes/regression/create_regression_model/compute_proportion.py \
-    --classification /home/lcousin/stage_cesbio/drone_treated/WAP12_tiles/wap12_classif_well.tif \
-    --sentinel-band /home/lcousin/stage_cesbio/DataCubeS2/WAP12_10m/mediane_bands/mediane_clipped_STACK_2023_BandB4_WAP12_deflate.tif \
-    --bands-dir /home/lcousin/stage_cesbio/DataCubeS2/WAP12_10m/mediane_bands \
-    --indices-dir /home/lcousin/stage_cesbio/DataCubeS2/WAP12_10m/mediane_indices \
-    --output-dir /home/lcousin/stage_cesbio/data/regressions/regression_multisite/regression_WAP12_10m \
-    --site-name WAP12
+ python /home/lcousin/stage_cesbio/code/final_codes/regression/create_regression_model/compute_proportion.py \
+    --classification /media/lcousin/FASTBOYSLIM/Loris/final_data/drone_classif_peatcut/Lamprey_classif_cut.tif \
+    --sentinel-band /media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/Lamprey_10m/mediane_bands/mediane_STACK_2023_BandB4_Lamprey_deflate.tif \
+    --bands-dir /media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/Lamprey_10m/mediane_bands \
+    --indices-dir /media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/Lamprey_10m/mediane_indices \
+    --output-dir /media/lcousin/FASTBOYSLIM/Loris/final_data/regression_population/site_proportion/Lamprey \
+    --site-name Lamprey
 """
 

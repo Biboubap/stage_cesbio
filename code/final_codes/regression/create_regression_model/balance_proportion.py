@@ -304,8 +304,8 @@ if __name__ == "__main__":
 """
 Linux example:
 python code/final_codes/regression/create_regression_model/balance_proportion.py \
-    data/regressions/regression_multisite/merged_5/merged_pixels_5.json \
-    --output data/regressions/regression_multisite/balanced_5 \
+    data/regressions/regression_multisite/merged_6/merged_pixels_6.json \
+    --output data/regressions/regression_multisite/balanced_6 \
     --quantile 0.6 \
     --bins 25
 

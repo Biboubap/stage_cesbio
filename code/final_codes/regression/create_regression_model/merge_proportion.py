@@ -313,15 +313,15 @@ if __name__ == "__main__":
 # Command line examples:
 """
 Linux example:
-python code/final_codes/regression/create_regression_model/merge_proportion.py \
- data/regressions/regression_multisite/regression_Belcher_10m/proportions_Belcher_proportions.json \
- data/regressions/regression_multisite/regression_Chesnay_10m/proportions_Chesnay_proportions.json \
- data/regressions/regression_multisite/regression_WAP23_10m_16/proportions_WAP23_proportions.json \
- data/regressions/regression_multisite/regression_Lamprey_10m/proportions_Lamprey_proportions.json \
- data/regressions/regression_multisite/regression_wap32_10m/proportions_WAP32_proportions.json \
-    data/regressions/regression_multisite/regression_WAP12_10m/proportions_WAP12_proportions.json \
- --output data/regressions/regression_multisite/merged_5/merged_pixels_5.json \
- --plots-dir data/regressions/regression_multisite/merged_5
+python home/lcousin/stage_cesbio/code/final_codes/regression/create_regression_model/merge_proportion.py \
+ /media/lcousin/FASTBOYSLIM/Loris/final_data/regression_population/site_proportion/Chesnay/proportions_Chesnay.json \
+ /media/lcousin/FASTBOYSLIM/Loris/final_data/regression_population/site_proportion/Belcher/proportions_Belcher.json \
+ /media/lcousin/FASTBOYSLIM/Loris/final_data/regression_population/site_proportion/WAP23/proportions_WAP23.json \
+ /media/lcousin/FASTBOYSLIM/Loris/final_data/regression_population/site_proportion/Lamprey/proportions_Lamprey.json \
+ home/lcousin/stage_cesbio/data/regressions/regression_multisite/regression_wap32_10m/proportions_WAP32_proportions.json \
+ home/lcousin/stage_cesbio/data/regressions/regression_multisite/regression_WAP12_10m/proportions_WAP12_proportions.json \
+ --output home/lcousin/stage_cesbio/data/regressions/regression_multisite/merged_6/merged_pixels_6.json \
+ --plots-dir home/lcousin/stage_cesbio/data/regressions/regression_multisite/merged_6
 
 PowerShell example:
 python code/final_codes/regression/create_regression_model/merge_proportion.py `

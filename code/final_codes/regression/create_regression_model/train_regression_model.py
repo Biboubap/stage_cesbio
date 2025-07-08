@@ -438,7 +438,7 @@ def compute_site_metrics_from_cv(cv_results, site_names):
         rmse = np.sqrt(mean_squared_error(y_site_true, y_site_pred))
         pearson_coef, _ = pearsonr(y_site_true, y_site_pred)
         
-        print(f"  {site}: R²={r2:.3f}, RMSE={rmse:.3f}, r={pearson_coef:.3f}, n={len(y_site_true)}")
+        print(f"  {site}: R²={r2:.3f}, RMSE={rmse:.3f}, r={pearson_coef:.3f}")
         
         # Store metrics
         site_metrics[site] = {
@@ -818,13 +818,13 @@ if __name__ == "__main__":
     main()
 """
 python code/final_codes/regression/create_regression_model/train_regression_model.py \
-    data/regressions/regression_multisite/balanced_5/balanced_lichen_proportion.json \
-    data/regressions/regression_multisite/results_7/lichen \
+    data/regressions/regression_multisite/balanced_6/balanced_lichen_proportion.json \
+    data/regressions/regression_multisite/results_8/lichen \
    --grid-search 
 
 python code/final_codes/regression/create_regression_model/train_regression_model.py \
-    data/regressions/regression_multisite/balanced_5/balanced_trough_proportion.json \
-    data/regressions/regression_multisite/results_7/trough \
+    data/regressions/regression_multisite/balanced_6/balanced_trough_proportion.json \
+    data/regressions/regression_multisite/results_8/trough \
    --grid-search
 
 """
