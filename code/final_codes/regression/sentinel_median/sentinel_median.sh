@@ -9,33 +9,43 @@
 # These median composites are later used as input features for regression models.
 #
 
-# Define the site name (can be changed for different sites)
-sitename="Lamprey"
+# Array of site names
+sites=("WAP12" "WAP23" "WAP32" "Belcher" "Chesnay" "Lamprey")
 
-# Create directories for storing median calculation results
-mkdir -p DataCubeS2/${sitename}_10m/mediane_bands
-mkdir -p DataCubeS2/${sitename}_10m/mediane_indices
+# Array of resolutions
+resolutions=("5m" "10m")
 
-# Compute median for clipped spectral bands
-echo "Computing median for clipped Sentinel-2 bands..."
-for f in DataCubeS2/Bands_S2_10m_2023/*${sitename}_deflate.tif; do
-    # Extract base filename for the output
-    base_filename=$(basename "$f")
-    
-    # Run the Python script to compute temporal median for this band
-    python code/final_codes/regression/sentinel_median/compute_median.py "$f" "DataCubeS2/${sitename}_10m/mediane_bands/mediane_${base_filename}"
-    echo "Computed median for $base_filename"
+# Loop through each site and resolution
+for sitename in "${sites[@]}"; do
+    for resolution in "${resolutions[@]}"; do
+
+        # Create directories for storing median calculation results
+        mkdir -p media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/${sitename}_${resolution}/mediane_bands
+        mkdir -p media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/${sitename}_${resolution}/mediane_indices
+
+        # Compute median for clipped spectral bands
+        echo "Computing median for clipped Sentinel-2 bands..."
+        for f in media/lcousin/FASTBOYSLIM/Churchill/DataCubeS2/Bands_S2_${resolution}_2023/*${sitename}_deflate.tif; do
+            # Extract base filename for the output
+            base_filename=$(basename "$f")
+            
+            # Run the Python script to compute temporal median for this band
+            python home/lcousin/stage_cesbio/code/final_codes/regression/sentinel_median/compute_median.py "$f" "media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/${sitename}_${resolution}/mediane_bands/mediane_${base_filename}"
+            echo "Computed median for $base_filename"
+        done
+
+        # Compute median for clipped spectral indices
+        echo "Computing median for clipped Sentinel-2 indices..."
+        for f in media/lcousin/FASTBOYSLIM/Churchill/DataCubeS2/Indices_S2_${resolution}_2023/*${sitename}_deflate.tif; do
+            # Extract base filename for the output
+            base_filename=$(basename "$f")
+            
+            # Run the Python script to compute temporal median for this index
+            python home/lcousin/stage_cesbio/code/final_codes/regression/sentinel_median/compute_median.py "$f" "media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/${sitename}_${resolution}/mediane_indices/mediane_${base_filename}"
+            echo "Computed median for $base_filename"
+        done
+
+        echo "All processing completed for ${sitename} data median calculation at ${resolution}."
+        
+    done
 done
-
-# Compute median for clipped spectral indices
-echo "Computing median for clipped Sentinel-2 indices..."
-for f in DataCubeS2/Indices_S2_10m_2023/*${sitename}_deflate.tif; do
-    # Extract base filename for the output
-    base_filename=$(basename "$f")
-    
-    # Run the Python script to compute temporal median for this index
-    python code/final_codes/regression/sentinel_median/compute_median.py "$f" "DataCubeS2/${sitename}_10m/mediane_indices/mediane_${base_filename}"
-    echo "Computed median for $base_filename"
-done
-
-echo "All processing completed for ${sitename} data clipping and median calculation."
