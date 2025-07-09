@@ -27,15 +27,21 @@ output_path = sys.argv[2]  # Path to save median composite
 with rasterio.open(input_path) as src:
     # Read all bands as a 3D array (bands, rows, cols)
     data = src.read()
-    
+    nodata_value = src.nodata
+    data = data.astype(np.float64)
+    if nodata_value is not None:
+        data[data == nodata_value] = np.nan
     # Compute the median value across the temporal dimension (axis 0)
     # This creates a 2D array (rows, cols) with the median value at each pixel
-    median = np.median(data, axis=0).astype(src.dtypes[0])
-    
+    median = np.nanmedian(data, axis=0).astype(src.dtypes[0])
+    print(f"Number of NaN after median: {np.isnan(median).sum()}")
+
     # Copy the metadata from the input file
     profile = src.profile
     # Update the count to 1 since we're only writing one band
     profile.update(count=1)
+
+    
     
     # Write the median values to a new GeoTIFF file
     with rasterio.open(output_path, 'w', **profile) as dst:
