@@ -212,12 +212,27 @@ def plot_proportion_distributions(df, output_dir, purcent_exclusion=0.05):
         for col in merged_props:
             plt.figure(figsize=(10, 6))
             
-            for source in sources:
-                source_data = df[df['source'] == source][col]
-                if not source_data.empty:
-                    source_data.hist(alpha=0.6, bins=20, label=source)
+            # Track total excluded samples
+            total_excluded = 0
+            total_samples = 0
             
-            plt.title(f"{col} by source")
+            for source in sources:
+                source_data = df[df['source'] == source]
+                total_source_samples = len(source_data)
+                total_samples += total_source_samples
+                
+                # Filter out samples with proportion ≤ 0
+                excluded_count = (source_data[col] <= 0).sum()
+                total_excluded += excluded_count
+                
+                # Use only samples with proportion > 0
+                filtered_source_data = source_data[source_data[col] > 0][col]
+                
+                if not filtered_source_data.empty:
+                    filtered_source_data.hist(alpha=0.6, bins=20, label=f"{source} ({len(filtered_source_data)} samples)")
+            
+            # Set title with exclusion information
+            plt.title(f"{col} by source\n({total_excluded} samples ≤ 0% excluded, {total_excluded/total_samples*100:.1f}%)")
             plt.xlabel('Proportion')
             plt.ylabel('Count')
             plt.grid(alpha=0.3)

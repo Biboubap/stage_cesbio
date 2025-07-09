@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Array of site names
-sites=("WAP12" "WAP23" "WAP32" "Belcher" "Chesnay" "Lamprey")
+sites=("Chesnay")
 
 # Array of resolutions
 resolutions=("5m" "10m")
@@ -49,37 +49,69 @@ done
 
 echo "All sites and resolutions processed!"
 
-# # Now merge the files for all sites with 10m resolution
-# echo "----------------------------------------"
-# echo "Merging proportion files from all sites with 10m resolution..."
 
-# # Create the output directory for merged results
-# MERGE_OUTPUT_DIR="/home/lcousin/stage_cesbio/data/regressions/regression_multisite/merged_all"
-# mkdir -p "$MERGE_OUTPUT_DIR"
+echo "----------------------------------------"
 
-# # Build the command to merge all proportion files
-# MERGE_CMD="python /home/lcousin/stage_cesbio/code/final_codes/regression/create_regression_model/merge_proportion.py"
+sites=("WAP12" "WAP23" "WAP32" "Belcher" "Chesnay" "Lamprey")
 
-# # Add all proportion files to the merge command (10m resolution)
-# for site in "${sites[@]}"; do
-#     PROP_FILE="/media/lcousin/FASTBOYSLIM/Loris/final_data/regression_population/site_proportion/${site}_10m/proportions_${site}_10m.json"
-#     if [ -f "$PROP_FILE" ]; then
-#         echo "Adding $site proportion file to merge"
-#         MERGE_CMD="$MERGE_CMD $PROP_FILE"
-#     else
-#         echo "Warning: Proportion file not found for $site: $PROP_FILE"
-#     fi
-# done
+echo "Merging proportion files from all sites with 10m resolution..."
+for resolution in "${resolutions[@]}"; do
+   # Create the output directory for merged results
+    MERGE_OUTPUT_DIR="/media/lcousin/FASTBOYSLIM/Loris/final_data/regression_population/merged_${resolution}"
+    mkdir -p "$MERGE_OUTPUT_DIR"
 
-# # Add output options to the merge command
-# MERGE_CMD="$MERGE_CMD --output $MERGE_OUTPUT_DIR/merged_pixels_all.json --plots-dir $MERGE_OUTPUT_DIR"
+    # Build the command to merge all proportion files
+    MERGE_CMD="python /home/lcousin/stage_cesbio/code/final_codes/regression/create_regression_model/merge_proportion.py"
 
-# # Execute the merge command
-# echo "Executing merge command:"
-# echo "$MERGE_CMD"
-# eval "$MERGE_CMD"
+    # Add all proportion files to the merge command (10m resolution)
+    for site in "${sites[@]}"; do
+        PROP_FILE="/media/lcousin/FASTBOYSLIM/Loris/final_data/regression_population/site_proportion/${site}_${resolution}/proportions_${site}_${resolution}.json"
+        if [ -f "$PROP_FILE" ]; then
+            echo "Adding $site proportion file to merge"
+            MERGE_CMD="$MERGE_CMD $PROP_FILE"
+        else
+            echo "Warning: Proportion file not found for $site: $PROP_FILE"
+        fi
+    done
 
-# echo "----------------------------------------"
-# echo "Merging process completed!"
-# echo "Merged file saved to: $MERGE_OUTPUT_DIR/merged_pixels_all.json"
-# echo "Plots saved to: $MERGE_OUTPUT_DIR"
+    # Add output options to the merge command
+    MERGE_CMD="$MERGE_CMD --output $MERGE_OUTPUT_DIR/merged_pixels_${resolution}.json --plots-dir $MERGE_OUTPUT_DIR"
+
+    # Execute the merge command
+    echo "Executing merge command:"
+    echo "$MERGE_CMD"
+    eval "$MERGE_CMD"
+
+    
+    echo "Merging process completed!"
+    echo "Merged file saved to: $MERGE_OUTPUT_DIR/merged_pixels_${resolution}.json"
+    echo "Plots saved to: $MERGE_OUTPUT_DIR"
+    
+done
+
+echo "----------------------------------------"
+
+echo "Balancing pixel proportions..."
+for resolution in "${resolutions[@]}"; do
+    python /home/lcousin/stage_cesbio/code/final_codes/regression/create_regression_model/balance_proportion.py \
+        "/media/lcousin/FASTBOYSLIM/Loris/final_data/regression_population/merged_${resolution}/merged_pixels_${resolution}.json" \
+        --output "/media/lcousin/FASTBOYSLIM/Loris/final_data/regression_population/balanced_${resolution}" \
+        --quantile 0.6 \
+        --bins 25
+done 
+echo "Balancing process completed for all resolutions!"
+
+
+echo "----------------------------------------"
+echo "Training regression model with balanced data..." 
+resolutions=("10m" "5m" )
+for resolution in "${resolutions[@]}"; do
+    for category in "lichen" "trough"; do
+        python /home/lcousin/stage_cesbio/code/final_codes/regression/create_regression_model/train_regression_model.py \
+            "/media/lcousin/FASTBOYSLIM/Loris/final_data/regression_population/balanced_${resolution}/balanced_${category}_proportion.json" \
+            "/media/lcousin/FASTBOYSLIM/Loris/final_data/regression_models_${resolution}/${category}" \
+            # --grid-search
+    done
+done
+
+echo "Regression model training completed for all categories and resolutions!"

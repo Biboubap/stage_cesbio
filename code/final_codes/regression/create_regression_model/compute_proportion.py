@@ -744,5 +744,21 @@ Linux example:
     --indices-dir /media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/Lamprey_10m/mediane_indices \
     --output-dir /media/lcousin/FASTBOYSLIM/Loris/final_data/regression_population/site_proportion/Lamprey \
     --site-name Lamprey
+
+python /home/lcousin/stage_cesbio/code/final_codes/regression/create_regression_model/compute_proportion.py \
+    --classification /home/lcousin/stage_cesbio/drone_treated/WAP12_tiles/wap12_classif_well.tif \
+    --sentinel-band /media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/WAP12_10m/mediane_bands/mediane_STACK_2023_BandB4_WAP12_deflate.tif \
+    --bands-dir /media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/WAP12_10m/mediane_bands \
+    --indices-dir /media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/WAP12_10m/mediane_indices \
+    --output-dir /media/lcousin/FASTBOYSLIM/Loris/final_data/regression_population/site_proportion/WAP12_10m \
+    --site-name WAP12_10m 
+
+python /home/lcousin/stage_cesbio/code/final_codes/regression/create_regression_model/compute_proportion.py \
+    --classification /home/lcousin/stage_cesbio/drone_treated/WAP32_tiles/WAP32_classif_merged.tif \
+    --sentinel-band /media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/WAP32_10m/mediane_bands/mediane_STACK_2023_BandB4_WAP32_deflate.tif \
+    --bands-dir /media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/WAP32_10m/mediane_bands \
+    --indices-dir /media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/WAP32_10m/mediane_indices \
+    --output-dir /media/lcousin/FASTBOYSLIM/Loris/final_data/regression_population/site_proportion/WAP32_10m \
+    --site-name WAP32_10m
 """
 
