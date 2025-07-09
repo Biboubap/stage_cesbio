@@ -22,7 +22,7 @@ from scipy import ndimage
 
 # Define spectral thresholds for peatland identification
 IR_MIN = 2000    # Infrared band min threshold
-IR_MAX = 2800    # Infrared band max threshold
+IR_MAX = 3000    # Infrared band max threshold
 
 RED_MIN = 750  # Red band min threshold
 RED_MAX = 1500
@@ -31,7 +31,7 @@ GREEN_MIN = 600  # Green band min threshold
 GREEN_MAX = 1500
 
 # Post-processing parameters
-DISTANCE_INCLUSION = 1  # Pixels to expand the mask boundaries
+DISTANCE_INCLUSION = 0  # Pixels to expand the mask boundaries
 GROUPE_INCLUSION = 8    # Maximum size of holes to fill
 
 # Block size for processing (adjust based on available memory)
@@ -82,28 +82,38 @@ def fill_small_holes(mask, max_size=8):
     Returns:
         Mask with small holes filled
     """
-    # Invert mask to identify holes
-    holes = ~mask.astype(bool)
+    # Make sure mask is boolean for proper hole detection
+    mask_bool = mask.astype(bool)
     
-    # Label connected components (holes)
-    labeled_holes, num_holes = ndimage.label(holes)
+    # Find all connected components of background (0's)
+    # Structure is for 8-connectivity
+    structure = np.ones((3, 3), dtype=bool)
+    labeled_holes, num_holes = ndimage.label(~mask_bool, structure=structure)
     
-    # Measure the size of each hole
-    hole_sizes = np.bincount(labeled_holes.flatten())
+    if num_holes == 0:
+        return mask
     
-    # Skip the first element (background)
-    if len(hole_sizes) > 1:
-        hole_sizes = hole_sizes[1:]
+    # Count pixels in each labeled component
+    component_sizes = np.bincount(labeled_holes.flatten())[1:]  # Skip background label 0
     
-    # Find holes smaller than or equal to max_size
-    small_holes = np.arange(1, num_holes + 1)[hole_sizes <= max_size]
+    # Find hole labels to fill (those smaller than or equal to max_size)
+    holes_to_fill = np.where(component_sizes <= max_size)[0] + 1  # +1 because labels start at 1
     
-    # Create a mask of small holes
-    small_hole_mask = np.isin(labeled_holes, small_holes)
+    # Count how many small holes were found
+    small_holes_count = len(holes_to_fill)
+    small_pixels_count = sum(component_sizes[i-1] for i in holes_to_fill)
     
-    # Fill small holes in the original mask
+    # Create output mask by filling small holes
     filled_mask = mask.copy()
-    filled_mask[small_hole_mask] = 1
+    if small_holes_count > 0:
+        # Create mask of all small holes
+        holes_mask = np.isin(labeled_holes, holes_to_fill)
+        # Fill these holes in the output mask
+        filled_mask[holes_mask] = 1
+        
+        print(f"Filled {small_holes_count} small holes ({small_pixels_count} pixels) of size <= {max_size}")
+    else:
+        print(f"No small holes of size <= {max_size} found")
     
     return filled_mask
 
@@ -341,6 +351,7 @@ python /home/lcousin/stage_cesbio/code/final_codes/regression/extract_peatland_V
     --ir /media/lcousin/FASTBOYSLIM/Churchill/DataCubeS2/Im_15VVE_B8Amean.tif \
     --red /media/lcousin/FASTBOYSLIM/Churchill/DataCubeS2/Im_15VVE_B4mean.tif \
     --green /media/lcousin/FASTBOYSLIM/Churchill/DataCubeS2/Im_15VVE_B3mean.tif \
-    --output /media/lcousin/FASTBOYSLIM/Churchill/DataCubeS2/peat_plateau_mask_VVE_2.tif
+    --output /media/lcousin/FASTBOYSLIM/Churchill/DataCubeS2/peat_plateau_mask_VVE_group8.tif
+    
 
 """
