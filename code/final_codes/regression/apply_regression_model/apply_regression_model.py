@@ -19,7 +19,8 @@ import numpy as np
 import joblib
 from osgeo import gdal
 from tqdm import tqdm
-from ..create_regression_model.merge_proportion import normalize_feature_name
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from create_regression_model.merge_proportion import normalize_feature_name
 
 def parse_arguments():
     """
@@ -361,11 +362,12 @@ python apply_regression_model.py \
   --model path/to/lichen_model.joblib \
   --output path/to/lichen_prediction.tif \
   --square-transform
-"""
-        
-# python C:Loris/CESBIO/stage_cesbio/code/final_codes/regression/apply_regression_model.py `
-#   --bands-dir D:/Loris/SentinelBands/Chesnay_10m/mediane_bands `
-#   --indices-dir D:/Loris/SentinelBands/Chesnay_10m/mediane_indices `
-#   --model C:Loris/CESBIO/stage_cesbio/data/regressions/regression_multisite/results3/lichen/lichen_proportion_model.joblib `
-#   --output C:Loris/CESBIO/stage_cesbio/data/regressions/regression_multisite/results3/lichen/Chesnay_Lichen_prediction.tif
 
+class="trough"
+python /home/lcousin/stage_cesbio/code/final_codes/regression/apply_regression_model/apply_regression_model.py \
+  --bands-dir /media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/WAP32_10m/mediane_bands \
+  --indices-dir /media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/WAP32_10m/mediane_indices \
+  --model /home/lcousin/stage_cesbio/data/regressions/regression_multisite/results_8/${class}/${class}_proportion_model.joblib \
+  --output /home/lcousin/stage_cesbio/data/regressions/regression_multisite/results_8/${class}/WAP32_10m_${class}_proportion_prediction.tif
+
+"""
