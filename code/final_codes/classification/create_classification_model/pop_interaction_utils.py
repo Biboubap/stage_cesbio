@@ -63,51 +63,6 @@ def save_json_file(data, output_path):
         print(f"Error saving JSON file {output_path}: {e}")
         return False
 
-def create_sample_set_from_json(json_data):
-    """
-    Create a SampleSet from JSON data.
-    
-    Args:
-        json_data: JSON data containing samples
-        
-    Returns:
-        SampleSet object with samples from the JSON data
-    """
-    # Create a new SampleSet
-    sample_set = SampleSet()
-    
-    # Add each sample from the JSON data
-    for s in json_data.get("samples", []):
-        # Create a Sample object
-        sample = Sample(
-            i_x=s.get("i_x"),
-            i_y=s.get("i_y"),
-            x=s.get("x"),
-            y=s.get("y"),
-            size_patch=s.get("size_patch"),
-            block_rasters=None  # We don't need this since we're just using this for JSON manipulation
-        )
-        
-        # Add category attribute
-        if "category" in s:
-            sample.category = s.get("category")
-        
-        # Add all available attributes
-        for attr in [
-            "r_mean", "g_mean", "b_mean", "r_var", "g_var", "b_var",
-            "z_mean", "z_var", "t_mean", "t_var",
-            "r_n_mean", "g_n_mean", "b_n_mean", "t_n_mean", "z_moins_z_n",
-            "r_large_mean", "g_large_mean", "b_large_mean", 
-            "t_large_mean", "z_moins_z_large"
-        ]:
-            if attr in s:
-                setattr(sample, attr, s.get(attr))
-        
-        # Add the sample to the set
-        sample_set.add_Sample(sample)
-    
-    return sample_set
-
 def count_samples_by_category(sample_set):
     """
     Count samples by category in a SampleSet.
@@ -166,13 +121,8 @@ def merge_samples(input_files, output_file):
     for file_path in input_files:
         print(f"Processing {file_path}...")
         
-        # Load the JSON data
-        json_data = load_json_file(file_path)
-        if json_data is None:
-            continue
-            
-        # Create a sample set from this file
-        file_set = create_sample_set_from_json(json_data)
+        # Load samples from the JSON file using the SampleSet method
+        file_set = SampleSet.load_samples_from_json(file_path)
         
         # Print statistics for this file
         print_population_stats(f"File {os.path.basename(file_path)}", file_set)
@@ -232,13 +182,8 @@ def remove_category(input_file, category, output_file):
     """
     print(f"Removing samples of category '{category}' from {input_file}...")
     
-    # Load the JSON data
-    json_data = load_json_file(input_file)
-    if json_data is None:
-        return None
-    
-    # Create a sample set from the input file
-    input_set = create_sample_set_from_json(json_data)
+    # Load samples from the JSON file using the SampleSet method
+    input_set = SampleSet.load_samples_from_json(input_file)
     
     # Print statistics for the input set
     print_population_stats("Input population", input_set)
@@ -308,7 +253,7 @@ def remove_samples(input_file, indices, output_file):
     print(f"Removed {len(valid_indices)} samples. Saved {len(filtered_samples)} samples to {output_file}")
     
     # Create a sample set from the filtered data for statistics
-    filtered_set = create_sample_set_from_json(filtered_data)
+    filtered_set = SampleSet.load_samples_from_json(output_file)
     
     # Print statistics for the filtered set
     print_population_stats("Filtered population", filtered_set)
@@ -367,3 +312,10 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+"""
+python code/final_codes/classification/create_classification_model/pop_interaction_utils.py merge-samples\
+      --input data/selection_test/Through_1.json data/selection_test/Through_2.json data/selection_test/Green_1.json \
+      --output data/selection_test/merged.json
+"""

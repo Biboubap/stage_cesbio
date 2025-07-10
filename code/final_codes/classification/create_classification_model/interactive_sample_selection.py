@@ -677,7 +677,7 @@ if __name__ == "__main__":
 python code/final_codes/classification/create_classification_model/interactive_sample_selection.py \
     --rgb drone_treated/WAP32_full_transparent_mosaic_group1.tif \
     --dsm drone_treated/WAP32_full_dsm.tif \
-    --classes "Lichen, Green, Through" \
+    --classes "Lichen, Green, Trough" \
     --output data/selection_test \
     --sample-size 64 \
     --distance-start-horizontal 214 --distance-start-vertical 418 \

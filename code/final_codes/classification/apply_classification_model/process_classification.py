@@ -376,7 +376,7 @@ def process_classification(args):
         results = []
         
         # Group tasks for batch processing
-        batch_size = min(10, total_blocks)  # Process 10 blocks at a time, or fewer if total_blocks < 10
+        batch_size = min(20, total_blocks)  # Process 20 blocks at a time, or fewer if total_blocks < 20
         for i in range(0, total_blocks, batch_size):
             batch_end = min(i + batch_size, total_blocks)
             batch_tasks = delayed_tasks[i:batch_end]

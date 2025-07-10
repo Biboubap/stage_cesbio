@@ -178,3 +178,55 @@ class SampleSet:
             axes[i].axis('off')
         
         plt.tight_layout()
+    
+    @staticmethod
+    def load_samples_from_json(filename):
+        """
+        Load samples from a JSON file.
+        
+        Args:
+            filename: Path to the JSON file
+            
+        Returns:
+            SampleSet with samples from the JSON file
+        """
+        with open(filename, 'r') as f:
+            data = json.load(f)
+        
+        # Create a new SampleSet without raster paths
+        sample_set = SampleSet(
+            n_samples_x=data.get("n_samples_x"),
+            n_samples_y=data.get("n_samples_y")
+        )
+        
+        # Add each sample from the data
+        for s in data.get("samples", []):
+            # Create a sample without block_rasters
+            sample = Sample(
+                i_x=s.get("i_x"),
+                i_y=s.get("i_y"),
+                x=s.get("x"),
+                y=s.get("y"),
+                size_patch=s.get("size_patch"),
+                block_rasters=None  # No block rasters when loading from JSON
+            )
+            
+            # Add category attribute
+            if "category" in s:
+                sample.category = s.get("category")
+            
+            # Add all available attributes directly (bypassing calculation)
+            for attr in [
+                "r_mean", "g_mean", "b_mean", "r_var", "g_var", "b_var",
+                "z_mean", "z_var", "t_mean", "t_var",
+                "r_n_mean", "g_n_mean", "b_n_mean", "t_n_mean", "z_moins_z_n",
+                "r_large_mean", "g_large_mean", "b_large_mean", 
+                "t_large_mean", "z_moins_z_large"
+            ]:
+                if attr in s:
+                    setattr(sample, attr, s.get(attr))
+            
+            # Add the sample to the set
+            sample_set.add_Sample(sample)
+        
+        return sample_set
