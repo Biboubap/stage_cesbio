@@ -32,7 +32,7 @@ GREEN_MAX = 1500
 
 # Post-processing parameters
 DISTANCE_INCLUSION = 0  # Pixels to expand the mask boundaries
-GROUPE_INCLUSION = 8    # Maximum size of holes to fill
+GROUPE_INCLUSION = 10    # Maximum size of holes to fill
 
 # Block size for processing (adjust based on available memory)
 BLOCK_SIZE = 2048
@@ -110,11 +110,7 @@ def fill_small_holes(mask, max_size=8):
         holes_mask = np.isin(labeled_holes, holes_to_fill)
         # Fill these holes in the output mask
         filled_mask[holes_mask] = 1
-        
-        print(f"Filled {small_holes_count} small holes ({small_pixels_count} pixels) of size <= {max_size}")
-    else:
-        print(f"No small holes of size <= {max_size} found")
-    
+
     return filled_mask
 
 def verify_rasters_consistency(raster_paths):
@@ -308,15 +304,7 @@ def process_rasters(ir_path, red_path, green_path, output_path, block_size,
     # Report mask statistics
     ds = gdal.Open(output_path, gdal.GA_ReadOnly)
     band = ds.GetRasterBand(1)
-    stats = band.GetStatistics(True, True)
     
-    # Calculate percentage of peatland area
-    peatland_percent = stats[2] * 100  # mean value * 100 for percentage
-    
-    print(f"Mask statistics:")
-    print(f"  Min: {stats[0]}, Max: {stats[1]}")
-    print(f"  Mean: {stats[2]:.6f}, StdDev: {stats[3]:.6f}")
-    print(f"  Peatland area: {peatland_percent:.2f}% of total area")
     
     ds = None
 
@@ -351,7 +339,8 @@ python /home/lcousin/stage_cesbio/code/final_codes/regression/extract_peatland_V
     --ir /media/lcousin/FASTBOYSLIM/Churchill/DataCubeS2/Im_15VVE_B8Amean.tif \
     --red /media/lcousin/FASTBOYSLIM/Churchill/DataCubeS2/Im_15VVE_B4mean.tif \
     --green /media/lcousin/FASTBOYSLIM/Churchill/DataCubeS2/Im_15VVE_B3mean.tif \
-    --output /media/lcousin/FASTBOYSLIM/Churchill/DataCubeS2/peat_plateau_mask_VVE_group8.tif
-    
+    --output /media/lcousin/FASTBOYSLIM/Loris/VVE_mask/peat_plateau_mask_VVE_group15.tif \
+    --distance-inclusion 0 \
+    --groupe-inclusion 15
 
 """

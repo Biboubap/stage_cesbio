@@ -467,7 +467,7 @@ def plot_regression_results(y_true, y_pred, output_path, title=None, metrics=Non
         metrics: Dictionary with metrics to include in title (optional)
     """
     plt.figure(figsize=(8, 8))
-    plt.scatter(y_true, y_pred, alpha=0.5, s=10)
+    plt.scatter(y_true, y_pred, alpha=0.5, s=2)
     
     # Add identity line
     max_val = max(np.max(y_true), np.max(y_pred))
@@ -581,7 +581,7 @@ def plot_site_comparisons(site_metrics, output_path, category_name, is_cv=False)
         y_true = metrics['y_true']
         y_pred = metrics['y_pred']
         
-        ax.scatter(y_true, y_pred, alpha=0.5, s=10)
+        ax.scatter(y_true, y_pred, alpha=0.5, s=3.5)
         
         # Add identity line
         max_val = max(np.max(y_true), np.max(y_pred))

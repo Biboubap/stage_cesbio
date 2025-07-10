@@ -34,7 +34,6 @@ with rasterio.open(input_path) as src:
     # Compute the median value across the temporal dimension (axis 0)
     # This creates a 2D array (rows, cols) with the median value at each pixel
     median = np.nanmedian(data, axis=0).astype(src.dtypes[0])
-    print(f"Number of NaN after median: {np.isnan(median).sum()}")
 
     # Copy the metadata from the input file
     profile = src.profile

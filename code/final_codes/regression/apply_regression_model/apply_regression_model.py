@@ -363,11 +363,14 @@ python apply_regression_model.py \
   --output path/to/lichen_prediction.tif \
   --square-transform
 
-class="trough"
+
+
+class="lichen"
 python /home/lcousin/stage_cesbio/code/final_codes/regression/apply_regression_model/apply_regression_model.py \
-  --bands-dir /media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/WAP32_10m/mediane_bands \
-  --indices-dir /media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/WAP32_10m/mediane_indices \
-  --model /home/lcousin/stage_cesbio/data/regressions/regression_multisite/results_8/${class}/${class}_proportion_model.joblib \
-  --output /home/lcousin/stage_cesbio/data/regressions/regression_multisite/results_8/${class}/WAP32_10m_${class}_proportion_prediction.tif
+  --bands-dir /media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/WAP23_5m/mediane_bands \
+  --indices-dir /media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/WAP23_5m/mediane_indices \
+  --model /home/lcousin/stage_cesbio/data/study_5m_dispersion/training_no_Lamprey_WAP23/regression_models_5m/${class}/${class}_proportion_model.joblib \
+  --output /home/lcousin/stage_cesbio/data/study_5m_dispersion/training_no_Lamprey_WAP23/regression_models_5m/${class}/WAP23_5m_${class}_proportion_prediction.tif
+
 
 """

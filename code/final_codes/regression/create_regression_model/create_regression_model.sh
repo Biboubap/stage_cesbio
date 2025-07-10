@@ -52,12 +52,12 @@ echo "All sites and resolutions processed!"
 
 echo "----------------------------------------"
 
-sites=("WAP12" "WAP23" "WAP32" "Belcher" "Chesnay" "Lamprey")
-
+sites=("WAP12" "WAP32" "Belcher" "Chesnay")
+resolutions=("10m" "5m")
 echo "Merging proportion files from all sites with 10m resolution..."
 for resolution in "${resolutions[@]}"; do
    # Create the output directory for merged results
-    MERGE_OUTPUT_DIR="/media/lcousin/FASTBOYSLIM/Loris/final_data/regression_population/merged_${resolution}"
+    MERGE_OUTPUT_DIR="/home/lcousin/stage_cesbio/data/study_5m_dispersion/training_no_Lamprey_WAP23/merged_${resolution}"
     mkdir -p "$MERGE_OUTPUT_DIR"
 
     # Build the command to merge all proportion files
@@ -94,8 +94,8 @@ echo "----------------------------------------"
 echo "Balancing pixel proportions..."
 for resolution in "${resolutions[@]}"; do
     python /home/lcousin/stage_cesbio/code/final_codes/regression/create_regression_model/balance_proportion.py \
-        "/media/lcousin/FASTBOYSLIM/Loris/final_data/regression_population/merged_${resolution}/merged_pixels_${resolution}.json" \
-        --output "/media/lcousin/FASTBOYSLIM/Loris/final_data/regression_population/balanced_${resolution}" \
+        "/home/lcousin/stage_cesbio/data/study_5m_dispersion/training_no_Lamprey_WAP23/merged_${resolution}/merged_pixels_${resolution}.json" \
+        --output "/home/lcousin/stage_cesbio/data/study_5m_dispersion/training_no_Lamprey_WAP23/balanced_${resolution}" \
         --quantile 0.6 \
         --bins 25
 done 
@@ -108,9 +108,9 @@ resolutions=("10m" "5m" )
 for resolution in "${resolutions[@]}"; do
     for category in "lichen" "trough"; do
         python /home/lcousin/stage_cesbio/code/final_codes/regression/create_regression_model/train_regression_model.py \
-            "/media/lcousin/FASTBOYSLIM/Loris/final_data/regression_population/balanced_${resolution}/balanced_${category}_proportion.json" \
-            "/media/lcousin/FASTBOYSLIM/Loris/final_data/regression_models_${resolution}/${category}" \
-            # --grid-search
+            "/home/lcousin/stage_cesbio/data/study_5m_dispersion/training_no_Lamprey_WAP23/balanced_${resolution}/balanced_${category}_proportion.json" \
+            "/home/lcousin/stage_cesbio/data/study_5m_dispersion/training_no_Lamprey_WAP23/regression_models_${resolution}/${category}" \
+
     done
 done
 

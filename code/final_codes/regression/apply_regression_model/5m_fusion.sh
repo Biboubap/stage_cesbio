@@ -67,3 +67,16 @@ for site in "${sites[@]}"; do
 done
 
 echo "5m fusion process completed!"
+
+
+
+# REFERENCE_BAND=/media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/WAP23_10m/mediane_bands/mediane_STACK_2023_BandB4_WAP23_deflate.tif
+# EXTENT=$(gdalinfo $REFERENCE_BAND | grep "Lower Left\|Upper Right" | 
+#                  awk '{gsub(/[(),]/, " "); print $3, $4}' | 
+#                  awk 'BEGIN {ORS=" "} {print}' | 
+#                  awk '{print $1, $4, $3, $2}')
+# INPUT_5M=/home/lcousin/stage_cesbio/data/study_5m_dispersion/training_no_Lamprey_WAP23/regression_models_5m/lichen/WAP23_5m_lichen_proportion_prediction.tif
+# OUTPUT_10M=/home/lcousin/stage_cesbio/data/study_5m_dispersion/training_no_Lamprey_WAP23/regression_models_5m/lichen/WAP23_10m_lichen_proportion_prediction.tif
+# gdalwarp -overwrite -r average -tr 10 10 -te $EXTENT -tap \
+#                  "$INPUT_5M" "$OUTPUT_10M" \
+#                  -co COMPRESS=DEFLATE -co TILED=YES
