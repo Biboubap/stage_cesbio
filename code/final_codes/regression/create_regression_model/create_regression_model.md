@@ -37,6 +37,7 @@ This script calculates what percentage of each Sentinel-2 pixel is covered by ea
 - `--indices-dir`: Directory containing Sentinel-2 spectral indices
 - `--output-dir`: Directory to save outputs
 - `--site-name`: Name of the site (for labeling)
+- `--keep-csv`: Flag to retain intermediate CSV files
 
 #### Key Outputs:
 - `proportions_[site]_proportions.json`: JSON file containing pixel data with features and proportions
@@ -159,6 +160,64 @@ python train_regression_model.py \
 6. Creates visualizations and a comprehensive statistics report
 7. Saves the final trained model for later use
 
+## Automated Workflow with Shell Script
+
+The `create_regression_model.sh` script automates the entire workflow, from computing proportions to training models for multiple sites and resolutions.
+
+### How the Shell Script Works
+
+The script organizes the workflow into sequential stages:
+
+1. **Site-by-Site Processing** - For each site and resolution:
+   - Checks if required input files exist
+   - Creates necessary output directories
+   - Runs `compute_proportion.py` to calculate class proportions 
+
+2. **Data Merging** - For each resolution:
+   - Creates output directories for merged results
+   - Dynamically builds and executes `merge_proportion.py` commands
+   - Includes all available site data while handling missing files
+
+3. **Data Balancing** - For each resolution:
+   - Runs `balance_proportion.py` with specified quantile and bins
+   - Creates balanced datasets for each target category
+
+4. **Model Training** - For each resolution and category:
+   - Executes `train_regression_model.py` on balanced datasets
+   - Organizes output models in structured directories
+
+### Script Configuration
+
+To use the shell script, you may need to modify:
+
+1. **Site list**: Specify which sites to process
+   ```bash
+   sites=("WAP12" "WAP32" "Belcher" "Chesnay")
+   ```
+
+2. **Resolutions**: Define which resolutions to process
+   ```bash
+   resolutions=("5m" "10m")
+   ```
+
+3. **File paths**: Adjust input/output paths for your directory structure
+   ```bash
+   classification_path="/path/to/classifications/${site}_classif_cut.tif"
+   ```
+
+4. **Balancing parameters**: Set quantile and bin count
+   ```bash
+   --quantile 0.6 --bins 25
+   ```
+
+### Running the Script
+
+```bash
+chmod +x create_regression_model.sh
+./create_regression_model.sh
+```
+The script creates a complete record of each step with status messages and progress indicators, making it easy to identify any issues that might occur.
+
 ## Optimizing Your Models
 
 ### Grid Search Parameters
@@ -201,19 +260,10 @@ Temporal median composites from Sentinel-2 L2A images help provide stable, repre
 2. **Reducing temporal variability**: Creating more consistent spectral signatures across seasons
 3. **Improving model robustness**: Providing more reliable features for regression
 
-The `sentinel_median/sentinel_median.sh` script automates this process, generating median values across multiple acquisitions for each band and index while preserving georeferencing information.
-
-## Tips for Best Results
-
-1. **Use well-classified drone imagery** - The quality of your regression model depends directly on the quality of your classification map
-2. **Include diverse sites** - Models trained on data from multiple sites tend to be more robust and generalizable
-3. **Balance your data** - The distribution of proportion values greatly affects model performance
-4. **Perform grid search** - Finding optimal parameters can significantly improve accuracy
-5. **Check site-specific performance** - Look for systematic biases at specific sites
-6. **Consider feature importance** - Focus on the most predictive bands and indices
-   - Computes the pixel-wise median value across all acquisition dates
-   - Stores the results in organized directories (separate for bands and indices)
-   - Preserves the georeferencing information for each output
+The `sentinel_median/sentinel_median.sh` script automates this process:
+- Computes the pixel-wise median value across all acquisition dates
+- Stores the results in organized directories (separate for bands and indices)
+- Preserves the georeferencing information for each output
 
 The resulting median images provide more reliable spectral information than any single acquisition and serve as ideal input features for the regression models.
 

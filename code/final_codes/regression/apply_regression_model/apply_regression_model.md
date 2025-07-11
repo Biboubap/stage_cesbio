@@ -1,10 +1,12 @@
 # Applying Regression Models to Sentinel-2 Data
 
-This guide explains how to use the `apply_regression_model.py` script to generate land cover proportion maps from Sentinel-2 satellite imagery using pre-trained regression models.
+This guide explains how to use the `apply_regression_model.py` script and the accompanying `apply_regression_model.sh` batch script to generate land cover proportion maps from Sentinel-2 satellite imagery using pre-trained regression models.
 
 ## Overview
 
 The `apply_regression_model.py` script takes a trained regression model (created by `train_regression_model.py`) and applies it to Sentinel-2 bands and indices to produce a GeoTIFF map showing predicted land cover proportions. This is the final step in the regression pipeline that allows you to generate proportion maps for new areas where only Sentinel-2 data is available.
+
+For batch processing across multiple sites and resolutions, the `apply_regression_model.sh` shell script automates this process.
 
 ## Requirements
 
@@ -37,7 +39,7 @@ The `apply_regression_model.py` script takes a trained regression model (created
    - Must include the model itself and required feature names
    - Created using `train_regression_model.py`
 
-## Usage
+## Python Script Usage
 
 ### Basic Command
 
@@ -79,6 +81,65 @@ python /home/user/stage_cesbio/code/final_codes/regression/apply_regression_mode
   --output /home/user/results/lichen_prediction.tif \
   --square-transform
 ```
+
+## Batch Processing with Shell Script
+
+The `apply_regression_model.sh` script automates applying regression models to multiple sites, resolutions, and land cover categories in batch mode.
+
+### Script Configuration
+
+Before running the script, you need to configure these arrays at the top of the file:
+
+```bash
+# Array of site names
+sites=("WAP12" "WAP23" "WAP32" "Belcher" "Chesnay" "Lamprey")
+
+# Array of resolutions
+resolutions=("5m" "10m")
+
+# Categories to process
+categories=("lichen" "trough")
+```
+
+### Directory Structure
+
+The script expects a specific directory structure:
+
+- Input Sentinel-2 data:
+  - `/media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/${site}_${resolution}/mediane_bands`
+  - `/media/lcousin/FASTBOYSLIM/Loris/final_data/sentinel_2/${site}_${resolution}/mediane_indices`
+
+- Model locations:
+  - `/media/lcousin/FASTBOYSLIM/Loris/final_data/regression_models_${resolution}/${category}/${category}_proportion_model.joblib`
+
+- Output location:
+  - `/media/lcousin/FASTBOYSLIM/Loris/final_data/regression_map/regression_map_${resolution}/${site}_${resolution}_${category}_prediction.tif`
+
+### Running the Script
+
+1. Modify the arrays at the top of the script to match your sites, resolutions, and categories
+2. Make the script executable:
+   ```bash
+   chmod +x apply_regression_model.sh
+   ```
+3. Run the script:
+   ```bash
+   ./apply_regression_model.sh
+   ```
+
+### Customizing the Script
+
+To adapt the script for your own directory structure:
+
+1. Modify the path variables:
+   ```bash
+   bands_dir="/path/to/your/sentinel2/bands/${site}_${resolution}/mediane_bands"
+   indices_dir="/path/to/your/sentinel2/indices/${site}_${resolution}/mediane_indices"
+   model_path="/path/to/your/models/${resolution}/${category}/${category}_proportion_model.joblib"
+   output_dir="/path/to/your/output/${resolution}"
+   ```
+
+2. Add or modify the error handling for specific site/resolution combinations if needed
 
 ## Output
 
@@ -159,16 +220,6 @@ When using a model trained on sqrt-transformed data (e.g., `sqrt_lichen_proporti
 1. For values slightly outside range: The script automatically clips values to 0-100% range
 2. For severely out-of-range values: Your model might be applied to data that's very different from what it was trained on
 
-## Code Structure
-
-The script is organized into these main functions:
-
-1. `parse_arguments()`: Parses command line arguments
-2. `load_regression_model()`: Loads the model and extracts feature requirements
-3. `load_sentinel_features()`: Loads and preprocesses Sentinel data
-4. `apply_regression_model()`: Makes predictions and saves the output
-5. `main()`: Orchestrates the entire process
-
 ## Tips for Best Results
 
 1. **Use median composites** for Sentinel data to reduce noise and artifacts
@@ -176,3 +227,4 @@ The script is organized into these main functions:
 3. **Check model feature requirements** before running to ensure you have all necessary bands/indices
 4. **Inspect the output statistics** to verify that predictions are in a reasonable range
 5. **Compare with validation data** if available to assess prediction quality
+6. **Use the batch script** for efficient processing of multiple sites and categories
