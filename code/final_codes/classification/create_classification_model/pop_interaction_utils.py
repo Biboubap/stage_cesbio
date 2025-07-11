@@ -19,11 +19,6 @@ import argparse
 import glob
 from collections import Counter
 
-# Add parent directory to path to import utility modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils.sample_set import SampleSet
-from utils.sample import Sample
-
 def load_json_file(json_path):
     """
     Load sample data from a JSON file.
@@ -63,32 +58,32 @@ def save_json_file(data, output_path):
         print(f"Error saving JSON file {output_path}: {e}")
         return False
 
-def count_samples_by_category(sample_set):
+def count_samples_by_category(samples_data):
     """
-    Count samples by category in a SampleSet.
+    Count samples by category in a samples dataset.
     
     Args:
-        sample_set: SampleSet to count samples from
+        samples_data: Dictionary containing samples data
         
     Returns:
         Counter object with categories and their counts
     """
     categories = []
-    for sample in sample_set.samples.values():
-        if hasattr(sample, 'category'):
-            categories.append(sample.category)
+    for sample in samples_data.get("samples", []):
+        if "category" in sample:
+            categories.append(sample["category"])
     
     return Counter(categories)
 
-def print_population_stats(population_name, sample_set):
+def print_population_stats(population_name, samples_data):
     """
     Print statistics about a sample population.
     
     Args:
         population_name: Name to display for the population
-        sample_set: SampleSet to get statistics from
+        samples_data: Dictionary containing samples data
     """
-    counts = count_samples_by_category(sample_set)
+    counts = count_samples_by_category(samples_data)
     total = sum(counts.values())
     
     print(f"\n{population_name} statistics:")
@@ -110,35 +105,42 @@ def merge_samples(input_files, output_file):
         output_file: Path to save the merged samples
         
     Returns:
-        Merged SampleSet
+        Merged samples data
     """
     print(f"Merging samples from {len(input_files)} files...")
     
-    # Create an empty sample set for the merged result
-    merged_set = SampleSet()
+    # Create an empty structure for the merged result
+    merged_data = {
+        "n_samples_x": None,
+        "n_samples_y": None,
+        "samples": []
+    }
     
     # Process each input file
     for file_path in input_files:
         print(f"Processing {file_path}...")
         
-        # Load samples from the JSON file using the SampleSet method
-        file_set = SampleSet.load_samples_from_json(file_path)
+        # Load samples from the JSON file
+        file_data = load_json_file(file_path)
+        if file_data is None:
+            print(f"Skipping {file_path} due to load error")
+            continue
         
         # Print statistics for this file
-        print_population_stats(f"File {os.path.basename(file_path)}", file_set)
+        print_population_stats(f"File {os.path.basename(file_path)}", file_data)
         
-        # Add all samples to the merged set
-        for sample in file_set.samples.values():
-            merged_set.add_Sample(sample)
+        # Add all samples to the merged data
+        merged_data["samples"].extend(file_data.get("samples", []))
     
     # Print statistics for the merged set
-    print_population_stats("Merged population", merged_set)
+    print_population_stats("Merged population", merged_data)
     
-    # Save the merged set to the output file
-    num_saved = merged_set.save_samples_to_json(output_file)
-    print(f"Saved {num_saved} merged samples to {output_file}")
+    # Save the merged data to the output file
+    success = save_json_file(merged_data, output_file)
+    if success:
+        print(f"Saved {len(merged_data['samples'])} merged samples to {output_file}")
     
-    return merged_set
+    return merged_data
 
 def merge_samples_from_dir(input_dir, output_file, exclude_files=None):
     """
@@ -150,7 +152,7 @@ def merge_samples_from_dir(input_dir, output_file, exclude_files=None):
         exclude_files: List of file paths to exclude from the merge
         
     Returns:
-        Merged SampleSet
+        Merged samples data
     """
     # Find all JSON files in the directory
     json_files = glob.glob(os.path.join(input_dir, "*.json"))
@@ -178,32 +180,38 @@ def remove_category(input_file, category, output_file):
         output_file: Path to save the filtered samples
         
     Returns:
-        Filtered SampleSet
+        Filtered samples data
     """
     print(f"Removing samples of category '{category}' from {input_file}...")
     
-    # Load samples from the JSON file using the SampleSet method
-    input_set = SampleSet.load_samples_from_json(input_file)
+    # Load samples from the JSON file
+    input_data = load_json_file(input_file)
+    if input_data is None:
+        return None
     
     # Print statistics for the input set
-    print_population_stats("Input population", input_set)
+    print_population_stats("Input population", input_data)
     
-    # Create a new sample set for the filtered result
-    filtered_set = SampleSet()
+    # Create a new structure for the filtered result
+    filtered_data = {
+        "n_samples_x": input_data.get("n_samples_x"),
+        "n_samples_y": input_data.get("n_samples_y"),
+        "samples": []
+    }
     
     # Add only samples of other categories
-    for sample in input_set.samples.values():
-        if not hasattr(sample, 'category') or sample.category != category:
-            filtered_set.add_Sample(sample)
+    for sample in input_data.get("samples", []):
+        if "category" not in sample or sample["category"] != category:
+            filtered_data["samples"].append(sample)
     
     # Print statistics for the filtered set
-    print_population_stats("Filtered population", filtered_set)
+    print_population_stats("Filtered population", filtered_data)
     
-    # Save the filtered set to the output file
-    num_saved = filtered_set.save_samples_to_json(output_file)
-    print(f"Saved {num_saved} filtered samples to {output_file}")
+    # Save the filtered data to the output file
+    save_json_file(filtered_data, output_file)
+    print(f"Saved {len(filtered_data['samples'])} filtered samples to {output_file}")
     
-    return filtered_set
+    return filtered_data
 
 def remove_samples(input_file, indices, output_file):
     """
@@ -215,7 +223,7 @@ def remove_samples(input_file, indices, output_file):
         output_file: Path to save the filtered samples
         
     Returns:
-        Filtered SampleSet
+        Filtered samples data
     """
     print(f"Removing {len(indices)} samples from {input_file}...")
     
@@ -252,13 +260,10 @@ def remove_samples(input_file, indices, output_file):
     save_json_file(filtered_data, output_file)
     print(f"Removed {len(valid_indices)} samples. Saved {len(filtered_samples)} samples to {output_file}")
     
-    # Create a sample set from the filtered data for statistics
-    filtered_set = SampleSet.load_samples_from_json(output_file)
-    
     # Print statistics for the filtered set
-    print_population_stats("Filtered population", filtered_set)
+    print_population_stats("Filtered population", filtered_data)
     
-    return filtered_set
+    return filtered_data
 
 def parse_args():
     """
