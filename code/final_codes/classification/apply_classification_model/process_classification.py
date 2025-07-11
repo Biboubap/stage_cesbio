@@ -16,7 +16,7 @@ from pathlib import Path
 # Add parent directory to path to import utility modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.block_rasters_manager import BlockRastersManager
-from code.final_codes.classification.utils.block_classification_process import process_block_with_overlap
+from utils.block_classification_process import process_block_with_overlap
 from utils.block_sample import BlockSample
 
 # Configure logging - reduce verbosity
