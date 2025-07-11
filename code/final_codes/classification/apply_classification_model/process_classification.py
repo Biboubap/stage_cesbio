@@ -440,8 +440,8 @@ def process_classification(args):
         logger.info("Dask resources released")
 
 # Hard-coded paths to the model files
-MODEL1_PATH = "/home/lcousin/stage_cesbio/data/samples/selection14/model_wap32_no_chicoutai.joblib"
-MODEL2_PATH = "/home/lcousin/stage_cesbio/data/samples/selection16/classifs/model_16_7/model_16_7.joblib"
+MODEL1_PATH = "/media/lcousin/FASTBOYSLIM/Loris/final_data/classification_models/no_chicoutai_model/model_wap32_no_chicoutai.joblib" #Lichen VS Trough Model
+MODEL2_PATH = "/media/lcousin/FASTBOYSLIM/Loris/final_data/classification_models/lichen_model/model_16_7.joblib" #Degraded Lichen Model
 
 if __name__ == "__main__":
     args = parse_arguments()

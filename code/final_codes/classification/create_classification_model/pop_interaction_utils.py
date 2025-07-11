@@ -10,6 +10,7 @@ Usage:
   python pop_interaction_utils.py merge-samples-from-dir --input-dir samples_dir/ --output merged.json
   python pop_interaction_utils.py remove-category --input samples.json --category "Forest" --output filtered.json
   python pop_interaction_utils.py remove-samples --input samples.json --indices 0 5 10 --output filtered.json
+  python pop_interaction_utils.py balance-categories --input samples.json --max-samples 50 --output balanced.json
 """
 
 import os
@@ -17,6 +18,7 @@ import sys
 import json
 import argparse
 import glob
+import random
 from collections import Counter
 
 def load_json_file(json_path):
@@ -265,6 +267,66 @@ def remove_samples(input_file, indices, output_file):
     
     return filtered_data
 
+def balance_categories(input_file, max_samples, output_file):
+    """
+    Balance the number of samples per category by randomly selecting a maximum number from each.
+    
+    Args:
+        input_file: Path to JSON file containing samples
+        max_samples: Maximum number of samples to keep per category
+        output_file: Path to save the balanced samples
+        
+    Returns:
+        Balanced samples data
+    """
+    print(f"Balancing categories in {input_file} to max {max_samples} samples per category...")
+    
+    # Load samples from the JSON file
+    input_data = load_json_file(input_file)
+    if input_data is None:
+        return None
+    
+    # Print statistics for the input set
+    print_population_stats("Input population", input_data)
+    
+    # Group samples by category
+    samples_by_category = {}
+    for sample in input_data.get("samples", []):
+        category = sample.get("category", "Unknown")
+        if category not in samples_by_category:
+            samples_by_category[category] = []
+        samples_by_category[category].append(sample)
+    
+    # Create a new structure for the balanced result
+    balanced_data = {
+        "n_samples_x": input_data.get("n_samples_x"),
+        "n_samples_y": input_data.get("n_samples_y"),
+        "samples": []
+    }
+    
+    # Balance each category
+    for category, samples in samples_by_category.items():
+        if len(samples) > max_samples:
+            # Randomly select max_samples from this category
+            selected_samples = random.sample(samples, max_samples)
+            print(f"Category '{category}': reduced from {len(samples)} to {max_samples} samples")
+        else:
+            selected_samples = samples
+            print(f"Category '{category}': kept all {len(samples)} samples (under the limit)")
+        
+        # Add the selected samples to the balanced data
+        balanced_data["samples"].extend(selected_samples)
+    
+    # Print statistics for the balanced set
+    print_population_stats("Balanced population", balanced_data)
+    
+    # Save the balanced data to the output file
+    success = save_json_file(balanced_data, output_file)
+    if success:
+        print(f"Saved {len(balanced_data['samples'])} balanced samples to {output_file}")
+    
+    return balanced_data
+
 def parse_args():
     """
     Parse command line arguments.
@@ -298,6 +360,12 @@ def parse_args():
     remove_samples_parser.add_argument("--indices", required=True, type=int, nargs="+", help="Indices of samples to remove")
     remove_samples_parser.add_argument("--output", required=True, help="Output JSON file")
     
+    # balance-categories command
+    balance_parser = subparsers.add_parser("balance-categories", help="Balance the number of samples per category")
+    balance_parser.add_argument("--input", required=True, help="Input JSON file")
+    balance_parser.add_argument("--max-samples", required=True, type=int, help="Maximum number of samples per category")
+    balance_parser.add_argument("--output", required=True, help="Output JSON file")
+    
     return parser.parse_args()
 
 def main():
@@ -312,6 +380,8 @@ def main():
         remove_category(args.input, args.category, args.output)
     elif args.command == "remove-samples":
         remove_samples(args.input, args.indices, args.output)
+    elif args.command == "balance-categories":
+        balance_categories(args.input, args.max_samples, args.output)
     else:
         print("No command specified. Use --help for usage information.")
 
@@ -335,4 +405,7 @@ python code/final_codes/classification/create_classification_model/pop_interacti
 python code/final_codes/classification/create_classification_model/pop_interaction_utils.py remove-samples \
     --input data/selection_test/Green_1.json --indices 1 2 3 4 5 --output data/selection_test/merged/Green_filtered.json
 
+python code/final_codes/classification/create_classification_model/pop_interaction_utils.py balance-categories \
+    --input data/selection_test/merged/merged2.json --max-samples 10 \
+    --output data/selection_test/merged/balanced.json
 """
