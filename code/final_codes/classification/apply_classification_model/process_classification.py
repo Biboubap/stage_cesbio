@@ -471,9 +471,9 @@ python home/lcousin/stage_cesbio/code/final_codes/classification/apply_classific
  --out media/lcousin/FASTBOYSLIM/Loris/KonstantinClassif/Chesnay_classif_16px.tif
 
  python home/lcousin/stage_cesbio/code/final_codes/classification/apply_classification_model/process_classification.py \
- --rgb /home/lcousin/stage_cesbio/drone_treated/WAP32_full_transparent_mosaic_group1.tif\
- --dsm /home/lcousin/stage_cesbio/drone_treated/WAP32_full_dsm.tif\
- --out /home/lcousin/stage_cesbio/drone_treated/WAP32_tiles/wap32_classif_16px.tif
+ --rgb /home/lcousin/stage_cesbio/drone_treated/Wap12_Main_transparent_mosaic_group1.tif\
+ --dsm /home/lcousin/stage_cesbio/drone_treated/Wap12_Main_dsm.tif\
+ --out /home/lcousin/stage_cesbio/drone_treated/WAP12_tiles/wap12_classif_16px.tif
 
 
 """
