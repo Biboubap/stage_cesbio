@@ -1,6 +1,0 @@
-Grid search completed for sqrt_Green
-Best parameters: {'max_depth': 10, 'max_features': 'sqrt', 'min_samples_leaf': 1, 'min_samples_split': 5, 'n_estimators': 100}
-Best CV r2 score: 0.917
-Validation set R² score: 0.761
-Validation set RMSE: 0.103
-Validation set Pearson r: 0.873

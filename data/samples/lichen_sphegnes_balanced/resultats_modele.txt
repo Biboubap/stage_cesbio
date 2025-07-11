@@ -1,4 +1,0 @@
-Accuracy: 0.9354838709677419
-Confusion matrix:
- [[46  3]
- [ 3 41]]

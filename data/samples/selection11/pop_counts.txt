@@ -1,4 +1,0 @@
-large_depression: 3298
-peat_plateau: 5367
-big_through: 124
-forest: 3953

@@ -298,7 +298,7 @@ if __name__ == "__main__":
     sentinel_path = f"DataCubeS2/WAP{wap}{peat_suffix}{resolution_suffix}/mediane_bands/{file_prefix}mediane_clipped_STACK_2023_BandB4_WAP{wap}_deflate.tif"
     
     # Mask path (optional)
-    mask_path = f"drone_treated/WAP{wap}_tiles/mask_WAP{wap}_peat.tif"
+    mask_path = f"data/regressions/regression_merged_model/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}/well_classif_wap{wap}.tif"
     # Uncomment the line below to disable mask
     # mask_path = None
     
@@ -306,6 +306,11 @@ if __name__ == "__main__":
     output_dir = f"data/regressions/regression_merged_model/regression_wap{wap}{peat_suffix}{resolution_suffix}{moy5m_suffix}"
     os.makedirs(output_dir, exist_ok=True)
     output_path = f"{output_dir}/proportions_WAP{wap}.tif"
+
+    # classification_path = "Konstantin/Chesnay_tiles/merged_classification_8.tif"
+    # sentinel_path = "DataCubeS2/Chesnay_10m/mediane_bands/mediane_STACK_2023_BandB4_Chesnay_deflate.tif"
+    # mask_path = None
+    # output_path = f"data/regressions/regression_merged_model/regression_chesnay_10m/proportions_Chesnay.tif"
     
     # Define class labels
     class_labels = {
@@ -320,7 +325,6 @@ if __name__ == "__main__":
     
     through_class_labels = ["Sphagnum", "Depression", "Water"]
     
-    print(f"Processing WAP{wap} data with {'peat' if use_peat else 'standard'} dataset at {resolution}m resolution...")
     
     # Process the data
     process_theorical_proportions(

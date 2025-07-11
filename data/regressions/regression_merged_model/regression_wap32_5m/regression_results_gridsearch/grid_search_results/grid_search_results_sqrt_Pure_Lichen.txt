@@ -1,6 +1,0 @@
-Grid search completed for sqrt_Pure_Lichen
-Best parameters: {'max_depth': 10, 'max_features': 'sqrt', 'min_samples_leaf': 5, 'min_samples_split': 2, 'n_estimators': 200}
-Best CV r2 score: 0.667
-Validation set R² score: 0.457
-Validation set RMSE: 0.175
-Validation set Pearson r: 0.677

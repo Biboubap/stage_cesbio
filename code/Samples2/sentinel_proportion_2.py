@@ -439,7 +439,7 @@ def process_wap_data(wap_number, classification_path, output_dir=None, use_peat=
     print(f"Results saved in {output_dir}")
 
 if __name__ == "__main__":
-    wap = 32
+    wap = 23
     use_peat = False
     superresolution = False  # Use 5m resolution (True) or 10m resolution (False)
     peat_suffix = "_peat" if use_peat else ""

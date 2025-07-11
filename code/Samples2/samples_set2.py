@@ -324,5 +324,6 @@ if __name__ == "__main__":
     
     loaded_set = SamplesSet2.load_samples_from_json("data/samples/selection12/dry_depression_2.json")
     print(f"Samples chargés")
+    
     loaded_set.plot_samples_as_list()
     plt.show()

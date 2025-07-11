@@ -1,5 +1,0 @@
-peat_pure_lichen: 226
-through_green: 111
-through_dark: 64
-peat_green: 143
-peat_degraded_lichen: 50

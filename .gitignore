@@ -8,6 +8,12 @@
 /data/sentinel2/**/*.tif
 /data/sentinel2/**/*.png
 
+!/data/regressions
+/data/regressions/**/*.png
+/data/regressions/**/*.json
+/data/regressions/**/*.joblib
+
+
 /code/__pycache__/
 /infos/**/*.pdf
 /infos/**/*.pptx
@@ -26,6 +32,14 @@
 /**/*.qml
 /**/*.tfw 
 /**/*.pptx#
+/**/*.png 
+/**/*.cpg
+/**/*.dbf
+/**/*.shp
+/**/*.shx
+/**/*.odg
+/**/*.qpt
+/**/*.zip
 
 /drone_treated/
 
