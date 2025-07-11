@@ -321,6 +321,18 @@ if __name__ == "__main__":
 
 """
 python code/final_codes/classification/create_classification_model/pop_interaction_utils.py merge-samples\
-      --input data/selection_test/Through_1.json data/selection_test/Through_2.json data/selection_test/Green_1.json \
-      --output data/selection_test/merged.json
+    --input data/selection_test/Through_1.json data/selection_test/Through_2.json data/selection_test/Green_1.json \
+    --output data/selection_test/merged.json
+
+python code/final_codes/classification/create_classification_model/pop_interaction_utils.py merge-samples-from-dir \
+    --input-dir data/selection_test/ --output data/selection_test/merged/merged2.json
+
+python code/final_codes/classification/create_classification_model/pop_interaction_utils.py remove-category \
+    --input data/selection_test/merged/merged2.json \
+    --category "Green" \
+    --output data/selection_test/merged/filtered.json
+
+python code/final_codes/classification/create_classification_model/pop_interaction_utils.py remove-samples \
+    --input data/selection_test/Green_1.json --indices 1 2 3 4 5 --output data/selection_test/merged/Green_filtered.json
+
 """
